@@ -1,5 +1,6 @@
 import glob
 import re
+import pandas
 from functools import cmp_to_key
 """
 run on respublica
@@ -50,8 +51,14 @@ JAVAOPTS = "-Djava.io.tmpdir=/mnt/lustre/users/leipzigj/"
 
 TESTDIR = PICARDDIR
 
+DOWNLOADDIR = "kiel"
+DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
+
 FASTQS = glob.glob(FASTQDIR + "/*.gz")
-SAMPLES = ['E01612','E01613','E01614']
+
+sample_table = pandas.read_table("samples.txt",header=None,names=["sample"],index_col=0)
+SAMPLES = list(sample_table.index)
+
 RESULTS = [re.sub("\.fastq\.gz$","_fastqc.zip", QCDIR + "/" + os.path.basename(name)) for name in FASTQS]
 # HTMLS = [re.sub("\.fastq\.gz$","_fastqc.html", QCDIR + "/" + os.path.basename(name)) for name in FASTQS]
 
@@ -179,6 +186,18 @@ rule make_bais:
 
 rule sortbams:
     input: DBAMS
+
+
+# make symlinks
+# do this once
+# remove _001
+rule symlinks:
+     input: DOWNLOADS
+     run:
+        """
+        fastq=os.path.basename(input).replace('_001','')
+        os.symlink(input,fastq)
+        """
 
 #### run novoalign ####
 rule novoalign:
@@ -577,3 +596,6 @@ onsuccess:
     print("Workflow finished, no error")
     shell("mail -s 'Workflow finished!' leipzig@gmail.com < {log}")
 
+onerror:
+    print("An error occurred")
+    shell("mail -s 'an error occurred' leipzig@gmail.com < {log}")
