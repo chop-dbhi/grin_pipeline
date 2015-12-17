@@ -92,54 +92,6 @@ INDELS = REALIGNDIR3 + "/indels.list"
 SBAMS = [re.sub("\.bam$", ".sorted.bam", name) for name in BAMS]
 
 
-dlocs = dict()
-
-def cmp(a,b):
-    global dlocs
-    if dlocs[a][0] == dlocs[b][0]:
-       if dlocs[a][1] > dlocs[b][1]:
-           return 1
-       else:
-           return -1
-    else:
-       if dlocs[a][0] > dlocs[b][0]:
-           return 1
-       else:
-           return -1
-
-def combine():
-    global dlocs
-    "combine indels in the lists into a single list"
-    indels = dict()
-    for name in LISTS:
-        fin = open(name, "r")
-        for line in fin.readlines():
-            line = re.sub('\n', '', line)
-            chr, loc = line.split(':')
-            if chr in indels:
-                if loc not in indels[chr]:
-                    locs = loc.split('-')
-                    if len(locs) == 1:
-                        locs.append(locs[0])
-                    indels[chr][loc] = [int(locs[0]), int(locs[1])]
-            else:
-                indels[chr] = dict()
-                locs = loc.split('-')
-                if len(locs) == 1:
-                    locs.append(locs[0])
-                indels[chr][loc] = [int(locs[0]), int(locs[1])]
-                    
-    # how to sniff version?
-    chrs = list(indels.keys())  # works for both version 2 and 3
-    chrs.sort()
-    with open(INDELS, "w") as out:
-        for chr in chrs:
-            dlocs = indels[chr]
-            ks = list(dlocs.keys())
-            # ks.sort(key=lamda x:dlocs[x[0])
-            ks.sort(key=cmp_to_key(cmp))
-            for loc in ks:
-                out.write(chr + ':' + loc + "\n") 
 
 rule all:
     input: RESULTS, "fastqc.md", SBAMS, DBAIS, RBAMS
@@ -282,6 +234,54 @@ rule fastqc:
 
 
 #### combine indel lists  ####
+dlocs = dict()
+
+def cmp(a,b):
+    global dlocs
+    if dlocs[a][0] == dlocs[b][0]:
+       if dlocs[a][1] > dlocs[b][1]:
+           return 1
+       else:
+           return -1
+    else:
+       if dlocs[a][0] > dlocs[b][0]:
+           return 1
+       else:
+           return -1
+
+def combine():
+    global dlocs
+    "combine indels in the lists into a single list"
+    indels = dict()
+    for name in LISTS:
+        fin = open(name, "r")
+        for line in fin.readlines():
+            line = re.sub('\n', '', line)
+            chr, loc = line.split(':')
+            if chr in indels:
+                if loc not in indels[chr]:
+                    locs = loc.split('-')
+                    if len(locs) == 1:
+                        locs.append(locs[0])
+                    indels[chr][loc] = [int(locs[0]), int(locs[1])]
+            else:
+                indels[chr] = dict()
+                locs = loc.split('-')
+                if len(locs) == 1:
+                    locs.append(locs[0])
+                indels[chr][loc] = [int(locs[0]), int(locs[1])]
+                    
+    # how to sniff version?
+    chrs = list(indels.keys())  # works for both version 2 and 3
+    chrs.sort()
+    with open(INDELS, "w") as out:
+        for chr in chrs:
+            dlocs = indels[chr]
+            ks = list(dlocs.keys())
+            # ks.sort(key=lamda x:dlocs[x[0])
+            ks.sort(key=cmp_to_key(cmp))
+            for loc in ks:
+                out.write(chr + ':' + loc + "\n") 
 
 rule combine_lists:
     input: LISTS
@@ -559,26 +559,6 @@ rule add_readgroup:
 	{JAVA} {JAVAOPTS} {MEMSET} -jar {AddOrReplaceReadGroups} I={input.bam} O={output.bam} PL=illumina LB={wildcards.sample} PU={wildcards.sample} SM={wildcards.sample}
         """
 
-rule make_index:
-    input:
-        bam = PICARDDIR + "/{sample}.rmdup.bam"
-    output:
-        bai = PICARDDIR + "/{sample}.rmdup.bai"
-    shell:
-        """
-        {JAVA} {JAVAOPTS} {MEMSET} -jar {BuildBamIndex} INPUT={input.bam}
-        """
-
-rule remove_duplicates:
-    input:
-        bam = BAMDIR + "/{sample}.sorted.bam"
-    output:
-        bam = PICARDDIR + "/{sample}.rmdup.bam"
-    shell:
-        """
-        {JAVA} {JAVAOPTS} {MEMSET} -jar {MarkDuplicates} INPUT={input.bam} OUTPUT={output.bam} METRICS_FILE={PICARDDIR}/{wildcards.sample}.txt
-        """
-
 #### run novosort ####
 rule sorting:
     input:
@@ -590,7 +570,39 @@ rule sorting:
         {TOOLDIR}/novosort -m 14g -t . --removeduplicates --keeptags -i -o {output.sorted} {input.bam}
         """
 
+# merge lanes
+# E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
+def get_all_sorted_bams(sample):
+    print(sample)
+    return ' '.join(glob.glob("{0}/{1}*".format(BAMDIR,sample)))
 
+rule merge_lanes:
+    input: bams = get_all_sorted_bams("{sample}"), samtools = SAMTOOLS
+    output: "{sample}.sorted.merged.bam"
+    threads:
+        12
+    shell:
+        "{input.samtools} merge -@ 12 {output} {input.bams}"
+
+rule remove_duplicates:
+    input:
+        bam = BAMDIR + "/{sample}.sorted.merged.bam"
+    output:
+        bam = PICARDDIR + "/{sample}.rmdup.bam"
+    shell:
+        """
+        {JAVA} {JAVAOPTS} {MEMSET} -jar {MarkDuplicates} INPUT={input.bam} OUTPUT={output.bam} METRICS_FILE={PICARDDIR}/{wildcards.sample}.txt
+        """
+
+rule make_index:
+    input:
+        bam = PICARDDIR + "/{sample}.rmdup.bam"
+    output:
+        bai = PICARDDIR + "/{sample}.rmdup.bai"
+    shell:
+        """
+        {JAVA} {JAVAOPTS} {MEMSET} -jar {BuildBamIndex} INPUT={input.bam}
+        """
 
 onsuccess:
     print("Workflow finished, no error")
