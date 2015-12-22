@@ -8,6 +8,8 @@ source activate snakeenv
 snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G" 
 """
 
+configfile: "config.json"
+
 # ISIDIR = "/nas/is1"
 ISIDIR = "/mnt/isilon/cbmi/variome"
 TOOLDIR = ISIDIR + "/bin"
@@ -56,7 +58,11 @@ DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
 
 FASTQS = glob.glob(FASTQDIR + "/*.gz")
 
-sample_table = pandas.read_table("samples.txt",header=None,names=["sample"],index_col=0)
+#FamilyID	Subject	Mother	Father	Sex	Affected_status	Not_in_Varbank	
+#Trio_SL	C2952	C2953	C2954	f	EOEE	
+#ISR_#45	E08320			        f	Focal Epilepsy	x	
+sample_table = pandas.read_table(config['pedfile'],index_col=1)
+
 SAMPLES = list(sample_table.index)
 
 RESULTS = [re.sub("\.fastq\.gz$","_fastqc.zip", QCDIR + "/" + os.path.basename(name)) for name in FASTQS]
@@ -572,12 +578,12 @@ rule sorting:
 
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
-def get_all_sorted_bams(sample):
-    print(sample)
-    return ' '.join(glob.glob("{0}/{1}*".format(BAMDIR,sample)))
+def get_all_sorted_bams(samplename):
+    print(samplename)
+    return ' '.join(glob.glob("{0}*.sorted.bam".format(samplename)))
 
 rule merge_lanes:
-    input: bams = get_all_sorted_bams("{sample}"), samtools = SAMTOOLS
+    input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = SAMTOOLS
     output: "{sample}.sorted.merged.bam"
     threads:
         12

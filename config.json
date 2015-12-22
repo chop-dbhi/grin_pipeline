@@ -1,3 +1,4 @@
 {
-	"buildver": "hg38"
+	"buildver": "hg38",
+	"pedfile": "pedfile.txt"
 }
