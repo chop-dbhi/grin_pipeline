@@ -12,27 +12,21 @@ configfile: "config.yaml"
 
 SEQLIST = "files.lst"
 SAMPLELIST = "samples.lst"
-SLINK = "Mosse/fastqc/"
+SLINK = "GRIN/fastqc/"
 
 DOWNLOADDIR = "kiel"
 DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
 
 FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
-SAMPLES = glob.glob(config['datadirs']['samples'] + "/*.gz")
-#RESULTS = [re.sub("\.fastq\.gz$","_fastqc.zip", config['datadirs']['fastqc'] + "/" + os.path.basename(name)) for name in SAMPLES]
-# HTMLS = [re.sub("\.fastq\.gz$","_fastqc.html", config['datadirs']['fastqc'] + "/" + os.path.basename(name)) for name in SAMPLES]
 
-BASENAMES = [re.sub("\_R1\.fastq\.gz$", "", os.path.basename(name)) for name in SAMPLES if re.search("_R1\.fastq\.gz$", name)]
+#FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
+#Trio_SL        C2952   C2953   C2954   f       EOEE
+#ISR_#45        E08320                          f       Focal Epilepsy  x
+sample_table = pandas.read_table(config['pedfile'],index_col=1)
 
-BASENAMES = [
-         "lane3_Undetermined_L003",
-         "lane6_Undetermined_L006",
-#         "lane8_Undetermined_L008",
-       ]
-       #"FNB3-001M_ATCACG_L003",
-       #"FNB3-002B_CGATGT_L003",
-       #"FNB61-007B_GCCAAT_L001",
-       # "ANB34-001T_WGA_CAGATC_L007",  # incomplete sample
+SAMPLES = list(sample_table.index)
+
+BASENAMES = [re.sub("\_R1\.fastq\.gz$", "", os.path.basename(name)) for name in FASTQS if re.search("_R1\.fastq\.gz$", name)]
 
 # BASENAMES.remove("CNB01-001B_ATCACG_L008")
 
@@ -119,8 +113,6 @@ rule all:
         indels = INDELS,        # must run after all lists are created
         rbam = config['datadirs']['realigned'] + "/{sample}.bam",
         snpeff = config['datadirs']['gvcfs'] + "/snpeff.vcf" # must run after all gvcf files created; will create joint.vcf if not already
-
-    # input: RESULTS, "fastqc.md", BAMS, SBAMS, DBAIS, RBAMS
 
 rule basehead:
     run:
@@ -566,30 +558,6 @@ rule fastqc:
     # how to run qsub?
     shell: "{input.seq2qc} -o {params.qcdir} {input.pair1} {input.pair2} 2> {log}" 
 
-
-# group sequences
-
-rule group_samples:  # combine sequences in the samples
-    input:
-        list = SEQLIST,
-        prog = config['tools']['combseqs']
-    output:
-        list = SAMPLELIST
-    shell:
-        """
-        {input.prog} {input.list}
-        touch {output.list}
-        """
-        
-rule list_file:  # prepare for mossefiles 
-    input:
-        list = FASTQS
-    output:
-        file = SEQLIST
-    run:
-        with open(output.list, "w") as out:
-            for file in input.list:
-                 out.write(file + "\n")
 
 onsuccess:
     print("Workflow finished, no error")
