@@ -312,7 +312,7 @@ rule post_recalibrated_table:
         -T BaseRecalibrator \
         -R {params.refseq} \
         -I {input.bam} \
-        -knownSites {config['siv']} \
+        -knownSites {config[siv]} \
         -BQSR {input.table} \
         -o {output.table}
         """
@@ -333,7 +333,7 @@ rule recalibrated_table:
         -T BaseRecalibrator \
         -R {params.refseq} \
         -I {input.bam} \
-        -knownSites {config['siv']} \
+        -knownSites {config[siv]} \
         -o {output.table}
         """
 
@@ -358,7 +358,7 @@ rule target_list: # create individual realign target list
         -T RealignerTargetCreator \
         -R {params.refseq} \
         -I {input.bam} \
-        -known {config['siv']} \
+        -known {config[siv]} \
         -o {output.list}
         """
 
@@ -380,7 +380,7 @@ rule realign_target:   # with one combined list file
         -R {params.refseq} \
         -I {config[datadirs][picard]}/{wildcards.sample}_group.bam \
         -targetIntervals {input.list} \
-        -known {config['siv']} \
+        -known {config[siv]} \
         -o {output.rbam}
         """
 
