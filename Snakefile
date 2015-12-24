@@ -112,7 +112,7 @@ rule all:
         lists = LISTS,          # becore combine lists
         indels = INDELS,        # must run after all lists are created
         rbam = config['datadirs']['realigned'] + "/{sample}.bam",
-        snpeff = config['datadirs']['gvcfs'] + "/snpeff.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        phase = config['datadirs']['gvcfs'] + "/phase.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
 rule basehead:
     run:
@@ -169,6 +169,31 @@ rule symlinks:
         """
         fastq=os.path.basename(input).replace('_001','')
         os.symlink(input,fastq)
+        """
+
+#### run PhaseByTransmission  ####
+
+rule run_pbt:
+    input:
+        vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
+        snpeff = config['datadirs']['gvcfs'] + "/snpeff.vcf",
+        ped = config['ped'],
+        java = config['tools']['java']
+    output:
+        vcf = config['datadirs']['gvcfs'] + "/phase.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        refseq = config['refseq'],
+        javaopts = config['tools']['javaopts']
+
+    shell:
+        """
+        {input.java} {params.javaopts} -jar {params.jar} \
+        -T PhaseByTransmission \
+        -R {params.refseq} \
+        -V {input.vcf} \
+        -ped {input.ped} \
+        -o {output.vcf}
         """
 
 #### run snpeff  ####
