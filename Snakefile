@@ -180,11 +180,14 @@ rule run_pbt:
         ped = config['ped'],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['gvcfs'] + "/phase.vcf"
+        vcf = config['datadirs']['gvcfs'] + "/phase.vcf",
+        mvf = config['datadirs']['gvcfs'] + "/mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
         refseq = config['refseq'],
         javaopts = config['tools']['javaopts']
+    log: 
+        config['datadirs']['log'] + "/phase_by_transmission.log" 
 
     shell:
         """
@@ -193,7 +196,8 @@ rule run_pbt:
         -R {params.refseq} \
         -V {input.vcf} \
         -ped {input.ped} \
-        -o {output.vcf}
+        -mvf {ouput.mvf} \
+        -o {output.vcf} >& {log}
         """
 
 #### run snpeff  ####
