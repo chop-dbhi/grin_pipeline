@@ -388,8 +388,6 @@ rule analyze_bqsr:
         -plots {output.pdf}
         """
 
-
-
 rule remove_duplicates:
     input:
         bam = config['datadirs']['bams'] + "/{sample}_sorted.bam",
@@ -546,16 +544,19 @@ rule run_snpeff:
 rule makeyaml:
     output: 
         yaml = "fastqc.yaml",
+    params:
+        projdir = config['projdir'],
+        fastqc = config['datadirs']['fastqc']
     run:
         with open(output.yaml, "w") as out:
            idx = 1
            out.write("paired: yes\n") 
-           out.write("output: /nas/is1/leipzig/GRIN/fastqc\n") 
+           out.write("output: {0}\n".format(params.projdir)) 
            out.write("fastqc:\n") 
            for name in BASENAMES:
-               out.write("  " + name + "\n") 
-               out.write("  - " + config['datadirs']['fastqc'] + "/" + name + "_R1_fastqc.zip\n")
-               out.write("  - " + config['datadirs']['fastqc'] + "/" + name + "_R2_fastqc.zip\n")
+               out.write("  {0}\n".format(name)) 
+               out.write("  - {0}/{1}_R1_fastqc.zip\n".format(params.fastqc,name))
+               out.write("  - {0}/{1}_R2_fastqc.zip\n".format(params.fastqc,name))
 
 #### Create Markdown index of FastQC report files
 rule makemd:
