@@ -266,6 +266,13 @@ rule make_group_index:
         INPUT={input.bam}
         """
 
+# combine indels from individual target alignment lists into a single list
+rule combine_lists:
+    input: LISTS
+    output: INDELS
+    run:
+         combine()
+
 rule realign_target:   # with one combined list file
     input:  # deduced bams
         list = INDELS,
@@ -381,12 +388,7 @@ rule analyze_bqsr:
         -plots {output.pdf}
         """
 
-# combine indels from individual target alignment lists into a single list
-rule combine_lists:
-    input: LISTS
-    output: INDELS
-    run:
-         combine()
+
 
 rule remove_duplicates:
     input:
