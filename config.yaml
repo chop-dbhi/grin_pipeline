@@ -1,3 +1,4 @@
+admins: leipzig@gmail.com zhangs3@email.chop.edu
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
 refseq:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
 refseqidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
@@ -54,4 +55,5 @@ jars:
         /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
     snpeffcnf:
         /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.config
-
+    snpeffdb:
+        GRCh38.76

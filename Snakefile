@@ -529,7 +529,7 @@ rule run_snpeff:
         jar  = config['jars']['snpeff'],
         conf = config['jars']['snpeffcnf'],
         javaopts = config['tools']['javaopts'],
-        database = 'GRCh38.76'
+        database = config['jars']['snpeffdb']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -584,8 +584,8 @@ and installed as &lt;isilon&gt;/bin/fastqc.
 #### Internal
 onsuccess:
     print("Workflow finished, no error")
-    shell("mail -s 'workflow finished' leipzig@gmail.com < {log}")
+    shell("mail -s 'workflow finished' "+config['admins']+" < {log}")
 
 onerror:
     print("An error occurred")
-    shell("mail -s 'an error occurred' leipzig@gmail.com < {log}")
+    shell("mail -s 'an error occurred' "+config['admins']+" < {log}")
