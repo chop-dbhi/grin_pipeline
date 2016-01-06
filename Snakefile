@@ -34,10 +34,10 @@ BASENAMES.sort()
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in BASENAMES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in BASENAMES]
-DBAIS = [config['datadirs']['picard'] + "/" + name + "_rmdup.bai" for name in BASENAMES]
-DBAMS = [config['datadirs']['picard'] + "/" + name + "_rmdup.bam" for name in BASENAMES]
-GBAIS = [config['datadirs']['picard'] + "/" + name + "_group.bai" for name in BASENAMES]
-GBAMS = [config['datadirs']['picard'] + "/" + name + "_group.bam" for name in BASENAMES]
+DBAIS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bai" for name in BASENAMES]
+DBAMS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bam" for name in BASENAMES]
+GBAIS = [config['datadirs']['picard'] + "/" + name + ".group.bai" for name in BASENAMES]
+GBAMS = [config['datadirs']['picard'] + "/" + name + ".group.bam" for name in BASENAMES]
 RBAMS = [config['datadirs']['realigned'] + "/" + name + ".bam" for name in BASENAMES]
 LISTS = [config['datadirs']['lists'] + "/" + name + ".list" for name in BASENAMES]
 TABLES = [config['datadirs']['recalibrated'] + "/" + name + ".table" for name in BASENAMES]
@@ -46,7 +46,7 @@ POSTTABLES = [config['datadirs']['postrecalibrated'] + "/" + name + ".table" for
 PDFS = [config['datadirs']['pdfs'] + "/" + name + ".pdf" for name in BASENAMES]
 GVCFS = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in BASENAMES]
 GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in BASENAMES])
-SBAMS = [re.sub("\.bam$", "_sorted.bam", name) for name in BAMS]
+SBAMS = [re.sub("\.bam$", ".sorted.bam", name) for name in BAMS]
 
 INDELS = config['datadirs']['realigned'] + "/indels.list"
 
@@ -157,7 +157,7 @@ rule align:
 rule sam_to_bam:
     input:
         sam = config['datadirs']['sams'] + "/{sample}.sam",
-        sam2bam = config['tools']['sam2bam']
+        sam2bam = config['tools']['samtools']
     output:
         bam = config['datadirs']['bams'] + "/{sample}.bam"
     threads:
@@ -173,7 +173,7 @@ rule novosortbam:
         bam = config['datadirs']['bams'] + "/{sample}.bam",
         sort = config['tools']['sortbam']
     output:
-        sorted = config['datadirs']['bams'] + "/{sample}_sorted.bam",
+        sorted = config['datadirs']['bams'] + "/{sample}.sorted.bam",
     shell:
         """
         {input.sort} -m 14g -t . --removeduplicates --keeptags -i -o {output.sorted} {input.bam}
@@ -185,8 +185,8 @@ rule novosortbam:
 
 rule target_list: # create individual realign target list
     input:  # deduced bams
-        bai = config['datadirs']['picard'] + "/{sample}_group.bai", # required, so make sure it's created
-        bam = config['datadirs']['picard'] + "/{sample}_group.bam",
+        bai = config['datadirs']['picard'] + "/{sample}.group.bai", # required, so make sure it's created
+        bam = config['datadirs']['picard'] + "/{sample}.group.bam",
         java = config['tools']['java']
     output:
         list = config['datadirs']['lists'] + "/{sample}.list"
@@ -253,10 +253,10 @@ def combine():
 
 rule make_group_index:
     input:
-        bam = config['datadirs']['picard'] + "/{sample}_group.bam",
+        bam = config['datadirs']['picard'] + "/{sample}.group.bam",
         java = config['tools']['java']
     output:
-        bai = config['datadirs']['picard'] + "/{sample}_group.bai"
+        bai = config['datadirs']['picard'] + "/{sample}.group.bai"
     params:
         javaopts = config['tools']['javaopts'],
         jar = config['jars']['buildbamindex']
@@ -276,7 +276,7 @@ rule combine_lists:
 rule realign_target:   # with one combined list file
     input:  # deduced bams
         list = INDELS,
-        dbam = config['datadirs']['picard'] + "/{sample}_group.bai",
+        dbam = config['datadirs']['picard'] + "/{sample}.group.bai",
         java = config['tools']['java']
     output:
         rbam = config['datadirs']['realigned'] + "/{sample}.bam"
@@ -289,7 +289,7 @@ rule realign_target:   # with one combined list file
         {input.java} {params.javaopts} -jar {params.jar} \
         -T IndelRealigner \
         -R {params.refseq} \
-        -I {config[datadirs][picard]}/{wildcards.sample}_group.bam \
+        -I {config[datadirs][picard]}/{wildcards.sample}.group.bam \
         -targetIntervals {input.list} \
         -known {config[siv]} \
         -o {output.rbam}
@@ -395,7 +395,7 @@ def get_all_sorted_bams(samplename):
     return ' '.join(glob.glob("{0}*.sorted.bam".format(samplename)))
 
 rule merge_lanes:
-    input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = SAMTOOLS
+    input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = config['tools']['samtools']
     output: "{sample}.sorted.merged.bam"
     threads:
         12
@@ -424,10 +424,10 @@ rule remove_duplicates:
 
 rule make_index:
     input:
-        bam = config['datadirs']['picard'] + "/{sample}_rmdup.bam",
+        bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam",
         java = config['tools']['java']
     output:
-        bai = config['datadirs']['picard'] + "/{sample}_rmdup.bai"
+        bai = config['datadirs']['picard'] + "/{sample}.rmdup.bai"
     params:
         javaopts = config['tools']['javaopts'],
         jar = config['jars']['buildbamindex']
@@ -439,11 +439,11 @@ rule make_index:
 
 rule add_readgroup:
     input:
-        bam = config['datadirs']['picard'] + "/{sample}_rmdup.bam",
-        bai = config['datadirs']['picard'] + "/{sample}_rmdup.bai",
+        bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam",
+        bai = config['datadirs']['picard'] + "/{sample}.rmdup.bai",
         java = config['tools']['java']
     output:
-        bam = config['datadirs']['picard'] + "/{sample}_group.bam"
+        bam = config['datadirs']['picard'] + "/{sample}.group.bam"
     params:
         javaopts = config['tools']['javaopts'],
         jar = config['jars']['addorreplacereadgroups']
