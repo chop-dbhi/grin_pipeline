@@ -519,6 +519,7 @@ rule run_phase_by_transmission:
         """
 
 #### Annotation ####
+# ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
         vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
@@ -526,16 +527,17 @@ rule run_snpeff:
     output:
         vcf = config['datadirs']['gvcfs'] + "/snpeff.vcf"
     params:
-        jar  = config['jars']['snpeff'],
-        conf = config['jars']['snpeffcnf'],
+        jar  = config['jars']['snpeff']['path'],
+        conf = config['jars']['snpeff']['cnf'],
         javaopts = config['tools']['javaopts'],
-        database = config['jars']['snpeffdb']
+        database = config['jars']['snpeff']['db'],
+        updown = config['jars']['snpeff']['ud']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -c {params.conf} \
         -t {params.database} \
-        -ud 10 \
+        -ud {params.updown} \
          {input.vcf} > {output.vcf}
         """
 
@@ -576,8 +578,8 @@ and installed as &lt;isilon&gt;/bin/fastqc.
            for name in BASENAMES:
                out.write(" " + str(idx) + ".") 
                out.write(" **" + name + "**") 
-               out.write(" [R1]({{SLINK}}/fastqc/" + name + "_R1_fastqc.html)")
-               out.write(" [R2]({{SLINK}}/fastqc/" + name + "_R2_fastqc.html)")
+               out.write(" [R1]({{SLINK}}/fastqc/{0}_R1_fastqc.html)".format(name))
+               out.write(" [R2]({{SLINK}}/fastqc/{0}_R2_fastqc.html)".format(name))
                out.write("\n\n")
                idx += 1
 
