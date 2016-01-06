@@ -388,8 +388,6 @@ rule analyze_bqsr:
         -plots {output.pdf}
         """
 
-
-
 rule remove_duplicates:
     input:
         bam = config['datadirs']['bams'] + "/{sample}_sorted.bam",
@@ -521,6 +519,7 @@ rule run_phase_by_transmission:
         """
 
 #### Annotation ####
+# ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
         vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
@@ -528,16 +527,17 @@ rule run_snpeff:
     output:
         vcf = config['datadirs']['gvcfs'] + "/snpeff.vcf"
     params:
-        jar  = config['jars']['snpeff'],
-        conf = config['jars']['snpeffcnf'],
+        jar  = config['jars']['snpeff']['path'],
+        conf = config['jars']['snpeff']['cnf'],
         javaopts = config['tools']['javaopts'],
-        database = 'GRCh38.76'
+        database = config['jars']['snpeff']['db'],
+        updown = config['jars']['snpeff']['ud']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -c {params.conf} \
         -t {params.database} \
-        -ud 10 \
+        -ud {params.updown} \
          {input.vcf} > {output.vcf}
         """
 
@@ -546,16 +546,19 @@ rule run_snpeff:
 rule makeyaml:
     output: 
         yaml = "fastqc.yaml",
+    params:
+        projdir = config['projdir'],
+        fastqc = config['datadirs']['fastqc']
     run:
         with open(output.yaml, "w") as out:
            idx = 1
            out.write("paired: yes\n") 
-           out.write("output: /nas/is1/leipzig/GRIN/fastqc\n") 
+           out.write("output: {0}\n".format(params.projdir)) 
            out.write("fastqc:\n") 
            for name in BASENAMES:
-               out.write("  " + name + "\n") 
-               out.write("  - " + config['datadirs']['fastqc'] + "/" + name + "_R1_fastqc.zip\n")
-               out.write("  - " + config['datadirs']['fastqc'] + "/" + name + "_R2_fastqc.zip\n")
+               out.write("  {0}\n".format(name)) 
+               out.write("  - {0}/{1}_R1_fastqc.zip\n".format(params.fastqc,name))
+               out.write("  - {0}/{1}_R2_fastqc.zip\n".format(params.fastqc,name))
 
 #### Create Markdown index of FastQC report files
 rule makemd:
@@ -575,16 +578,16 @@ and installed as &lt;isilon&gt;/bin/fastqc.
            for name in BASENAMES:
                out.write(" " + str(idx) + ".") 
                out.write(" **" + name + "**") 
-               out.write(" [R1]({{SLINK}}/fastqc/" + name + "_R1_fastqc.html)")
-               out.write(" [R2]({{SLINK}}/fastqc/" + name + "_R2_fastqc.html)")
+               out.write(" [R1]({{SLINK}}/fastqc/{0}_R1_fastqc.html)".format(name))
+               out.write(" [R2]({{SLINK}}/fastqc/{0}_R2_fastqc.html)".format(name))
                out.write("\n\n")
                idx += 1
 
 #### Internal
 onsuccess:
     print("Workflow finished, no error")
-    shell("mail -s 'workflow finished' leipzig@gmail.com < {log}")
+    shell("mail -s 'workflow finished' "+config['admins']+" < {log}")
 
 onerror:
     print("An error occurred")
-    shell("mail -s 'an error occurred' leipzig@gmail.com < {log}")
+    shell("mail -s 'an error occurred' "+config['admins']+" < {log}")
