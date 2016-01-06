@@ -388,9 +388,23 @@ rule analyze_bqsr:
         -plots {output.pdf}
         """
 
+# merge lanes
+# E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
+def get_all_sorted_bams(samplename):
+    print(samplename)
+    return ' '.join(glob.glob("{0}*.sorted.bam".format(samplename)))
+
+rule merge_lanes:
+    input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = SAMTOOLS
+    output: "{sample}.sorted.merged.bam"
+    threads:
+        12
+    shell:
+        "{input.samtools} merge -@ 12 {output} {input.bams}"
+
 rule remove_duplicates:
     input:
-        bam = config['datadirs']['bams'] + "/{sample}_sorted.bam",
+        bam = config['datadirs']['bams'] + "/{sample}.sorted.merged.bam",
         java = config['tools']['java']
     output:
         bam = config['datadirs']['picard'] + "/{sample}_rmdup.bam"
