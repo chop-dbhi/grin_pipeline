@@ -52,8 +52,11 @@ jars:
     gatk:
         /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
     snpeff:
-        /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
-    snpeffcnf:
-        /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.config
-    snpeffdb:
-        GRCh38.76
+        path:
+            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
+        cnf:
+            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.config
+        db:
+            GRCh38.76
+        ud:
+            10
