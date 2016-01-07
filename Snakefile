@@ -518,9 +518,34 @@ rule sample_table_to_pedfile:
     input: config['sample_table']
     output: config['pedfile']
     run:
-        ped = pandas.read_table("{0}".format(input))
-        ped['Sex']=ped['Sex'].replace(['M','F'],[1,2])
-        ped[[0,1,3,2,4,5]].to_csv("{0}".format(output), sep='\t',index=False)
+        st = pandas.read_table("{0}".format(input))
+        st['Sex']=st['Sex'].replace(['M','F'],[1,2])
+        st['Affected_status']=st['Affected_status'].replace('unaffected',0)
+        st['Affected_status']=st['Affected_status'].replace('[^0].+', 1, regex=True)
+        ped = st[[0,1,3,2,4,5]]
+        ped = ped.fillna(0)
+        moms = [mom for mom in list(ped['Mother'].dropna()) if mom not in list(ped['Subject'])]
+        dads = [dad for dad in list(ped['Father'].dropna()) if dad not in list(ped['Subject'])]
+        #add rows for unaffected parents
+        momfams=ped[ped['Mother'].isin(moms)]['FamilyID']
+        momdf = pandas.DataFrame(momfams)
+        momdf['Subject']=moms
+        momdf['Father']=0
+        momdf['Mother']=0
+        momdf['Sex']=2
+        momdf['Affected_status']=0
+        
+        dadfams=ped[ped['Father'].isin(moms)]['FamilyID']
+        daddf = pandas.DataFrame(dadfams)
+        daddf['Subject']=dads
+        daddf['Father']=0
+        daddf['Mother']=0
+        daddf['Sex']=1
+        daddf['Affected_status']=0
+        
+        ped.append([momdf,daddf])
+        
+        ped.to_csv("{0}".format(output), sep='\t',index=False)
 
 rule run_phase_by_transmission:
     input:
