@@ -505,14 +505,7 @@ rule combine_gvcfs:
         -o {output.gvcf}
         """
 
-rule sample_table_to_pedfile:
-    input: config['sample_table']
-    output: config['pedfile']
-    run:
-        ped = pandas.read_table("{0}".format(input))
-        ped['Sex']=ped['Sex'].replace(['M','F'],[1,2])
-        ped[[0,1,3,2,4,5]].to_csv("{0}".format(output), sep='\t',index=False) 
-        
+# convert the GRIN sample table into a GATK compliant 6-column pedfile:
 # http://gatkforums.broadinstitute.org/gatk/discussion/37/pedigree-analysis
 # For these tools, the PED files must contain only the first 6 columns from the PLINK format PED file, and no alleles, like a FAM file in PLINK.
 # Family ID
@@ -521,6 +514,14 @@ rule sample_table_to_pedfile:
 # Maternal ID
 # Sex (1=male; 2=female; other=unknown)
 # Phenotype
+rule sample_table_to_pedfile:
+    input: config['sample_table']
+    output: config['pedfile']
+    run:
+        ped = pandas.read_table("{0}".format(input))
+        ped['Sex']=ped['Sex'].replace(['M','F'],[1,2])
+        ped[[0,1,3,2,4,5]].to_csv("{0}".format(output), sep='\t',index=False)
+
 rule run_phase_by_transmission:
     input:
         vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
