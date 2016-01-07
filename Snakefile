@@ -22,7 +22,7 @@ FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
 #Trio_SL        C2952   C2953   C2954   f       EOEE
 #ISR_#45        E08320                          f       Focal Epilepsy  x
-sample_table = pandas.read_table(config['pedfile'],index_col=1)
+sample_table = pandas.read_table(config['sample_table'],index_col=1)
 
 SAMPLES = list(sample_table.index)
 
@@ -34,10 +34,10 @@ BASENAMES.sort()
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in BASENAMES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in BASENAMES]
-DBAIS = [config['datadirs']['picard'] + "/" + name + "_rmdup.bai" for name in BASENAMES]
-DBAMS = [config['datadirs']['picard'] + "/" + name + "_rmdup.bam" for name in BASENAMES]
-GBAIS = [config['datadirs']['picard'] + "/" + name + "_group.bai" for name in BASENAMES]
-GBAMS = [config['datadirs']['picard'] + "/" + name + "_group.bam" for name in BASENAMES]
+DBAIS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bai" for name in BASENAMES]
+DBAMS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bam" for name in BASENAMES]
+GBAIS = [config['datadirs']['picard'] + "/" + name + ".group.bai" for name in BASENAMES]
+GBAMS = [config['datadirs']['picard'] + "/" + name + ".group.bam" for name in BASENAMES]
 RBAMS = [config['datadirs']['realigned'] + "/" + name + ".bam" for name in BASENAMES]
 LISTS = [config['datadirs']['lists'] + "/" + name + ".list" for name in BASENAMES]
 TABLES = [config['datadirs']['recalibrated'] + "/" + name + ".table" for name in BASENAMES]
@@ -46,7 +46,7 @@ POSTTABLES = [config['datadirs']['postrecalibrated'] + "/" + name + ".table" for
 PDFS = [config['datadirs']['pdfs'] + "/" + name + ".pdf" for name in BASENAMES]
 GVCFS = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in BASENAMES]
 GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in BASENAMES])
-SBAMS = [re.sub("\.bam$", "_sorted.bam", name) for name in BAMS]
+SBAMS = [re.sub("\.bam$", ".sorted.bam", name) for name in BAMS]
 
 INDELS = config['datadirs']['realigned'] + "/indels.list"
 
@@ -58,8 +58,8 @@ rule all:
     input: 
         lists = LISTS,          # becore combine lists
         indels = INDELS,        # must run after all lists are created
-        rbam = config['datadirs']['realigned'] + "/{sample}.bam",
-        phase = config['datadirs']['gvcfs'] + "/phase.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        rbam = RBAMS,
+        phased = config['datadirs']['gvcfs'] + "/phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
 rule basehead:
     run:
@@ -157,7 +157,7 @@ rule align:
 rule sam_to_bam:
     input:
         sam = config['datadirs']['sams'] + "/{sample}.sam",
-        sam2bam = config['tools']['sam2bam']
+        sam2bam = config['tools']['samtools']
     output:
         bam = config['datadirs']['bams'] + "/{sample}.bam"
     threads:
@@ -173,7 +173,7 @@ rule novosortbam:
         bam = config['datadirs']['bams'] + "/{sample}.bam",
         sort = config['tools']['sortbam']
     output:
-        sorted = config['datadirs']['bams'] + "/{sample}_sorted.bam",
+        sorted = config['datadirs']['bams'] + "/{sample}.sorted.bam",
     shell:
         """
         {input.sort} -m 14g -t . --removeduplicates --keeptags -i -o {output.sorted} {input.bam}
@@ -185,8 +185,8 @@ rule novosortbam:
 
 rule target_list: # create individual realign target list
     input:  # deduced bams
-        bai = config['datadirs']['picard'] + "/{sample}_group.bai", # required, so make sure it's created
-        bam = config['datadirs']['picard'] + "/{sample}_group.bam",
+        bai = config['datadirs']['picard'] + "/{sample}.group.bai", # required, so make sure it's created
+        bam = config['datadirs']['picard'] + "/{sample}.group.bam",
         java = config['tools']['java']
     output:
         list = config['datadirs']['lists'] + "/{sample}.list"
@@ -253,10 +253,10 @@ def combine():
 
 rule make_group_index:
     input:
-        bam = config['datadirs']['picard'] + "/{sample}_group.bam",
+        bam = config['datadirs']['picard'] + "/{sample}.group.bam",
         java = config['tools']['java']
     output:
-        bai = config['datadirs']['picard'] + "/{sample}_group.bai"
+        bai = config['datadirs']['picard'] + "/{sample}.group.bai"
     params:
         javaopts = config['tools']['javaopts'],
         jar = config['jars']['buildbamindex']
@@ -276,7 +276,7 @@ rule combine_lists:
 rule realign_target:   # with one combined list file
     input:  # deduced bams
         list = INDELS,
-        dbam = config['datadirs']['picard'] + "/{sample}_group.bai",
+        dbam = config['datadirs']['picard'] + "/{sample}.group.bai",
         java = config['tools']['java']
     output:
         rbam = config['datadirs']['realigned'] + "/{sample}.bam"
@@ -289,7 +289,7 @@ rule realign_target:   # with one combined list file
         {input.java} {params.javaopts} -jar {params.jar} \
         -T IndelRealigner \
         -R {params.refseq} \
-        -I {config[datadirs][picard]}/{wildcards.sample}_group.bam \
+        -I {config[datadirs][picard]}/{wildcards.sample}.group.bam \
         -targetIntervals {input.list} \
         -known {config[siv]} \
         -o {output.rbam}
@@ -388,9 +388,22 @@ rule analyze_bqsr:
         -plots {output.pdf}
         """
 
+# merge lanes
+# E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
+def get_all_sorted_bams(samplename):
+    return glob.glob("{0}*.sorted.bam".format(samplename))
+
+rule merge_lanes:
+    input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = config['tools']['samtools']
+    output: "{sample}.sorted.merged.bam"
+    threads:
+        12
+    shell:
+        "{input.samtools} merge -@ 12 {output} {input.bams}"
+
 rule remove_duplicates:
     input:
-        bam = config['datadirs']['bams'] + "/{sample}_sorted.bam",
+        bam = config['datadirs']['bams'] + "/{sample}.sorted.merged.bam",
         java = config['tools']['java']
     output:
         bam = config['datadirs']['picard'] + "/{sample}_rmdup.bam"
@@ -410,10 +423,10 @@ rule remove_duplicates:
 
 rule make_index:
     input:
-        bam = config['datadirs']['picard'] + "/{sample}_rmdup.bam",
+        bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam",
         java = config['tools']['java']
     output:
-        bai = config['datadirs']['picard'] + "/{sample}_rmdup.bai"
+        bai = config['datadirs']['picard'] + "/{sample}.rmdup.bai"
     params:
         javaopts = config['tools']['javaopts'],
         jar = config['jars']['buildbamindex']
@@ -425,11 +438,11 @@ rule make_index:
 
 rule add_readgroup:
     input:
-        bam = config['datadirs']['picard'] + "/{sample}_rmdup.bam",
-        bai = config['datadirs']['picard'] + "/{sample}_rmdup.bai",
+        bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam",
+        bai = config['datadirs']['picard'] + "/{sample}.rmdup.bai",
         java = config['tools']['java']
     output:
-        bam = config['datadirs']['picard'] + "/{sample}_group.bam"
+        bam = config['datadirs']['picard'] + "/{sample}.group.bam"
     params:
         javaopts = config['tools']['javaopts'],
         jar = config['jars']['addorreplacereadgroups']
@@ -492,6 +505,23 @@ rule combine_gvcfs:
         -o {output.gvcf}
         """
 
+# convert the GRIN sample table into a GATK compliant 6-column pedfile:
+# http://gatkforums.broadinstitute.org/gatk/discussion/37/pedigree-analysis
+# For these tools, the PED files must contain only the first 6 columns from the PLINK format PED file, and no alleles, like a FAM file in PLINK.
+# Family ID
+# Individual ID
+# Paternal ID
+# Maternal ID
+# Sex (1=male; 2=female; other=unknown)
+# Phenotype
+rule sample_table_to_pedfile:
+    input: config['sample_table']
+    output: config['pedfile']
+    run:
+        ped = pandas.read_table("{0}".format(input))
+        ped['Sex']=ped['Sex'].replace(['M','F'],[1,2])
+        ped[[0,1,3,2,4,5]].to_csv("{0}".format(output), sep='\t',index=False)
+
 rule run_phase_by_transmission:
     input:
         vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
@@ -499,7 +529,7 @@ rule run_phase_by_transmission:
         ped = config['ped'],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['gvcfs'] + "/phase.vcf",
+        vcf = config['datadirs']['gvcfs'] + "/phased.vcf",
         mvf = config['datadirs']['gvcfs'] + "/mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
