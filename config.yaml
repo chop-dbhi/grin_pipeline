@@ -5,7 +5,7 @@ refseqidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
 siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 
 buildve: hg38
-sample_file: pedfile.txt
+sample_file: sample_file.txt
 pedfile: samples.ped
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
