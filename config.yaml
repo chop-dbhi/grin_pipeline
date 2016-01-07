@@ -1,11 +1,12 @@
-admins: leipzig@gmail.com zhangs3@email.chop.edu
+admins: leipzig@gmail.com
+#zhangs3@email.chop.edu
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
 refseq:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
 refseqidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
 siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 
 buildve: hg38
-sample_file: sample_file.txt
+sample_table: sample_table.txt
 pedfile: samples.ped
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN

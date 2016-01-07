@@ -22,7 +22,7 @@ FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
 #Trio_SL        C2952   C2953   C2954   f       EOEE
 #ISR_#45        E08320                          f       Focal Epilepsy  x
-sample_table = pandas.read_table(config['pedfile'],index_col=1)
+sample_table = pandas.read_table(config['sample_table'],index_col=1)
 
 SAMPLES = list(sample_table.index)
 
@@ -509,9 +509,9 @@ rule sample_table_to_pedfile:
     input: config['sample_table']
     output: config['pedfile']
     run:
-        ped = pandas.read_table(input)
-        ped['Sex']=sample_table['Sex'].replace(['M','F'],[1,2])
-        ped[[0,1,3,2,4,5]].to_csv(output, sep='\t',index=False) 
+        ped = pandas.read_table("{0}".format(input))
+        ped['Sex']=ped['Sex'].replace(['M','F'],[1,2])
+        ped[[0,1,3,2,4,5]].to_csv("{0}".format(output), sep='\t',index=False) 
         
 # http://gatkforums.broadinstitute.org/gatk/discussion/37/pedigree-analysis
 # For these tools, the PED files must contain only the first 6 columns from the PLINK format PED file, and no alleles, like a FAM file in PLINK.
