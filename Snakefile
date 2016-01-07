@@ -58,8 +58,8 @@ rule all:
     input: 
         lists = LISTS,          # becore combine lists
         indels = INDELS,        # must run after all lists are created
-        rbam = config['datadirs']['realigned'] + "/{sample}.bam",
-        phase = config['datadirs']['gvcfs'] + "/phase.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        rbam = RBAMS,
+        phased = config['datadirs']['gvcfs'] + "/phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
 rule basehead:
     run:
@@ -391,8 +391,7 @@ rule analyze_bqsr:
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
 def get_all_sorted_bams(samplename):
-    print(samplename)
-    return ' '.join(glob.glob("{0}*.sorted.bam".format(samplename)))
+    return glob.glob("{0}*.sorted.bam".format(samplename))
 
 rule merge_lanes:
     input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = config['tools']['samtools']
@@ -506,6 +505,14 @@ rule combine_gvcfs:
         -o {output.gvcf}
         """
 
+# http://gatkforums.broadinstitute.org/gatk/discussion/37/pedigree-analysis
+# For these tools, the PED files must contain only the first 6 columns from the PLINK format PED file, and no alleles, like a FAM file in PLINK.
+# Family ID
+# Individual ID
+# Paternal ID
+# Maternal ID
+# Sex (1=male; 2=female; other=unknown)
+# Phenotype
 rule run_phase_by_transmission:
     input:
         vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
@@ -513,7 +520,7 @@ rule run_phase_by_transmission:
         ped = config['ped'],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['gvcfs'] + "/phase.vcf",
+        vcf = config['datadirs']['gvcfs'] + "/phased.vcf",
         mvf = config['datadirs']['gvcfs'] + "/mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
