@@ -10,8 +10,6 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "config.yaml"
 
-SEQLIST = "files.lst"
-SAMPLELIST = "samples.lst"
 SLINK = "GRIN/fastqc/"
 
 DOWNLOADDIR = "kiel"
@@ -22,31 +20,43 @@ FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
 #Trio_SL        C2952   C2953   C2954   f       EOEE
 #ISR_#45        E08320                          f       Focal Epilepsy  x
-sample_table = pandas.read_table(config['sample_table'],index_col=1)
+sample_table = pandas.read_table(config['sample_table'])
 
-SAMPLES = list(sample_table.index)
+MANIFESTSAMPLES = list(set(list(sample_table['Subject'])+list(sample_table['Mother'].dropna())+list(sample_table['Father'].dropna())))
 
-BASENAMES = [re.sub("\_R1\.fastq\.gz$", "", os.path.basename(name)) for name in FASTQS if re.search("_R1\.fastq\.gz$", name)]
+# ['E0974_GCTACGC_L006_R1', 'E0975_CGAGGCT_L006_R1', 'E0977_GTAGAGG_L006_R1', 'E0975_CGAGGCT_L006_R2', 'E0977_GTAGAGG_L006_R2', 'E0974_GCTACGC_L006_R2']
+ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQS])
 
-# BASENAMES.remove("CNB01-001B_ATCACG_L008")
+# some files may not be manifested
+PAIRNAMESINSAMPLETABLE = [name for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
+SAMPLESONDISK = [sample for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
+MISSINGSAMPLES = [sample for sample in MANIFESTSAMPLES if sample not in SAMPLESONDISK]
+UNMANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name not in PAIRNAMESINSAMPLETABLE]
 
-BASENAMES.sort()
+# pair up
+# ['E0974_GCTACGC_L006', 'E0975_CGAGGCT_L006', 'E0977_GTAGAGG_L006']
+SAMPLELANES = set([name.rsplit("_",maxsplit=1)[0] for name in PAIRNAMESINSAMPLETABLE])
 
-SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in BASENAMES]
-BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in BASENAMES]
-DBAIS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bai" for name in BASENAMES]
-DBAMS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bam" for name in BASENAMES]
-GBAIS = [config['datadirs']['picard'] + "/" + name + ".group.bai" for name in BASENAMES]
-GBAMS = [config['datadirs']['picard'] + "/" + name + ".group.bam" for name in BASENAMES]
-RBAMS = [config['datadirs']['realigned'] + "/" + name + ".bam" for name in BASENAMES]
-LISTS = [config['datadirs']['lists'] + "/" + name + ".list" for name in BASENAMES]
-TABLES = [config['datadirs']['recalibrated'] + "/" + name + ".table" for name in BASENAMES]
-RECBAMS = [config['datadirs']['recalibrated'] + "/" + name + ".bam" for name in BASENAMES]
-POSTTABLES = [config['datadirs']['postrecalibrated'] + "/" + name + ".table" for name in BASENAMES]
-PDFS = [config['datadirs']['pdfs'] + "/" + name + ".pdf" for name in BASENAMES]
-GVCFS = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in BASENAMES]
-GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in BASENAMES])
-SBAMS = [re.sub("\.bam$", ".sorted.bam", name) for name in BAMS]
+assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
+
+EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
+
+SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
+BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
+MBAMS = [config['datadirs']['bams'] + "/" + name + "sorted.merged.bam" for name in EXISTINGSAMPLES]
+DBAIS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bai" for name in EXISTINGSAMPLES]
+DBAMS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bam" for name in EXISTINGSAMPLES]
+GBAIS = [config['datadirs']['picard'] + "/" + name + ".group.bai" for name in EXISTINGSAMPLES]
+GBAMS = [config['datadirs']['picard'] + "/" + name + ".group.bam" for name in EXISTINGSAMPLES]
+RBAMS = [config['datadirs']['realigned'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
+LISTS = [config['datadirs']['lists'] + "/" + name + ".list" for name in EXISTINGSAMPLES]
+TABLES = [config['datadirs']['recalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
+RECBAMS = [config['datadirs']['recalibrated'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
+POSTTABLES = [config['datadirs']['postrecalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
+PDFS = [config['datadirs']['pdfs'] + "/" + name + ".pdf" for name in EXISTINGSAMPLES]
+GVCFS = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]
+GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES])
+
 
 INDELS = config['datadirs']['realigned'] + "/indels.list"
 
@@ -64,6 +74,28 @@ rule all:
 rule basehead:
     run:
         print(FASTQS)
+
+rule print_allpairs:
+    run:
+        print(ALLPAIRNAMES)
+
+rule sample_concordance:
+    output:
+        ms="missingsamples.txt", ump="unmanifestedpairs.txt"
+    run:
+        print("Received Pairs (on disk): {0}".format(len(ALLPAIRNAMES)))
+        print("Unmanifested Pairs (on disk, not in sample table): {0}".format(len(UNMANIFESTEDPAIRS)))
+        f = open(output.ump, 'w')
+        for pair in UNMANIFESTEDPAIRS:
+            f.write("{0}\n".format(pair))
+        print("Existing Samples (on disk, in sample table): {0}".format(len(EXISTINGSAMPLES)))
+        print("Missing Samples (in sample table, not on disk): {0}".format(len(MISSINGSAMPLES)))
+        f = open(output.ms, 'w')
+        for sample in MISSINGSAMPLES:
+            f.write("{0}\n".format(sample))
+        print("Manifested Pairs (in sample table): {0}".format(len(PAIRNAMESINSAMPLETABLE)))
+        print("Fastqs: {0} Lanes in sample table {1}".format(len(FASTQS), len(PAIRNAMESINSAMPLETABLE)))
+        
 
 rule dummy:    # just to test the python codes above
     input: "Snakefile"
@@ -406,7 +438,7 @@ rule remove_duplicates:
         bam = config['datadirs']['bams'] + "/{sample}.sorted.merged.bam",
         java = config['tools']['java']
     output:
-        bam = config['datadirs']['picard'] + "/{sample}_rmdup.bam"
+        bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam"
     params:
         jar = config['jars']['markduplicates'],
         javaopts = config['tools']['javaopts']
@@ -518,15 +550,40 @@ rule sample_table_to_pedfile:
     input: config['sample_table']
     output: config['pedfile']
     run:
-        ped = pandas.read_table("{0}".format(input))
-        ped['Sex']=ped['Sex'].replace(['M','F'],[1,2])
-        ped[[0,1,3,2,4,5]].to_csv("{0}".format(output), sep='\t',index=False)
+        st = pandas.read_table("{0}".format(input))
+        st['Sex']=st['Sex'].replace(['M','F'],[1,2])
+        st['Affected_status']=st['Affected_status'].replace('unaffected',0)
+        st['Affected_status']=st['Affected_status'].replace('[^0].+', 1, regex=True)
+        ped = st[[0,1,3,2,4,5]]
+        ped = ped.fillna(0)
+        moms = [mom for mom in list(ped['Mother'].dropna()) if mom not in list(ped['Subject'])]
+        dads = [dad for dad in list(ped['Father'].dropna()) if dad not in list(ped['Subject'])]
+        #add rows for unaffected parents
+        momfams=ped[ped['Mother'].isin(moms)]['FamilyID']
+        momdf = pandas.DataFrame(momfams)
+        momdf['Subject']=moms
+        momdf['Father']=0
+        momdf['Mother']=0
+        momdf['Sex']=2
+        momdf['Affected_status']=0
+        
+        dadfams=ped[ped['Father'].isin(moms)]['FamilyID']
+        daddf = pandas.DataFrame(dadfams)
+        daddf['Subject']=dads
+        daddf['Father']=0
+        daddf['Mother']=0
+        daddf['Sex']=1
+        daddf['Affected_status']=0
+        
+        ped.append([momdf,daddf])
+        
+        ped.to_csv("{0}".format(output), sep='\t',index=False)
 
 rule run_phase_by_transmission:
     input:
         vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
         snpeff = config['datadirs']['gvcfs'] + "/snpeff.vcf",
-        ped = config['ped'],
+        ped = config['pedfile'],
         java = config['tools']['java']
     output:
         vcf = config['datadirs']['gvcfs'] + "/phased.vcf",
@@ -544,7 +601,7 @@ rule run_phase_by_transmission:
         -R {params.refseq} \
         -V {input.vcf} \
         -ped {input.ped} \
-        -mvf {ouput.mvf} \
+        -mvf {output.mvf} \
         -o {output.vcf} >& {log}
         """
 
@@ -578,14 +635,15 @@ rule makeyaml:
         yaml = "fastqc.yaml",
     params:
         projdir = config['projdir'],
-        fastqc = config['datadirs']['fastqc']
+        fastqc = config['datadirs']['fastqc'],
+        samplelanes = SAMPLELANES
     run:
         with open(output.yaml, "w") as out:
            idx = 1
            out.write("paired: yes\n") 
            out.write("output: {0}\n".format(params.projdir)) 
            out.write("fastqc:\n") 
-           for name in BASENAMES:
+           for name in params.samplelanes:
                out.write("  {0}\n".format(name)) 
                out.write("  - {0}/{1}_R1_fastqc.zip\n".format(params.fastqc,name))
                out.write("  - {0}/{1}_R2_fastqc.zip\n".format(params.fastqc,name))
