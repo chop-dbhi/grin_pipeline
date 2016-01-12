@@ -66,8 +66,8 @@ workdir: config['projdir']
 
 rule all:
     input: 
-        lists = LISTS,          # becore combine lists
-        indels = INDELS,        # must run after all lists are created
+        #lists = LISTS,          # becore combine lists
+        #indels = INDELS,        # must run after all lists are created
         rbam = RBAMS,
         phased = config['datadirs']['gvcfs'] + "/phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
@@ -158,7 +158,7 @@ rule fastqc:
         pair2 = config['datadirs']['samples'] + "/{sample}2.fastq.gz",
         seq2qc = config['tools']['seq2qc']
     log: 
-        "logs/{sample}.log" 
+        config['datadirs']['log'] + "/{sample}.log" 
     output: 
         pair1 = config['datadirs']['fastqc'] + "/{sample}1_fastqc.zip",
         pair2 = config['datadirs']['fastqc'] + "/{sample}2_fastqc.zip",
@@ -189,14 +189,14 @@ rule align:
 rule sam_to_bam:
     input:
         sam = config['datadirs']['sams'] + "/{sample}.sam",
-        sam2bam = config['tools']['samtools']
+        samtools = config['tools']['samtools']
     output:
         bam = config['datadirs']['bams'] + "/{sample}.bam"
     threads:
         12   # also depends on -j
     shell:
         """
-        {input.sam2bam} view -@ 12 -bS {input.sam} > {output.bam}
+        {input.samtools} view -@ 12 -bS {input.sam} > {output.bam}
         """
 
 # novosort creates index
@@ -222,6 +222,8 @@ rule target_list: # create individual realign target list
         java = config['tools']['java']
     output:
         list = config['datadirs']['lists'] + "/{sample}.list"
+    log:
+        config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
@@ -233,7 +235,7 @@ rule target_list: # create individual realign target list
         -R {params.refseq} \
         -I {input.bam} \
         -known {config[siv]} \
-        -o {output.list}
+        -o {output.list} 2> {log}
         """
 
 def cmp(a,b):
@@ -283,21 +285,6 @@ def combine():
             for loc in ks:
                 out.write(chr + ':' + loc + "\n") 
 
-rule make_group_index:
-    input:
-        bam = config['datadirs']['picard'] + "/{sample}.group.bam",
-        java = config['tools']['java']
-    output:
-        bai = config['datadirs']['picard'] + "/{sample}.group.bai"
-    params:
-        javaopts = config['tools']['javaopts'],
-        jar = config['jars']['buildbamindex']
-    shell:
-        """
-        {input.java} {params.javaopts} -jar {params.jar} \
-        INPUT={input.bam}
-        """
-
 # combine indels from individual target alignment lists into a single list
 rule combine_lists:
     input: LISTS
@@ -307,7 +294,8 @@ rule combine_lists:
 
 rule realign_target:   # with one combined list file
     input:  # deduced bams
-        list = INDELS,
+        #list = INDELS,
+        list = config['datadirs']['lists'] + "/{sample}.list",
         dbam = config['datadirs']['picard'] + "/{sample}.group.bai",
         java = config['tools']['java']
     output:
@@ -441,7 +429,8 @@ rule remove_duplicates:
         bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam"
     params:
         jar = config['jars']['markduplicates'],
-        javaopts = config['tools']['javaopts']
+        javaopts = config['tools']['javaopts'],
+        metrics = config['datadirs']['picard']
     shell:
         # will (and need the permision to) create a tmp directory
         # with the name of login under specified tmp directory
@@ -450,23 +439,22 @@ rule remove_duplicates:
         {input.java} {params.javaopts} -jar {params.jar} \
         INPUT={input.bam} \
         OUTPUT={output.bam} \
-        METRICS_FILE={config[datadirs][picard]}/{wildcards.sample}.txt
+        METRICS_FILE={params.metrics}/{wildcards.sample}.txt
         """
 
+# samtools index seems more reliable than picard
+# in terms of returning an exit code
 rule make_index:
     input:
-        bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam",
-        java = config['tools']['java']
+        bam = config['datadirs']['picard'] + "/{sampleandext}.bam",
+        samtools = config['tools']['samtools']
     output:
-        bai = config['datadirs']['picard'] + "/{sample}.rmdup.bai"
-    params:
-        javaopts = config['tools']['javaopts'],
-        jar = config['jars']['buildbamindex']
+        bai = config['datadirs']['picard'] + "/{sampleandext}.bai"
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
-        INPUT={input.bam}
+        {input.samtools} index {input.bam} {output.bai}
         """
+
 
 rule add_readgroup:
     input:
@@ -475,6 +463,8 @@ rule add_readgroup:
         java = config['tools']['java']
     output:
         bam = config['datadirs']['picard'] + "/{sample}.group.bam"
+    log:
+        config['datadirs']['log'] + "/{sample}.add_readgroup.log"
     params:
         javaopts = config['tools']['javaopts'],
         jar = config['jars']['addorreplacereadgroups']
@@ -486,7 +476,7 @@ rule add_readgroup:
         PL=illumina \
         LB={wildcards.sample} \
         PU={wildcards.sample} \
-        SM={wildcards.sample}
+        SM={wildcards.sample} 2> {log}
         """
 
 #### Variant Calling ####

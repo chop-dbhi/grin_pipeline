@@ -10,6 +10,7 @@ sample_table: sample_table.txt
 pedfile: samples.ped
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
+
 # subdirectories relative to projdir
 datadirs:
     fastq:            fastq
@@ -17,14 +18,14 @@ datadirs:
     fastqc:           fastqc
     sams:             sams
     bams:             bams
-    picard:           picard
-    realigned:        realigned
+    picard:           /mnt/lustre/users/leipzigj/GRIN/picard
+    realigned:        /mnt/lustre/users/leipzigj/GRIN/realigned
     lists:            lists
     recalibrated:     recalibrated
     postrecalibrated: postrecalibrated
     pdfs:             pdfs
     gvcfs:            gvcfs
-    log:              log 
+    log:              logs
 
 # !!python/object/apply:os.path.join
 
