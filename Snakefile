@@ -217,25 +217,28 @@ rule novosortbam:
 
 rule target_list: # create individual realign target list
     input:  # deduced bams
-        bai = config['datadirs']['picard'] + "/{sample}.group.bai", # required, so make sure it's created
+        bai = config['datadirs']['picard'] + "/{sample}.group.bai",
         bam = config['datadirs']['picard'] + "/{sample}.group.bam",
         java = config['tools']['java']
     output:
-        list = config['datadirs']['lists'] + "/{sample}.list"
+        list = config['datadirs']['lists'] + "/{sample}.list",
+        sentinel = temp("{sample}.sentinel")
     log:
         config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        refseq = config['refseq'],
+        knownsites = config['siv']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T RealignerTargetCreator \
         -R {params.refseq} \
         -I {input.bam} \
-        -known {config[siv]} \
+        -known {params.knownsites} \
         -o {output.list} 2> {log}
+        touch {output.sentinel}
         """
 
 def cmp(a,b):
