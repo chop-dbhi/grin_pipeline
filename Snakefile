@@ -429,9 +429,9 @@ rule merge_lanes:
     input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = config['tools']['samtools']
     output: "{sample}.sorted.merged.bam"
     threads:
-        12
+        1
     shell:
-        "{input.samtools} merge -@ 12 {output} {input.bams}"
+        "{input.samtools} merge {output} {input.bams}"
 
 rule remove_duplicates:
     input:
