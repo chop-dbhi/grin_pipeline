@@ -20,12 +20,12 @@ datadirs:
     bams:             bams
     picard:           /mnt/lustre/users/leipzigj/GRIN/picard
     realigned:        /mnt/lustre/users/leipzigj/GRIN/realigned
-    lists:            lists
-    recalibrated:     recalibrated
-    postrecalibrated: postrecalibrated
-    pdfs:             pdfs
-    gvcfs:            gvcfs
-    log:              logs
+    lists:            /mnt/lustre/users/leipzigj/GRIN/lists
+    recalibrated:     /mnt/lustre/users/leipzigj/GRIN/recalibrated
+    postrecalibrated: /mnt/lustre/users/leipzigj/GRIN/postrecalibrated
+    pdfs:             /mnt/lustre/users/leipzigj/GRIN/pdfs
+    gvcfs:            /mnt/lustre/users/leipzigj/GRIN/gvcfs
+    log:              /mnt/lustre/users/leipzigj/GRIN/logs
 
 # !!python/object/apply:os.path.join
 
@@ -45,13 +45,14 @@ tools:
 
 jars:
     picard:
-        /mnt/isilon/cbmi/variome/bin/picard-1.57.jar
-    markduplicates:
-        /mnt/isilon/cbmi/variome/bin/picard/MarkDuplicates.jar
-    buildbamindex:
-        /mnt/isilon/cbmi/variome/bin/picard/BuildBamIndex.jar
-    addorreplacereadgroups:
-        /mnt/isilon/cbmi/variome/bin/picard/AddOrReplaceReadGroups.jar
+        path:
+            /mnt/isilon/cbmi/variome/bin/picard-tools-2.0.1/picard.jar
+        markdups:
+            MarkDuplicates
+        index:
+            BuildBamIndex
+        readgroups:
+            AddOrReplaceReadGroups
     gatk:
         /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
     snpeff:

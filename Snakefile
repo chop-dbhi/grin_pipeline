@@ -221,8 +221,8 @@ rule target_list: # create individual realign target list
         bam = config['datadirs']['picard'] + "/{sample}.group.bam",
         java = config['tools']['java']
     output:
-        list = config['datadirs']['lists'] + "/{sample}.list",
-        sentinel = temp("{sample}.sentinel")
+        sentinel = config['datadirs']['lists'] + "/{sample}.sentinel",
+        samplelist = config['datadirs']['lists'] + "/{sample}.list"
     log:
         config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
@@ -237,7 +237,7 @@ rule target_list: # create individual realign target list
         -R {params.refseq} \
         -I {input.bam} \
         -known {params.knownsites} \
-        -o {output.list} 2> {log}
+        -o {output.samplelist} 2> {log}
         touch {output.sentinel}
         """
 
@@ -321,12 +321,14 @@ rule realign_target:   # with one combined list file
 # Base recalibration (not be confused with variant recalibration)
 # http://gatkforums.broadinstitute.org/gatk/discussion/44/base-quality-score-recalibration-bqsr
 # https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_bqsr_BaseRecalibrator.php
-rule generate_recalibration table:
+rule generate_recalibration_table:
     input:
         bam = config['datadirs']['realigned'] + "/{sample}.bam",
         java = config['tools']['java']
     output:
         table = config['datadirs']['recalibrated'] + "/{sample}.table"
+    log:
+        config['datadirs']['log'] + "/{sample}.generate_recalibration_table.log"
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
@@ -338,7 +340,7 @@ rule generate_recalibration table:
         -R {params.refseq} \
         -I {input.bam} \
         -knownSites {config[siv]} \
-        -o {output.table}
+        -o {output.table} 2> {log}
         """
 
 # https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_readutils_PrintReads.php
@@ -350,6 +352,8 @@ rule recalibrate_bam:
         java = config['tools']['java']
     output:
         bam = config['datadirs']['recalibrated'] + "/{sample}.bam"
+    log:
+        config['datadirs']['log'] + "/{sample}.recalibrate_bam.log"
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
@@ -361,7 +365,7 @@ rule recalibrate_bam:
         -R {params.refseq} \
         -I {input.bam} \
         -BQSR {input.table} \
-        -o {output.bam}
+        -o {output.bam} 2> {log}
         """
 
 rule post_recalibrated_table:
@@ -421,17 +425,23 @@ rule merge_lanes:
     output: "{sample}.sorted.merged.bam"
     threads:
         1
-    shell:
-        "{input.samtools} merge {output} {input.bams}"
+    run:
+        if len(input.bams)>1:
+            shell("{input.samtools} merge {output} {input.bams}")
+        else:
+            shell("cp {input.bams} {output}")
 
-rule remove_duplicates:
+rule mark_duplicates:
     input:
         bam = config['datadirs']['bams'] + "/{sample}.sorted.merged.bam",
         java = config['tools']['java']
     output:
         bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam"
+    log:
+        config['datadirs']['log'] + "/{sample}.markdups.log"
     params:
-        jar = config['jars']['markduplicates'],
+        picard = config['jars']['picard']['path'],
+        md = config['jars']['picard']['markdups'],
         javaopts = config['tools']['javaopts'],
         metrics = config['datadirs']['picard']
     shell:
@@ -439,10 +449,11 @@ rule remove_duplicates:
         # with the name of login under specified tmp directory
         # Exception in thread "main" net.sf.picard.PicardException: Exception creating temporary directory.
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.javaopts} -jar {params.picard} \
+        {params.md} \
         INPUT={input.bam} \
         OUTPUT={output.bam} \
-        METRICS_FILE={params.metrics}/{wildcards.sample}.txt
+        METRICS_FILE={params.metrics}/{wildcards.sample}.txt 2> {log}
         """
 
 # samtools index seems more reliable than picard
@@ -469,11 +480,13 @@ rule add_readgroup:
     log:
         config['datadirs']['log'] + "/{sample}.add_readgroup.log"
     params:
+        picard = config['jars']['picard']['path'],
         javaopts = config['tools']['javaopts'],
-        jar = config['jars']['addorreplacereadgroups']
+        rg = config['jars']['picard']['readgroups']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.javaopts} -jar {params.picard} \
+        {params.rg} \
         I={input.bam} \
         O={output.bam} \
         PL=illumina \
