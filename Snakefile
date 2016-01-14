@@ -782,13 +782,29 @@ rule gatk_combine_variants:
         ">& {log}"
 
 #### Annotation ####
+rule prep_for_gemini:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
+        vt = config['tools']['vt']
+    output:
+        vcf = config['datadirs']['vcfs'] + "/{file}.vt.vcf"
+    params:
+        ref = config['ref']
+    shell:
+        """
+        zless {input} \
+           | sed 's/ID=AD,Number=./ID=AD,Number=R/' \
+           | vt decompose -s - \
+           | vt normalize -r {params.ref} - \
+           > {output}
+        """
 # ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vt.vcf",
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.snpeff.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.vt.snpeff.vcf"
     params:
         jar  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],

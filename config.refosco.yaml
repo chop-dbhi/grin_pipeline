@@ -44,6 +44,12 @@ tools:
         /mnt/isilon/cbmi/variome/bin/novosort
     makesam:
         /mnt/isilon/cbmi/variome/bin/novoalign
+    vt:
+        /mnt/isilon/cbmi/variome/bin/vt/vt
+    tabix:
+        /mnt/isilon/cbmi/variome/bin/tabix
+    bgzip:
+        /mnt/isilon/cbmi/variome/bin/bgzip
 
 jars:
     picard:
