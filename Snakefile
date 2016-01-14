@@ -41,6 +41,9 @@ assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
+COMPLETETRIOS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOS]
+
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
 MBAMS = [config['datadirs']['bams'] + "/" + name + "sorted.merged.bam" for name in EXISTINGSAMPLES]
@@ -66,10 +69,8 @@ workdir: config['projdir']
 
 rule all:
     input: 
-        #lists = LISTS,          # becore combine lists
-        #indels = INDELS,        # must run after all lists are created
-        rbam = RBAMS,
-        phased = config['datadirs']['gvcfs'] + "/phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        trios = TRIOVCFS,
+        phased = config['datadirs']['vcfs'] + "/joint.trio.phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
 rule basehead:
     run:
@@ -107,7 +108,7 @@ rule print_reads:
     input: RECBAMS
 
 rule join_gvcfs:
-    input: config['datadirs']['gvcfs'] + "/joint.vcf"
+    input: config['datadirs']['vcfs'] + "/joint.vcf"
 
 rule make_gvcfs:
     input: GVCFS
@@ -530,7 +531,7 @@ def gvcf_samples_in_family(family):
         return [GVCFS,GVCFSLIST]
     else:
         rows = sample_table.loc[sample_table['FamilyID'] ==  family]
-        samples = list(rows['Subject'])+list(rows['Mother'])+list(rows['Father'])
+        samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
         gvcfs = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
         gvcfslist = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
         return [gvcfs, gvcfslist]
@@ -607,19 +608,18 @@ rule sample_table_to_pedfile:
 
 rule run_phase_by_transmission:
     input:
-        vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
-        snpeff = config['datadirs']['gvcfs'] + "/snpeff.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         ped = config['pedfile'],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['gvcfs'] + "/phased.vcf",
-        mvf = config['datadirs']['gvcfs'] + "/mendelian_violations.txt"
+        vcf = config['datadirs']['vcfs'] + "/{file}.phased.vcf",
+        mvf = config['datadirs']['vcfs'] + "/{file}.mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log: 
-        config['datadirs']['log'] + "/phase_by_transmission.log" 
+        config['datadirs']['log'] + "/{file}.phase_by_transmission.log" 
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -636,16 +636,16 @@ rule run_phase_by_transmission:
 
 rule gatk_snps_only:
     input:
-        vcf = "vcfs/{filename}.vcf",
+        vcf = "vcfs/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = "vcfs/{filename}.snps.vcf"
+        vcf = "vcfs/{file}.snps.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log:
-        config['datadirs']['log'] + "log/{filename}.gatk_snps_only.log"
+        config['datadirs']['log'] + "log/{file}.gatk_snps_only.log"
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -659,16 +659,16 @@ rule gatk_snps_only:
 
 rule gatk_indels_only:
     input:
-        vcf = "vcfs/{filename}.vcf",
+        vcf = "vcfs/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = "vcfs/{filename}.indels.vcf"
+        vcf = "vcfs/{file}.indels.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log:
-        config['datadirs']['log'] + "log/{filename}.gatk_indels_only.log"
+        config['datadirs']['log'] + "log/{file}.gatk_indels_only.log"
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -684,20 +684,19 @@ rule gatk_indels_only:
 # this "filters out, not filters for" filterExpression
 rule gatk_hard_filtration_snps:
     input:
-        vcf = "vcfs/{filename}.snps.vcf",
+        vcf = "vcfs/{file}.snps.vcf",
         java = config['tools']['java']
     output:
-        "vcfs/{filename}.snps.hard.vcf"
+        "vcfs/{file}.snps.hard.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log:
-        "log/{filename}.gatk_hard_filtration.log"
+        "log/{file}.gatk_hard_filtration.log"
     shell:
-        "{params.java_cmd} "
-        "{params.gatk_path} "
-        "-R {input.ref} "
+        "{input.java} {params.javaopts} -jar {params.jar} "
+        "-R {params.ref} "
         "-T VariantFiltration "
         "-o {output} "
         "--variant {input.vcf} "
@@ -707,20 +706,19 @@ rule gatk_hard_filtration_snps:
 
 rule gatk_hard_filtration_indels:
     input:
-        vcf = "vcfs/{filename}.snps.vcf",
+        vcf = "vcfs/{file}.indels.vcf",
         java = config['tools']['java']
     output:
-        "vcfs/{filename}.snps.hard.vcf"
+        "vcfs/{file}.indels.hard.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log:
-        "log/{filename}.gatk_hard_filtration.log"
+        "log/{file}.gatk_hard_filtration.log"
     shell:
-        "{params.java_cmd} "
-        "{params.gatk_path} "
-        "-R {input.ref} "
+        "{input.java} {params.javaopts} -jar {params.jar} "
+        "-R {params.ref} "
         "-T VariantFiltration "
         "-o {output} "
         "--variant {input.vcf} "
@@ -730,19 +728,19 @@ rule gatk_hard_filtration_indels:
 
 rule select_passing:
     input:
-        vcf = "vcfs/{filename}.{type}.hard.vcf"
+        vcf = "vcfs/{file}.{type}.hard.vcf",
+        java = config['tools']['java']
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     output:
-        "vcfs/{filename}.{type}.filtered.vcf"
+        "vcfs/{file}.{type}.filtered.vcf"
     log:
-        "log/{filename}.select_passing_variants.log"
+        "log/{file}.select_passing_variants.log"
     shell:
-        "{params.java_cmd} "
-        "{params.gatk_path} "
-        "-R {input.ref} "
+        "{input.java} {params.javaopts} -jar {params.jar} "
+        "-R {params.ref} "
         " -T SelectVariants "
         "-o {output} "
         "--variant {input.vcf} "
@@ -757,28 +755,32 @@ rule select_passing:
 rule gatk_combine_variants:
     input:
         snps = "vcfs/{file}.snps.filtered.vcf",
-        indels = "vcfs/{file}.indels.filtered.vcf"
+        indels = "vcfs/{file}.indels.filtered.vcf",
+        java = config['tools']['java']
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
     output:
         combo = "vcfs/{file}.all.filtered.vcf"
     shell:
-        "{params.java_cmd} "
-        "{params.gatk_path} "
-        "-R {input.ref} "
-        " -T CombineVariants "
-        " {input}"
+        "{input.java} {params.javaopts} -jar {params.jar} "
+        "-R {params.ref} "
+        "-T CombineVariants "
+        "--variant  {input.snps} "
+        "--variant  {input.indels} "
         "-o {output} "
-        "--variant {input.vcf} "
-        "--excludeFiltered "
+        "-genotypeMergeOptions UNIQUIFY "
         ">& {log}"
 
 #### Annotation ####
 # ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
-        vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['gvcfs'] + "/snpeff.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.snpeff.vcf"
     params:
         jar  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],
