@@ -41,8 +41,9 @@ assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
-COMPLETETRIOS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
-TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOS]
+# includes quads
+COMPLETETRIOSFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -574,14 +575,20 @@ def samples_in_family(family):
 # Sex (1=male; 2=female; other=unknown)
 # Phenotype
 rule sample_table_to_pedfile:
-    input: config['sample_table']
-    output: config['pedfile']
+    input:
+        config['sample_table']
+    params:
+        existingsamples = EXISTINGSAMPLES
+    output:
+        config['pedfile']
     run:
         st = pandas.read_table("{0}".format(input))
-        st['Sex']=st['Sex'].replace(['M','F'],[1,2])
-        st['Affected_status']=st['Affected_status'].replace('unaffected',0)
-        st['Affected_status']=st['Affected_status'].replace('[^0].+', 1, regex=True)
-        ped = st[[0,1,3,2,4,5]]
+        complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
+        trios = st.loc[complete_trios]
+        trios['Sex']=trios['Sex'].replace(['M','F'],[1,2])
+        trios['Affected_status']=trios['Affected_status'].replace('unaffected',0)
+        trios['Affected_status']=trios['Affected_status'].replace('[^0].+', 1, regex=True)
+        ped = trios[[0,1,3,2,4,5]]
         ped = ped.fillna(0)
         moms = [mom for mom in list(ped['Mother'].dropna()) if mom not in list(ped['Subject'])]
         dads = [dad for dad in list(ped['Father'].dropna()) if dad not in list(ped['Subject'])]
@@ -603,7 +610,8 @@ rule sample_table_to_pedfile:
         daddf['Affected_status']=0
         
         ped = ped.append([momdf,daddf])
-        
+        ped = ped.drop_duplicates()
+        ped = ped.sort_values(by=['FamilyID','Subject'])
         ped.to_csv("{0}".format(output), sep='\t',index=False)
 
 rule run_phase_by_transmission:
@@ -649,11 +657,10 @@ rule gatk_snps_only:
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
-        -T SelectVariants \ 
+        -T SelectVariants \
         -R {params.ref} \
         -V {input.vcf} \
-        -L 20 \
-        -selectType SNP \ 
+        -selectType SNP \
         -o {output.vcf} >& {log}
         """
 
@@ -672,11 +679,10 @@ rule gatk_indels_only:
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
-        -T SelectVariants \ 
+        -T SelectVariants \
         -R {params.ref} \
         -V {input.vcf} \
-        -L 20 \
-        -selectType INDEL \ 
+        -selectType INDEL \
         -o {output.vcf} >& {log}
         """
         
@@ -730,12 +736,12 @@ rule select_passing:
     input:
         vcf = "vcfs/{file}.{type}.hard.vcf",
         java = config['tools']['java']
+    output:
+        "vcfs/{file}.{type}.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
-    output:
-        "vcfs/{file}.{type}.filtered.vcf"
     log:
         "log/{file}.select_passing_variants.log"
     shell:
@@ -757,12 +763,14 @@ rule gatk_combine_variants:
         snps = "vcfs/{file}.snps.filtered.vcf",
         indels = "vcfs/{file}.indels.filtered.vcf",
         java = config['tools']['java']
+    output:
+        combo = "vcfs/{file}.all.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
-    output:
-        combo = "vcfs/{file}.all.filtered.vcf"
+    log:
+        "log/{file}.select_passing_variants.log"
     shell:
         "{input.java} {params.javaopts} -jar {params.jar} "
         "-R {params.ref} "
@@ -786,13 +794,15 @@ rule run_snpeff:
         conf = config['jars']['snpeff']['cnf'],
         javaopts = config['tools']['javaopts'],
         database = config['jars']['snpeff']['db'],
-        updown = config['jars']['snpeff']['ud']
+        updown = config['jars']['snpeff']['ud'],
+        format = config['jars']['snpeff']['format']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -c {params.conf} \
         -t {params.database} \
         -ud {params.updown} \
+        {params.format} \
          {input.vcf} > {output.vcf}
         """
 

@@ -66,3 +66,5 @@ jars:
             GRCh38.76
         ud:
             10
+        format:
+            -formatEff -classic

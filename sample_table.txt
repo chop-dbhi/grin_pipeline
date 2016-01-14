@@ -13,7 +13,7 @@ Israel_#108	E01009			F	GEFS+	Yes
 Israel_#108	E01010			M	GEFS+	Yes
 Israel_#98	E01011			F	EE	Yes
 Israel_#98	E01012			M	EE	Yes
-Israel_#3 2nd branch	E01013			F	PME	Yes
+Israel_#3_2nd_branch	E01013			F	PME	Yes
 Israel_#125	E01029			M	BRE	Yes
 Exome_FH	C01642			F	PME	Yes
 Exome_FH	C04463			F	PME	Yes
