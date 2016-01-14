@@ -180,10 +180,10 @@ rule align:
     threads:
         12   # also depends on -j
     params:
-        refseqidx = config['refseqidx']
+        refidx = config['refidx']
     shell:
         """
-        {input.makesam} -c {threads} -a -k -d {params.refseqidx} -o SAM -f {input.pair1} {input.pair2} > {output.sam}
+        {input.makesam} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} > {output.sam}
         """
 
 rule sam_to_bam:
@@ -228,13 +228,13 @@ rule target_list: # create individual realign target list
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq'],
+        ref = config['ref'],
         knownsites = config['siv']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T RealignerTargetCreator \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
         -known {params.knownsites} \
         -o {output.samplelist} 2> {log}
@@ -306,12 +306,12 @@ rule realign_target:   # with one combined list file
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T IndelRealigner \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {config[datadirs][picard]}/{wildcards.sample}.group.bam \
         -targetIntervals {input.list} \
         -known {config[siv]} \
@@ -332,12 +332,12 @@ rule generate_recalibration_table:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T BaseRecalibrator \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
         -knownSites {config[siv]} \
         -o {output.table} 2> {log}
@@ -357,12 +357,12 @@ rule recalibrate_bam:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T PrintReads \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
         -BQSR {input.table} \
         -o {output.bam} 2> {log}
@@ -378,12 +378,12 @@ rule post_recalibrated_table:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T BaseRecalibrator \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
         -knownSites {config[siv]} \
         -BQSR {input.table} \
@@ -402,14 +402,14 @@ rule analyze_bqsr:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         source ~/.bashrc
         module load R/3.2.2
         {input.java} {params.javaopts} -jar {params.jar} \
         -T AnalyzeCovariates \
-        -R {params.refseq} \
+        -R {params.ref} \
         -before {input.before} \
         -after {input.after} \
         -plots {output.pdf}
@@ -505,12 +505,12 @@ rule make_gvcf:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T HaplotypeCaller \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
         --emitRefConfidence GVCF \
         --variant_index_type LINEAR \
@@ -522,13 +522,14 @@ rule make_gvcf:
         """
 
 rule combine_gvcfs:
-    input: GVCFS,
-           java = config['tools']['java']
+    input:
+        GVCFS,
+        java = config['tools']['java']
     output:
         gvcf = config['datadirs']['gvcfs'] + "/joint.vcf"
     params:
         jar = config['jars']['gatk'],
-        refseq = config['refseq'],
+        ref = config['ref'],
         list = GVCFSLIST,
         javaopts = config['tools']['javaopts'],
         db = config['siv']
@@ -538,7 +539,7 @@ rule combine_gvcfs:
         -T GenotypeGVCFs \
         --dbsnp {params.db} \
         -nt 8 \
-        -R {params.refseq} \
+        -R {params.ref} \
         {params.list} \
         -o {output.gvcf}
         """
@@ -573,7 +574,7 @@ rule sample_table_to_pedfile:
         momdf['Sex']=2
         momdf['Affected_status']=0
         
-        dadfams=ped[ped['Father'].isin(moms)]['FamilyID']
+        dadfams=ped[ped['Father'].isin(dads)]['FamilyID']
         daddf = pandas.DataFrame(dadfams)
         daddf['Subject']=dads
         daddf['Father']=0
@@ -581,7 +582,7 @@ rule sample_table_to_pedfile:
         daddf['Sex']=1
         daddf['Affected_status']=0
         
-        ped.append([momdf,daddf])
+        ped = ped.append([momdf,daddf])
         
         ped.to_csv("{0}".format(output), sep='\t',index=False)
 
@@ -596,7 +597,7 @@ rule run_phase_by_transmission:
         mvf = config['datadirs']['gvcfs'] + "/mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
-        refseq = config['refseq'],
+        ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log: 
         config['datadirs']['log'] + "/phase_by_transmission.log" 
@@ -604,12 +605,152 @@ rule run_phase_by_transmission:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T PhaseByTransmission \
-        -R {params.refseq} \
+        -R {params.ref} \
         -V {input.vcf} \
         -ped {input.ped} \
         -mvf {output.mvf} \
         -o {output.vcf} >& {log}
         """
+
+# https://www.broadinstitute.org/gatk/guide/article?id=2806
+# https://github.com/chapmanb/bcbio-nextgen/blob/master/bcbio/variation/vfilter.py
+
+rule gatk_snps_only:
+    input:
+        vcf = "vcfs/{filename}.vcf",
+        java = config['tools']['java']
+    output:
+        vcf = "vcfs/{filename}.snps.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        config['datadirs']['log'] + "log/{filename}.gatk_snps_only.log"
+    shell:
+        """
+        {input.java} {params.javaopts} -jar {params.jar} \
+        -T SelectVariants \ 
+        -R {params.ref} \
+        -V {input.vcf} \
+        -L 20 \
+        -selectType SNP \ 
+        -o {output.vcf} >& {log}
+        """
+
+rule gatk_indels_only:
+    input:
+        vcf = "vcfs/{filename}.vcf",
+        java = config['tools']['java']
+    output:
+        vcf = "vcfs/{filename}.indels.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        config['datadirs']['log'] + "log/{filename}.gatk_indels_only.log"
+    shell:
+        """
+        {input.java} {params.javaopts} -jar {params.jar} \
+        -T SelectVariants \ 
+        -R {params.ref} \
+        -V {input.vcf} \
+        -L 20 \
+        -selectType INDEL \ 
+        -o {output.vcf} >& {log}
+        """
+        
+# hard filtration
+# this "filters out, not filters for" filterExpression
+rule gatk_hard_filtration_snps:
+    input:
+        vcf = "vcfs/{filename}.snps.vcf",
+        java = config['tools']['java']
+    output:
+        "vcfs/{filename}.snps.hard.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        "log/{filename}.gatk_hard_filtration.log"
+    shell:
+        "{params.java_cmd} "
+        "{params.gatk_path} "
+        "-R {input.ref} "
+        "-T VariantFiltration "
+        "-o {output} "
+        "--variant {input.vcf} "
+        "--filterExpression \"QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0\" "
+        "--filterName \"GATK3.5-hard-filter\" "
+        ">& {log}"
+
+rule gatk_hard_filtration_indels:
+    input:
+        vcf = "vcfs/{filename}.snps.vcf",
+        java = config['tools']['java']
+    output:
+        "vcfs/{filename}.snps.hard.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        "log/{filename}.gatk_hard_filtration.log"
+    shell:
+        "{params.java_cmd} "
+        "{params.gatk_path} "
+        "-R {input.ref} "
+        "-T VariantFiltration "
+        "-o {output} "
+        "--variant {input.vcf} "
+        "--filterExpression \"QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0\" "
+        "--filterName \"GATK3.5-hard-filter\" "
+        ">& {log}"
+
+rule select_passing:
+    input:
+        vcf = "vcfs/{filename}.{type}.hard.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    output:
+        "vcfs/{filename}.{type}.filtered.vcf"
+    log:
+        "log/{filename}.select_passing_variants.log"
+    shell:
+        "{params.java_cmd} "
+        "{params.gatk_path} "
+        "-R {input.ref} "
+        " -T SelectVariants "
+        "-o {output} "
+        "--variant {input.vcf} "
+        "--excludeFiltered "
+        ">& {log}"
+
+# """Run GATK CombineVariants to combine variant files.
+#
+# The default rule combines files with suffixes filteredSNP.vcf and
+# filteredINDEL.vcf.
+# """
+rule gatk_combine_variants:
+    input:
+        snps = "vcfs/{file}.snps.filtered.vcf",
+        indels = "vcfs/{file}.indels.filtered.vcf"
+    output:
+        combo = "vcfs/{file}.all.filtered.vcf"
+    shell:
+        "{params.java_cmd} "
+        "{params.gatk_path} "
+        "-R {input.ref} "
+        " -T CombineVariants "
+        " {input}"
+        "-o {output} "
+        "--variant {input.vcf} "
+        "--excludeFiltered "
+        ">& {log}"
 
 #### Annotation ####
 # ud - upstream downstream interval length (in bases)

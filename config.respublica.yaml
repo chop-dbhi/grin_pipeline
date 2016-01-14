@@ -1,15 +1,15 @@
 admins: leipzig@gmail.com
 #zhangs3@email.chop.edu
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-refseq:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
-refseqidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
+ref:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
+refidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
 siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 
 buildve: hg38
 sample_table: sample_table.txt
 pedfile: samples.ped
 
-projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
+projdir: /mnt/lustre/users/leipzigj/GRIN/
 
 # subdirectories relative to projdir
 datadirs:
@@ -18,14 +18,14 @@ datadirs:
     fastqc:           fastqc
     sams:             sams
     bams:             bams
-    picard:           /mnt/lustre/users/leipzigj/GRIN/picard
-    realigned:        /mnt/lustre/users/leipzigj/GRIN/realigned
-    lists:            /mnt/lustre/users/leipzigj/GRIN/lists
-    recalibrated:     /mnt/lustre/users/leipzigj/GRIN/recalibrated
-    postrecalibrated: /mnt/lustre/users/leipzigj/GRIN/postrecalibrated
-    pdfs:             /mnt/lustre/users/leipzigj/GRIN/pdfs
-    gvcfs:            /mnt/lustre/users/leipzigj/GRIN/gvcfs
-    log:              /mnt/lustre/users/leipzigj/GRIN/logs
+    picard:           picard
+    realigned:        realigned
+    lists:            lists
+    recalibrated:     recalibrated
+    postrecalibrated: postrecalibrated
+    pdfs:             pdfs
+    gvcfs:            gvcfs
+    log:              logs
 
 # !!python/object/apply:os.path.join
 
