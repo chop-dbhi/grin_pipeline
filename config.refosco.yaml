@@ -3,8 +3,9 @@ admins: leipzig@gmail.com
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
 ref:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
 refidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
-siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
-
+known:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
+#tabixed this:
+dbsnp: /mnt/isilon/cbmi/variome/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
 buildve: hg38
 sample_table: sample_table.txt
 pedfile: samples.ped
@@ -25,6 +26,7 @@ datadirs:
     postrecalibrated: postrecalibrated
     pdfs:             pdfs
     gvcfs:            gvcfs
+    vcfs:             vcfs
     log:              logs
 
 # !!python/object/apply:os.path.join

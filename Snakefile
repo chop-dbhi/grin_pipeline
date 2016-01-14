@@ -229,7 +229,7 @@ rule target_list: # create individual realign target list
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
         ref = config['ref'],
-        knownsites = config['siv']
+        knownsites = config['known']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -306,7 +306,8 @@ rule realign_target:   # with one combined list file
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        ref = config['ref']
+        ref = config['ref'],
+        known = config['known']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -314,7 +315,7 @@ rule realign_target:   # with one combined list file
         -R {params.ref} \
         -I {config[datadirs][picard]}/{wildcards.sample}.group.bam \
         -targetIntervals {input.list} \
-        -known {config[siv]} \
+        -known {params.known} \
         -o {output.rbam}
         """
 
@@ -332,14 +333,15 @@ rule generate_recalibration_table:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        ref = config['ref']
+        ref = config['ref'],
+        known = config['known']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T BaseRecalibrator \
         -R {params.ref} \
         -I {input.bam} \
-        -knownSites {config[siv]} \
+        -knownSites {params.known} \
         -o {output.table} 2> {log}
         """
 
@@ -378,14 +380,15 @@ rule post_recalibrated_table:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        ref = config['ref']
+        ref = config['ref'],
+        known = config['known']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T BaseRecalibrator \
         -R {params.ref} \
         -I {input.bam} \
-        -knownSites {config[siv]} \
+        -knownSites {params.known} \
         -BQSR {input.table} \
         -o {output.table}
         """
@@ -521,18 +524,29 @@ rule make_gvcf:
         -o {output.gvcf}
         """
 
-rule combine_gvcfs:
+def gvcf_samples_in_family(family):
+    # joint means all existing samples
+    if family == 'joint':
+        return [GVCFS,GVCFSLIST]
+    else:
+        rows = sample_table.loc[sample_table['FamilyID'] ==  family]
+        samples = list(rows['Subject'])+list(rows['Mother'])+list(rows['Father'])
+        gvcfs = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
+        gvcfslist = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
+        return [gvcfs, gvcfslist]
+
+rule trio_vcfs:
     input:
-        GVCFS,
+        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family)[0],
         java = config['tools']['java']
     output:
-        gvcf = config['datadirs']['gvcfs'] + "/joint.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{family}.trio.vcf"
     params:
         jar = config['jars']['gatk'],
         ref = config['ref'],
-        list = GVCFSLIST,
+        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family)[1],
         javaopts = config['tools']['javaopts'],
-        db = config['siv']
+        db = config['dbsnp']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -540,9 +554,14 @@ rule combine_gvcfs:
         --dbsnp {params.db} \
         -nt 8 \
         -R {params.ref} \
-        {params.list} \
-        -o {output.gvcf}
+        {params.gvcfslist} \
+        -o {output.vcf}
         """
+        
+def samples_in_family(family):
+    rows = sample_table.loc[sample_table['FamilyID'] ==  family]
+    for row in rows:
+        samples += [row['Subject'],row['Mother'],row['Father']]
 
 # convert the GRIN sample table into a GATK compliant 6-column pedfile:
 # http://gatkforums.broadinstitute.org/gatk/discussion/37/pedigree-analysis
