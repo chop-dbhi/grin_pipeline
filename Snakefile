@@ -41,6 +41,10 @@ assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
+# includes quads
+COMPLETETRIOSFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
+
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
 MBAMS = [config['datadirs']['bams'] + "/" + name + "sorted.merged.bam" for name in EXISTINGSAMPLES]
@@ -66,10 +70,8 @@ workdir: config['projdir']
 
 rule all:
     input: 
-        lists = LISTS,          # becore combine lists
-        indels = INDELS,        # must run after all lists are created
-        rbam = RBAMS,
-        phased = config['datadirs']['gvcfs'] + "/phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        trios = TRIOVCFS,
+        phased = config['datadirs']['vcfs'] + "/joint.trio.phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
 rule basehead:
     run:
@@ -107,7 +109,7 @@ rule print_reads:
     input: RECBAMS
 
 rule join_gvcfs:
-    input: config['datadirs']['gvcfs'] + "/joint.vcf"
+    input: config['datadirs']['vcfs'] + "/joint.vcf"
 
 rule make_gvcfs:
     input: GVCFS
@@ -158,7 +160,7 @@ rule fastqc:
         pair2 = config['datadirs']['samples'] + "/{sample}2.fastq.gz",
         seq2qc = config['tools']['seq2qc']
     log: 
-        "logs/{sample}.log" 
+        config['datadirs']['log'] + "/{sample}.log" 
     output: 
         pair1 = config['datadirs']['fastqc'] + "/{sample}1_fastqc.zip",
         pair2 = config['datadirs']['fastqc'] + "/{sample}2_fastqc.zip",
@@ -180,23 +182,23 @@ rule align:
     threads:
         12   # also depends on -j
     params:
-        refseqidx = config['refseqidx']
+        refidx = config['refidx']
     shell:
         """
-        {input.makesam} -c {threads} -a -k -d {params.refseqidx} -o SAM -f {input.pair1} {input.pair2} > {output.sam}
+        {input.makesam} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} > {output.sam}
         """
 
 rule sam_to_bam:
     input:
         sam = config['datadirs']['sams'] + "/{sample}.sam",
-        sam2bam = config['tools']['samtools']
+        samtools = config['tools']['samtools']
     output:
         bam = config['datadirs']['bams'] + "/{sample}.bam"
     threads:
         12   # also depends on -j
     shell:
         """
-        {input.sam2bam} view -@ 12 -bS {input.sam} > {output.bam}
+        {input.samtools} view -@ 12 -bS {input.sam} > {output.bam}
         """
 
 # novosort creates index
@@ -217,23 +219,28 @@ rule novosortbam:
 
 rule target_list: # create individual realign target list
     input:  # deduced bams
-        bai = config['datadirs']['picard'] + "/{sample}.group.bai", # required, so make sure it's created
+        bai = config['datadirs']['picard'] + "/{sample}.group.bai",
         bam = config['datadirs']['picard'] + "/{sample}.group.bam",
         java = config['tools']['java']
     output:
-        list = config['datadirs']['lists'] + "/{sample}.list"
+        sentinel = config['datadirs']['lists'] + "/{sample}.sentinel",
+        samplelist = config['datadirs']['lists'] + "/{sample}.list"
+    log:
+        config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref'],
+        knownsites = config['known']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T RealignerTargetCreator \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
-        -known {config[siv]} \
-        -o {output.list}
+        -known {params.knownsites} \
+        -o {output.samplelist} 2> {log}
+        touch {output.sentinel}
         """
 
 def cmp(a,b):
@@ -283,21 +290,6 @@ def combine():
             for loc in ks:
                 out.write(chr + ':' + loc + "\n") 
 
-rule make_group_index:
-    input:
-        bam = config['datadirs']['picard'] + "/{sample}.group.bam",
-        java = config['tools']['java']
-    output:
-        bai = config['datadirs']['picard'] + "/{sample}.group.bai"
-    params:
-        javaopts = config['tools']['javaopts'],
-        jar = config['jars']['buildbamindex']
-    shell:
-        """
-        {input.java} {params.javaopts} -jar {params.jar} \
-        INPUT={input.bam}
-        """
-
 # combine indels from individual target alignment lists into a single list
 rule combine_lists:
     input: LISTS
@@ -307,7 +299,8 @@ rule combine_lists:
 
 rule realign_target:   # with one combined list file
     input:  # deduced bams
-        list = INDELS,
+        #list = INDELS,
+        list = config['datadirs']['lists'] + "/{sample}.list",
         dbam = config['datadirs']['picard'] + "/{sample}.group.bai",
         java = config['tools']['java']
     output:
@@ -315,39 +308,43 @@ rule realign_target:   # with one combined list file
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref'],
+        known = config['known']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T IndelRealigner \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {config[datadirs][picard]}/{wildcards.sample}.group.bam \
         -targetIntervals {input.list} \
-        -known {config[siv]} \
+        -known {params.known} \
         -o {output.rbam}
         """
 
 # Base recalibration (not be confused with variant recalibration)
 # http://gatkforums.broadinstitute.org/gatk/discussion/44/base-quality-score-recalibration-bqsr
 # https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_bqsr_BaseRecalibrator.php
-rule generate_recalibration table:
+rule generate_recalibration_table:
     input:
         bam = config['datadirs']['realigned'] + "/{sample}.bam",
         java = config['tools']['java']
     output:
         table = config['datadirs']['recalibrated'] + "/{sample}.table"
+    log:
+        config['datadirs']['log'] + "/{sample}.generate_recalibration_table.log"
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref'],
+        known = config['known']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T BaseRecalibrator \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
-        -knownSites {config[siv]} \
-        -o {output.table}
+        -knownSites {params.known} \
+        -o {output.table} 2> {log}
         """
 
 # https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_readutils_PrintReads.php
@@ -359,18 +356,20 @@ rule recalibrate_bam:
         java = config['tools']['java']
     output:
         bam = config['datadirs']['recalibrated'] + "/{sample}.bam"
+    log:
+        config['datadirs']['log'] + "/{sample}.recalibrate_bam.log"
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T PrintReads \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
         -BQSR {input.table} \
-        -o {output.bam}
+        -o {output.bam} 2> {log}
         """
 
 rule post_recalibrated_table:
@@ -383,14 +382,15 @@ rule post_recalibrated_table:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref'],
+        known = config['known']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T BaseRecalibrator \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
-        -knownSites {config[siv]} \
+        -knownSites {params.known} \
         -BQSR {input.table} \
         -o {output.table}
         """
@@ -407,14 +407,14 @@ rule analyze_bqsr:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         source ~/.bashrc
         module load R/3.2.2
         {input.java} {params.javaopts} -jar {params.jar} \
         -T AnalyzeCovariates \
-        -R {params.refseq} \
+        -R {params.ref} \
         -before {input.before} \
         -after {input.after} \
         -plots {output.pdf}
@@ -429,44 +429,51 @@ rule merge_lanes:
     input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = config['tools']['samtools']
     output: "{sample}.sorted.merged.bam"
     threads:
-        12
-    shell:
-        "{input.samtools} merge -@ 12 {output} {input.bams}"
+        1
+    run:
+        if len(input.bams)>1:
+            shell("{input.samtools} merge {output} {input.bams}")
+        else:
+            shell("cp {input.bams} {output}")
 
-rule remove_duplicates:
+rule mark_duplicates:
     input:
         bam = config['datadirs']['bams'] + "/{sample}.sorted.merged.bam",
         java = config['tools']['java']
     output:
         bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam"
+    log:
+        config['datadirs']['log'] + "/{sample}.markdups.log"
     params:
-        jar = config['jars']['markduplicates'],
-        javaopts = config['tools']['javaopts']
+        picard = config['jars']['picard']['path'],
+        md = config['jars']['picard']['markdups'],
+        javaopts = config['tools']['javaopts'],
+        metrics = config['datadirs']['picard']
     shell:
         # will (and need the permision to) create a tmp directory
         # with the name of login under specified tmp directory
         # Exception in thread "main" net.sf.picard.PicardException: Exception creating temporary directory.
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.javaopts} -jar {params.picard} \
+        {params.md} \
         INPUT={input.bam} \
         OUTPUT={output.bam} \
-        METRICS_FILE={config[datadirs][picard]}/{wildcards.sample}.txt
+        METRICS_FILE={params.metrics}/{wildcards.sample}.txt 2> {log}
         """
 
+# samtools index seems more reliable than picard
+# in terms of returning an exit code
 rule make_index:
     input:
-        bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam",
-        java = config['tools']['java']
+        bam = config['datadirs']['picard'] + "/{sampleandext}.bam",
+        samtools = config['tools']['samtools']
     output:
-        bai = config['datadirs']['picard'] + "/{sample}.rmdup.bai"
-    params:
-        javaopts = config['tools']['javaopts'],
-        jar = config['jars']['buildbamindex']
+        bai = config['datadirs']['picard'] + "/{sampleandext}.bai"
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
-        INPUT={input.bam}
+        {input.samtools} index {input.bam} {output.bai}
         """
+
 
 rule add_readgroup:
     input:
@@ -475,18 +482,22 @@ rule add_readgroup:
         java = config['tools']['java']
     output:
         bam = config['datadirs']['picard'] + "/{sample}.group.bam"
+    log:
+        config['datadirs']['log'] + "/{sample}.add_readgroup.log"
     params:
+        picard = config['jars']['picard']['path'],
         javaopts = config['tools']['javaopts'],
-        jar = config['jars']['addorreplacereadgroups']
+        rg = config['jars']['picard']['readgroups']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.javaopts} -jar {params.picard} \
+        {params.rg} \
         I={input.bam} \
         O={output.bam} \
         PL=illumina \
         LB={wildcards.sample} \
         PU={wildcards.sample} \
-        SM={wildcards.sample}
+        SM={wildcards.sample} 2> {log}
         """
 
 #### Variant Calling ####
@@ -499,12 +510,12 @@ rule make_gvcf:
     params:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
-        refseq = config['refseq']
+        ref = config['ref']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T HaplotypeCaller \
-        -R {params.refseq} \
+        -R {params.ref} \
         -I {input.bam} \
         --emitRefConfidence GVCF \
         --variant_index_type LINEAR \
@@ -515,27 +526,44 @@ rule make_gvcf:
         -o {output.gvcf}
         """
 
-rule combine_gvcfs:
-    input: GVCFS,
-           java = config['tools']['java']
+def gvcf_samples_in_family(family):
+    # joint means all existing samples
+    if family == 'joint':
+        return [GVCFS,GVCFSLIST]
+    else:
+        rows = sample_table.loc[sample_table['FamilyID'] ==  family]
+        samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+        gvcfs = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
+        gvcfslist = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
+        return [gvcfs, gvcfslist]
+
+rule trio_vcfs:
+    input:
+        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family)[0],
+        java = config['tools']['java']
     output:
-        gvcf = config['datadirs']['gvcfs'] + "/joint.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{family}.trio.vcf"
     params:
         jar = config['jars']['gatk'],
-        refseq = config['refseq'],
-        list = GVCFSLIST,
+        ref = config['ref'],
+        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family)[1],
         javaopts = config['tools']['javaopts'],
-        db = config['siv']
+        db = config['dbsnp']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T GenotypeGVCFs \
         --dbsnp {params.db} \
         -nt 8 \
-        -R {params.refseq} \
-        {params.list} \
-        -o {output.gvcf}
+        -R {params.ref} \
+        {params.gvcfslist} \
+        -o {output.vcf}
         """
+        
+def samples_in_family(family):
+    rows = sample_table.loc[sample_table['FamilyID'] ==  family]
+    for row in rows:
+        samples += [row['Subject'],row['Mother'],row['Father']]
 
 # convert the GRIN sample table into a GATK compliant 6-column pedfile:
 # http://gatkforums.broadinstitute.org/gatk/discussion/37/pedigree-analysis
@@ -547,14 +575,20 @@ rule combine_gvcfs:
 # Sex (1=male; 2=female; other=unknown)
 # Phenotype
 rule sample_table_to_pedfile:
-    input: config['sample_table']
-    output: config['pedfile']
+    input:
+        config['sample_table']
+    params:
+        existingsamples = EXISTINGSAMPLES
+    output:
+        config['pedfile']
     run:
         st = pandas.read_table("{0}".format(input))
-        st['Sex']=st['Sex'].replace(['M','F'],[1,2])
-        st['Affected_status']=st['Affected_status'].replace('unaffected',0)
-        st['Affected_status']=st['Affected_status'].replace('[^0].+', 1, regex=True)
-        ped = st[[0,1,3,2,4,5]]
+        complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
+        trios = st.loc[complete_trios]
+        trios['Sex']=trios['Sex'].replace(['M','F'],[1,2])
+        trios['Affected_status']=trios['Affected_status'].replace('unaffected',0)
+        trios['Affected_status']=trios['Affected_status'].replace('[^0].+', 1, regex=True)
+        ped = trios[[0,1,3,2,4,5]]
         ped = ped.fillna(0)
         moms = [mom for mom in list(ped['Mother'].dropna()) if mom not in list(ped['Subject'])]
         dads = [dad for dad in list(ped['Father'].dropna()) if dad not in list(ped['Subject'])]
@@ -567,7 +601,7 @@ rule sample_table_to_pedfile:
         momdf['Sex']=2
         momdf['Affected_status']=0
         
-        dadfams=ped[ped['Father'].isin(moms)]['FamilyID']
+        dadfams=ped[ped['Father'].isin(dads)]['FamilyID']
         daddf = pandas.DataFrame(dadfams)
         daddf['Subject']=dads
         daddf['Father']=0
@@ -575,56 +609,200 @@ rule sample_table_to_pedfile:
         daddf['Sex']=1
         daddf['Affected_status']=0
         
-        ped.append([momdf,daddf])
-        
+        ped = ped.append([momdf,daddf])
+        ped = ped.drop_duplicates()
+        ped = ped.sort_values(by=['FamilyID','Subject'])
         ped.to_csv("{0}".format(output), sep='\t',index=False)
 
 rule run_phase_by_transmission:
     input:
-        vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
-        snpeff = config['datadirs']['gvcfs'] + "/snpeff.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         ped = config['pedfile'],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['gvcfs'] + "/phased.vcf",
-        mvf = config['datadirs']['gvcfs'] + "/mendelian_violations.txt"
+        vcf = config['datadirs']['vcfs'] + "/{file}.phased.vcf",
+        mvf = config['datadirs']['vcfs'] + "/{file}.mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
-        refseq = config['refseq'],
+        ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log: 
-        config['datadirs']['log'] + "/phase_by_transmission.log" 
+        config['datadirs']['log'] + "/{file}.phase_by_transmission.log" 
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T PhaseByTransmission \
-        -R {params.refseq} \
+        -R {params.ref} \
         -V {input.vcf} \
         -ped {input.ped} \
         -mvf {output.mvf} \
         -o {output.vcf} >& {log}
         """
 
+# https://www.broadinstitute.org/gatk/guide/article?id=2806
+# https://github.com/chapmanb/bcbio-nextgen/blob/master/bcbio/variation/vfilter.py
+
+rule gatk_snps_only:
+    input:
+        vcf = "vcfs/{file}.vcf",
+        java = config['tools']['java']
+    output:
+        vcf = "vcfs/{file}.snps.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        config['datadirs']['log'] + "log/{file}.gatk_snps_only.log"
+    shell:
+        """
+        {input.java} {params.javaopts} -jar {params.jar} \
+        -T SelectVariants \
+        -R {params.ref} \
+        -V {input.vcf} \
+        -selectType SNP \
+        -o {output.vcf} >& {log}
+        """
+
+rule gatk_indels_only:
+    input:
+        vcf = "vcfs/{file}.vcf",
+        java = config['tools']['java']
+    output:
+        vcf = "vcfs/{file}.indels.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        config['datadirs']['log'] + "log/{file}.gatk_indels_only.log"
+    shell:
+        """
+        {input.java} {params.javaopts} -jar {params.jar} \
+        -T SelectVariants \
+        -R {params.ref} \
+        -V {input.vcf} \
+        -selectType INDEL \
+        -o {output.vcf} >& {log}
+        """
+        
+# hard filtration
+# this "filters out, not filters for" filterExpression
+rule gatk_hard_filtration_snps:
+    input:
+        vcf = "vcfs/{file}.snps.vcf",
+        java = config['tools']['java']
+    output:
+        "vcfs/{file}.snps.hard.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        "log/{file}.gatk_hard_filtration.log"
+    shell:
+        "{input.java} {params.javaopts} -jar {params.jar} "
+        "-R {params.ref} "
+        "-T VariantFiltration "
+        "-o {output} "
+        "--variant {input.vcf} "
+        "--filterExpression \"QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0\" "
+        "--filterName \"GATK3.5-hard-filter\" "
+        ">& {log}"
+
+rule gatk_hard_filtration_indels:
+    input:
+        vcf = "vcfs/{file}.indels.vcf",
+        java = config['tools']['java']
+    output:
+        "vcfs/{file}.indels.hard.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        "log/{file}.gatk_hard_filtration.log"
+    shell:
+        "{input.java} {params.javaopts} -jar {params.jar} "
+        "-R {params.ref} "
+        "-T VariantFiltration "
+        "-o {output} "
+        "--variant {input.vcf} "
+        "--filterExpression \"QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0\" "
+        "--filterName \"GATK3.5-hard-filter\" "
+        ">& {log}"
+
+rule select_passing:
+    input:
+        vcf = "vcfs/{file}.{type}.hard.vcf",
+        java = config['tools']['java']
+    output:
+        "vcfs/{file}.{type}.filtered.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        "log/{file}.select_passing_variants.log"
+    shell:
+        "{input.java} {params.javaopts} -jar {params.jar} "
+        "-R {params.ref} "
+        " -T SelectVariants "
+        "-o {output} "
+        "--variant {input.vcf} "
+        "--excludeFiltered "
+        ">& {log}"
+
+# """Run GATK CombineVariants to combine variant files.
+#
+# The default rule combines files with suffixes filteredSNP.vcf and
+# filteredINDEL.vcf.
+# """
+rule gatk_combine_variants:
+    input:
+        snps = "vcfs/{file}.snps.filtered.vcf",
+        indels = "vcfs/{file}.indels.filtered.vcf",
+        java = config['tools']['java']
+    output:
+        combo = "vcfs/{file}.all.filtered.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        "log/{file}.select_passing_variants.log"
+    shell:
+        "{input.java} {params.javaopts} -jar {params.jar} "
+        "-R {params.ref} "
+        "-T CombineVariants "
+        "--variant  {input.snps} "
+        "--variant  {input.indels} "
+        "-o {output} "
+        "-genotypeMergeOptions UNIQUIFY "
+        ">& {log}"
+
 #### Annotation ####
 # ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
-        vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['gvcfs'] + "/snpeff.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.snpeff.vcf"
     params:
         jar  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],
         javaopts = config['tools']['javaopts'],
         database = config['jars']['snpeff']['db'],
-        updown = config['jars']['snpeff']['ud']
+        updown = config['jars']['snpeff']['ud'],
+        format = config['jars']['snpeff']['format']
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -c {params.conf} \
         -t {params.database} \
         -ud {params.updown} \
+        {params.format} \
          {input.vcf} > {output.vcf}
         """
 

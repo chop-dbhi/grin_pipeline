@@ -1,15 +1,17 @@
 admins: leipzig@gmail.com
-#zhangs3@email.chop.edu
+#zhangs3@email.chop.eduref
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-refseq:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
-refseqidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
-siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
-
+ref:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
+refidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
+known:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
+#tabixed this:
+dbsnp: /mnt/isilon/cbmi/variome/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
 buildve: hg38
 sample_table: sample_table.txt
 pedfile: samples.ped
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
+
 # subdirectories relative to projdir
 datadirs:
     fastq:            fastq
@@ -24,7 +26,8 @@ datadirs:
     postrecalibrated: postrecalibrated
     pdfs:             pdfs
     gvcfs:            gvcfs
-    log:              log 
+    vcfs:             vcfs
+    log:              logs
 
 # !!python/object/apply:os.path.join
 
@@ -32,7 +35,7 @@ tools:
     java:
         /mnt/isilon/cbmi/variome/bin/java
     # must be set separately from java because java will be treated as input
-    javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/
+    javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/tmp/
     seq2qc:
         /mnt/isilon/cbmi/variome/bin/fastqc
     samtools:
@@ -44,13 +47,14 @@ tools:
 
 jars:
     picard:
-        /mnt/isilon/cbmi/variome/bin/picard-1.57.jar
-    markduplicates:
-        /mnt/isilon/cbmi/variome/bin/picard/MarkDuplicates.jar
-    buildbamindex:
-        /mnt/isilon/cbmi/variome/bin/picard/BuildBamIndex.jar
-    addorreplacereadgroups:
-        /mnt/isilon/cbmi/variome/bin/picard/AddOrReplaceReadGroups.jar
+        path:
+            /mnt/isilon/cbmi/variome/bin/picard-tools-2.0.1/picard.jar
+        markdups:
+            MarkDuplicates
+        index:
+            BuildBamIndex
+        readgroups:
+            AddOrReplaceReadGroups
     gatk:
         /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
     snpeff:
@@ -62,3 +66,5 @@ jars:
             GRCh38.76
         ud:
             10
+        format:
+            -formatEff -classic
