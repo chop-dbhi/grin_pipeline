@@ -1,5 +1,5 @@
 admins: leipzig@gmail.com
-#zhangs3@email.chop.eduref
+#zhangs3@email.chop.edu
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
 ref:    /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta.gz
 refidx: /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.nix"
