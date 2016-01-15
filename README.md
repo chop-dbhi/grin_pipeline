@@ -14,8 +14,9 @@ conda install -c bioconda snakemake
 conda install pandas
 conda install drmaa
 ```
+
 ### To run a trio
-``
+```
 source activate snakeenv
 snakemake gemini/PRG_MAE_1
 
@@ -25,6 +26,5 @@ snakemake gemini/PRG_MAE_1
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`
 ```
 source activate snakeenv
-snakemake --config sampletable="fastq.txt" outdir="." -c "qsub -l h_vmem=40G -l mem_free=40G" -j 
+snakemake --config outdir="." -c "qsub -l h_vmem=40G -l mem_free=40G" -j 
 ```
-
