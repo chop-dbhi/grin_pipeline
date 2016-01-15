@@ -198,7 +198,7 @@ rule sam_to_bam:
         12   # also depends on -j
     shell:
         """
-        {input.samtools} view -@ 12 -bS {input.sam} > {output.bam}
+        {input.samtools} view -@ {threads} -bS {input.sam} > {output.bam}
         """
 
 # novosort creates index
@@ -208,6 +208,8 @@ rule novosortbam:
         sort = config['tools']['sortbam']
     output:
         sorted = config['datadirs']['bams'] + "/{sample}.sorted.bam",
+    threads:
+        12
     shell:
         """
         {input.sort} -m 14g -t . --removeduplicates --keeptags -i -o {output.sorted} {input.bam}
@@ -232,10 +234,13 @@ rule target_list: # create individual realign target list
         javaopts = config['tools']['javaopts'],
         ref = config['ref'],
         knownsites = config['known']
+    threads:
+        24
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T RealignerTargetCreator \
+        -nt {threads} \
         -R {params.ref} \
         -I {input.bam} \
         -known {params.knownsites} \
@@ -362,10 +367,13 @@ rule recalibrate_bam:
         jar = config['jars']['gatk'],
         javaopts = config['tools']['javaopts'],
         ref = config['ref']
+    threads:
+        8
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T PrintReads \
+        -nct {threads}
         -R {params.ref} \
         -I {input.bam} \
         -BQSR {input.table} \
@@ -764,7 +772,7 @@ rule gatk_combine_variants:
         indels = "vcfs/{file}.indels.filtered.vcf",
         java = config['tools']['java']
     output:
-        combo = "vcfs/{file}.all.filtered.vcf"
+        combo = "vcfs/{file}.com.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -778,33 +786,76 @@ rule gatk_combine_variants:
         "--variant  {input.snps} "
         "--variant  {input.indels} "
         "-o {output} "
-        "-genotypeMergeOptions UNIQUIFY "
+        "--assumeIdenticalSamples "
         ">& {log}"
 
+rule gatk_cat_variants:
+    input:
+        snps = "vcfs/{file}.snps.filtered.vcf",
+        indels = "vcfs/{file}.indels.filtered.vcf",
+        java = config['tools']['java']
+    output:
+        combo = "vcfs/{file}.cat.filtered.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'],
+        javaopts = config['tools']['javaopts']
+    log:
+        "log/{file}.select_passing_variants.log"
+    shell:
+        "{input.java} {params.javaopts} -cp {params.jar} "
+        "org.broadinstitute.gatk.tools.CatVariants "
+        "-R {params.ref} "
+        "-V  {input.snps} "
+        "-V  {input.indels} "
+        "-out {output} "
+        ">& {log}"
+    
 #### Annotation ####
-rule prep_for_gemini:
+rule ad_vcf:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
-        vt = config['tools']['vt']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vt.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.vcf"
     params:
         ref = config['ref']
     shell:
         """
-        zless {input} \
-           | sed 's/ID=AD,Number=./ID=AD,Number=R/' \
-           | vt decompose -s - \
-           | vt normalize -r {params.ref} - \
-           > {output}
+        cat {input} | sed 's/ID=AD,Number=./ID=AD,Number=R/' > {output}
         """
+
+# decomposes multiallelic variants into biallelic in a VCF file.
+rule decompose_for_gemini:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.vcf",
+        vt = config['tools']['vt']
+    output:
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf"
+    shell:
+        """
+        {input.vt} decompose -s -o {output} {input.vcf}
+        """
+
+rule normalize_for_gemini:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf",
+        vt = config['tools']['vt']
+    output:
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.nm.vcf"
+    params:
+        ref = config['ref']
+    shell:
+        """
+        {input.vt} normalize -r {params.ref} -o {output} {input.vcf}
+        """
+
 # ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vt.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vt.snpeff.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.snpeff.vcf"
     params:
         jar  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],
@@ -820,6 +871,43 @@ rule run_snpeff:
         -ud {params.updown} \
         {params.format} \
          {input.vcf} > {output.vcf}
+        """
+
+rule compress_vcf:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
+        bgzip = config['tools']['bgzip']
+    output:
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.gz",
+    shell:
+        """
+        {input.bgzip} {input.vcf}
+        """
+
+rule tabix:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.gz",
+        tabix = config['tools']['tabix']
+    output:
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.gz.tbi",
+    shell:
+        """
+        {input.tabix} -p vcf {input.vcf}
+        """
+
+rule gemini_db:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.gz",
+        tbi = config['datadirs']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.gz.tbi",
+        ped = config['pedfile'],
+        gemini = config['tools']['gemini']
+    output:
+        config['datadirs']['gemini'] + "/{file}.gemini.db"
+    threads:
+        3
+    shell:
+        """
+        {input.gemini} load --cores {threads} -t snpEff -v {input.vcf} -p {input.ped} {output}
         """
 
 #### Report ####

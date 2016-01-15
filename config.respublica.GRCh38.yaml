@@ -1,5 +1,5 @@
 admins: leipzig@gmail.com
-#zhangs3@email.chop.eduref
+#zhangs3@email.chop.edu
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
 ref:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
 refidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
@@ -10,7 +10,7 @@ buildve: hg38
 sample_table: sample_table.txt
 pedfile: samples.ped
 
-projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
+projdir: /mnt/lustre/users/leipzigj/GRIN/
 
 # subdirectories relative to projdir
 datadirs:
@@ -27,6 +27,7 @@ datadirs:
     pdfs:             pdfs
     gvcfs:            gvcfs
     vcfs:             vcfs
+    gemini:           gemini
     log:              logs
 
 # !!python/object/apply:os.path.join
@@ -35,14 +36,14 @@ tools:
     java:
         /mnt/isilon/cbmi/variome/bin/java
     # must be set separately from java because java will be treated as input
-    javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/tmp/
+    javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/
     seq2qc:
         /mnt/isilon/cbmi/variome/bin/fastqc
     samtools:
         /mnt/isilon/cbmi/variome/bin/samtools
     sortbam:
         /mnt/isilon/cbmi/variome/bin/novosort
-    makesam:
+    align:
         /mnt/isilon/cbmi/variome/bin/novoalign
     vt:
         /mnt/isilon/cbmi/variome/bin/vt/vt
@@ -50,6 +51,8 @@ tools:
         /mnt/isilon/cbmi/variome/bin/tabix
     bgzip:
         /mnt/isilon/cbmi/variome/bin/bgzip
+    gemini:
+        /mnt/isilon/cbmi/variome/bin/gemini/bin/gemini
 
 jars:
     picard:
@@ -67,7 +70,7 @@ jars:
         path:
             /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
         cnf:
-            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.config
+            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.GRCh38.config
         db:
             GRCh38.76
         ud:
