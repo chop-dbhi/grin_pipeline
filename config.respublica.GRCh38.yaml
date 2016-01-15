@@ -27,6 +27,7 @@ datadirs:
     pdfs:             pdfs
     gvcfs:            gvcfs
     vcfs:             vcfs
+    gemini:           gemini
     log:              logs
 
 # !!python/object/apply:os.path.join
@@ -42,12 +43,16 @@ tools:
         /mnt/isilon/cbmi/variome/bin/samtools
     sortbam:
         /mnt/isilon/cbmi/variome/bin/novosort
-    makesam:
+    align:
         /mnt/isilon/cbmi/variome/bin/novoalign
     vt:
         /mnt/isilon/cbmi/variome/bin/vt/vt
     tabix:
         /mnt/isilon/cbmi/variome/bin/tabix
+    bgzip:
+        /mnt/isilon/cbmi/variome/bin/bgzip
+    gemini:
+        /mnt/isilon/cbmi/variome/bin/gemini/bin/gemini
 jars:
     picard:
         path:
@@ -64,10 +69,10 @@ jars:
         path:
             /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
         cnf:
-            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.config
+            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.GRCh38.config
         db:
             GRCh38.76
         ud:
             10
         format:
-            -formatEff -classic
+            -classic
