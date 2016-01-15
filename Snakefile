@@ -44,7 +44,7 @@ EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 # includes quads
 COMPLETETRIOSFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
 TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
-TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".db" for trio in COMPLETETRIOSFAMIDS]
+TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + "gemini.db" for trio in COMPLETETRIOSFAMIDS]
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -74,14 +74,6 @@ rule all:
         trios = TRIOGEMS,
         phased = config['datadirs']['vcfs'] + "/joint.trio.phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
-rule basehead:
-    run:
-        print(FASTQS)
-
-rule print_allpairs:
-    run:
-        print(ALLPAIRNAMES)
-
 rule sample_concordance:
     output:
         ms="missingsamples.txt", ump="unmanifestedpairs.txt"
@@ -98,7 +90,11 @@ rule sample_concordance:
             f.write("{0}\n".format(sample))
         print("Manifested Pairs (in sample table): {0}".format(len(PAIRNAMESINSAMPLETABLE)))
         print("Fastqs: {0} Lanes in sample table {1}".format(len(FASTQS), len(PAIRNAMESINSAMPLETABLE)))
-        
+
+rule mkdirs:
+    run:
+        for adir in config['datadirs']:
+            shell("mkdir -p " + config['datadirs'][adir])
 
 rule dummy:    # just to test the python codes above
     input: "Snakefile"
@@ -177,7 +173,7 @@ rule align:
     input:
         pair1 = config['datadirs']['samples'] + "/{sample}_R1.fastq.gz",
         pair2 = config['datadirs']['samples'] + "/{sample}_R2.fastq.gz",
-        makesam = config['tools']['makesam']
+        align = config['tools']['align']
     output:
         sam = config['datadirs']['sams'] + "/{sample}.sam" # may be set to temp
     threads:
@@ -186,7 +182,7 @@ rule align:
         refidx = config['refidx']
     shell:
         """
-        {input.makesam} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} > {output.sam}
+        {input.align} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} > {output.sam}
         """
 
 rule sam_to_bam:
@@ -653,10 +649,10 @@ rule run_phase_by_transmission:
 
 rule gatk_snps_only:
     input:
-        vcf = "vcfs/{file}.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = "vcfs/{file}.snps.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -675,10 +671,10 @@ rule gatk_snps_only:
 
 rule gatk_indels_only:
     input:
-        vcf = "vcfs/{file}.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = "vcfs/{file}.indels.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -699,10 +695,10 @@ rule gatk_indels_only:
 # this "filters out, not filters for" filterExpression
 rule gatk_hard_filtration_snps:
     input:
-        vcf = "vcfs/{file}.snps.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf",
         java = config['tools']['java']
     output:
-        "vcfs/{file}.snps.hard.vcf"
+        config['datadirs']['vcfs'] + "/{file}.snps.hard.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -721,10 +717,10 @@ rule gatk_hard_filtration_snps:
 
 rule gatk_hard_filtration_indels:
     input:
-        vcf = "vcfs/{file}.indels.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf",
         java = config['tools']['java']
     output:
-        "vcfs/{file}.indels.hard.vcf"
+        config['datadirs']['vcfs'] + "/{file}.indels.hard.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -743,10 +739,10 @@ rule gatk_hard_filtration_indels:
 
 rule select_passing:
     input:
-        vcf = "vcfs/{file}.{type}.hard.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.{type}.hard.vcf",
         java = config['tools']['java']
     output:
-        "vcfs/{file}.{type}.filtered.vcf"
+        config['datadirs']['vcfs'] + "/{file}.{type}.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -769,11 +765,11 @@ rule select_passing:
 # """
 rule gatk_combine_variants:
     input:
-        snps = "vcfs/{file}.snps.filtered.vcf",
-        indels = "vcfs/{file}.indels.filtered.vcf",
+        snps = config['datadirs']['vcfs'] + "/{file}.snps.filtered.vcf",
+        indels = config['datadirs']['vcfs'] + "/{file}.indels.filtered.vcf",
         java = config['tools']['java']
     output:
-        combo = "vcfs/{file}.com.filtered.vcf"
+        combo = config['datadirs']['vcfs'] + "/{file}.com.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -792,11 +788,11 @@ rule gatk_combine_variants:
 
 rule gatk_cat_variants:
     input:
-        snps = "vcfs/{file}.snps.filtered.vcf",
-        indels = "vcfs/{file}.indels.filtered.vcf",
+        snps = config['datadirs']['vcfs'] + "/{file}.snps.filtered.vcf",
+        indels = config['datadirs']['vcfs'] + "/{file}.indels.filtered.vcf",
         java = config['tools']['java']
     output:
-        combo = "vcfs/{file}.cat.filtered.vcf"
+        combo = config['datadirs']['vcfs'] + "/{file}.cat.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
