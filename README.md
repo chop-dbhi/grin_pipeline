@@ -18,9 +18,15 @@ conda install drmaa
 ### To run a trio
 ```
 source activate snakeenv
-snakemake gemini/PRG_MAE_1
-
+snakemake gemini/PRG_MAE_1.db
 ```
+
+### To generate a VCF of all trios, separately and combined
+```
+source activate snakeenv
+snakemake
+```
+
 
 ## To run on Respublica
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`

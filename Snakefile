@@ -44,6 +44,7 @@ EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 # includes quads
 COMPLETETRIOSFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
 TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
+TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".db" for trio in COMPLETETRIOSFAMIDS]
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -70,7 +71,7 @@ workdir: config['projdir']
 
 rule all:
     input: 
-        trios = TRIOVCFS,
+        trios = TRIOGEMS,
         phased = config['datadirs']['vcfs'] + "/joint.trio.phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
 rule basehead:
