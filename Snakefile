@@ -138,6 +138,10 @@ rule make_bais:
 rule sortbams:
     input: DBAMS
 
+rule printbams:
+    run:
+        print(BAMS)
+
 #### Sequence ####
 # make symlinks
 # do this once
@@ -153,11 +157,11 @@ rule symlinks:
 ### QC ####
 rule fastqc: 
     input: 
-        pair1 = config['datadirs']['samples'] + "/{sample}1.fastq.gz",
-        pair2 = config['datadirs']['samples'] + "/{sample}2.fastq.gz",
+        pair1 = config['datadirs']['fastq'] + "/{sample}1.fastq.gz",
+        pair2 = config['datadirs']['fastq'] + "/{sample}2.fastq.gz",
         seq2qc = config['tools']['seq2qc']
     log: 
-        config['datadirs']['log'] + "/{sample}.log" 
+        config['datadirs']['log'] + "/{sample}.fastqc.log" 
     output: 
         pair1 = config['datadirs']['fastqc'] + "/{sample}1_fastqc.zip",
         pair2 = config['datadirs']['fastqc'] + "/{sample}2_fastqc.zip",
@@ -171,18 +175,20 @@ rule fastqc:
 #### Alignment ####
 rule align:
     input:
-        pair1 = config['datadirs']['samples'] + "/{sample}_R1.fastq.gz",
-        pair2 = config['datadirs']['samples'] + "/{sample}_R2.fastq.gz",
+        pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq.gz",
+        pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
         align = config['tools']['align']
     output:
         sam = config['datadirs']['sams'] + "/{sample}.sam" # may be set to temp
     threads:
         12   # also depends on -j
+    log: 
+        config['datadirs']['log'] + "/{sample}.novoalign.log"
     params:
         refidx = config['refidx']
     shell:
         """
-        {input.align} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} > {output.sam}
+        {input.align} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} 1> {output.sam} 2> {log}
         """
 
 rule sam_to_bam:
@@ -428,7 +434,8 @@ rule analyze_bqsr:
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
 def get_all_sorted_bams(samplename):
-    return glob.glob("{0}*.sorted.bam".format(samplename))
+    bams = [bam for bam in BAMS if bam.startswith(samplename)]
+    return(bams)
 
 rule merge_lanes:
     input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = config['tools']['samtools']
