@@ -16,7 +16,7 @@ projdir: /mnt/lustre/users/leipzigj/GRIN/
 datadirs:
     fastq:            fastq
     samples:          samples
-    fastqc:           fastqc
+    fastqc:           qc/fastqc
     sams:             sams
     bams:             bams
     picard:           picard
@@ -27,6 +27,7 @@ datadirs:
     pdfs:             pdfs
     gvcfs:            gvcfs
     vcfs:             vcfs
+    vtpeek:           qc/vcf
     gemini:           gemini
     log:              logs
 
@@ -73,6 +74,6 @@ jars:
         db:
             GRCh38.76
         ud:
-            10
+            '10'
         format:
             -classic

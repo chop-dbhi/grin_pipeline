@@ -42,9 +42,9 @@ assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
 # includes quads
-COMPLETETRIOSFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+COMPLETETRIOSFAMIDS = [row['FamilyID']+'.'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
 TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
-TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + "gemini.db" for trio in COMPLETETRIOSFAMIDS]
+TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETETRIOSFAMIDS]
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -141,6 +141,10 @@ rule sortbams:
 rule printbams:
     run:
         print(BAMS)
+
+rule printtrios:
+    run:
+        print(TRIOGEMS)
 
 #### Sequence ####
 # make symlinks
@@ -538,27 +542,30 @@ rule make_gvcf:
         -o {output.gvcf}
         """
 
-def gvcf_samples_in_family(family):
+# only one trio per vcf
+# the family argument is really for sanity checking
+def gvcf_samples_in_family(family,subject):
     # joint means all existing samples
     if family == 'joint':
         return [GVCFS,GVCFSLIST]
     else:
-        rows = sample_table.loc[sample_table['FamilyID'] ==  family]
+        rows = sample_table.loc[sample_table['FamilyID'] ==  sample_table['Subject'] == subject]
         samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+        assert(len(samples)<=3 and len(samples)>0)
         gvcfs = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
         gvcfslist = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
         return [gvcfs, gvcfslist]
 
 rule trio_vcfs:
     input:
-        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family)[0],
+        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{family}.trio.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{family}.{subject}.trio.vcf"
     params:
         jar = config['jars']['gatk'],
         ref = config['ref'],
-        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family)[1],
+        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[1],
         javaopts = config['tools']['javaopts'],
         db = config['dbsnp']
     shell:
@@ -853,6 +860,33 @@ rule normalize_for_gemini:
         {input.vt} normalize -r {params.ref} -o {output} {input.vcf}
         """
 
+rule vcf_qt:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf",
+        vt = config['tools']['vt']
+    output:
+        vcf = config['datadirs']['vtpeek'] + "/{file}.vtpeek.txt"
+    params:
+        ref = config['ref']
+    shell:
+        """
+        {input.vt} peek -o {output} {input.vcf}
+        """
+
+rule vcf_profile:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf",
+        vt = config['tools']['vt'],
+        ped = config['pedfile']
+    output:
+        vcf = config['datadirs']['vtpeek'] + "/{file}.vtmendelprofile.txt"
+    params:
+        ref = config['ref']
+    shell:
+        """
+        {input.vt} profile_mendelian -o {output} -p {input.ped} -x mendel {input.vcf}
+        """
+        
 # ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:

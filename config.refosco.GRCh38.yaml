@@ -73,6 +73,6 @@ jars:
         db:
             GRCh38.76
         ud:
-            10
+            '10'
         format:
             -classic

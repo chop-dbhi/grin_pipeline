@@ -32,5 +32,5 @@ snakemake
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`
 ```
 source activate snakeenv
-snakemake --config outdir="." -c "qsub -l h_vmem=40G -l mem_free=40G" -j 
+snakemake -c "qsub -l h_vmem=40G -l mem_free=40G" -j 
 ```

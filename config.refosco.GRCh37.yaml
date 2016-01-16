@@ -16,7 +16,7 @@ projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
 datadirs:
     fastq:            fastq
     samples:          samples
-    fastqc:           fastqc
+    fastqc:           qc/fastqc
     sams:             GRCh37/sams
     bams:             GRCh37/bams
     picard:           GRCh37/picard
@@ -27,6 +27,7 @@ datadirs:
     pdfs:             GRCh37/pdfs
     gvcfs:            GRCh37/gvcfs
     vcfs:             GRCh37/vcfs
+    vtpeek:           GRCh37/qc/vcf
     gemini:           GRCh37/gemini
     log:              logs
 
@@ -73,6 +74,6 @@ jars:
         db:
             GRCh37.75
         ud:
-            10
+            '10'
         format:
             -classic
