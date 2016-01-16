@@ -72,7 +72,7 @@ workdir: config['projdir']
 rule all:
     input: 
         trios = TRIOGEMS,
-        phased = config['datadirs']['vcfs'] + "/joint.trio.phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        phased = config['datadirs']['vcfs'] + "/joint.all.trio.phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 
 rule sample_concordance:
     output:
