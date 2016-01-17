@@ -17,20 +17,19 @@ datadirs:
     fastq:            fastq
     samples:          samples
     fastqc:           qc/fastqc
-    sams:             sams
-    bams:             bams
-    picard:           picard
-    realigned:        realigned
-    lists:            lists
-    recalibrated:     recalibrated
-    postrecalibrated: postrecalibrated
-    pdfs:             pdfs
-    gvcfs:            gvcfs
-    vcfs:             vcfs
-    vtpeek:           qc/vcf
-    gemini:           gemini
+    sams:             GRCh38/sams
+    bams:             GRCh38/bams
+    picard:           GRCh38/picard
+    realigned:        GRCh38/realigned
+    lists:            GRCh38/lists
+    recalibrated:     GRCh38/recalibrated
+    postrecalibrated: GRCh38/postrecalibrated
+    pdfs:             GRCh38/pdfs
+    gvcfs:            GRCh38/gvcfs
+    vcfs:             GRCh38/vcfs
+    vtpeek:           GRCh38/qc/vcf
+    gemini:           GRCh38/gemini
     log:              logs
-
 # !!python/object/apply:os.path.join
 
 tools:

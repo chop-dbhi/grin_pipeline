@@ -41,10 +41,15 @@ assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
-# includes quads
-COMPLETETRIOSFAMIDS = [row['FamilyID']+'.'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+# a quad produces two trios
+COMPLETETRIOSFAMIDS = [row['FamilyID']+'_'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
 TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
-TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETETRIOSFAMIDS]
+
+# quads are one family
+COMPLETEFAMILYFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
+
+TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -71,8 +76,11 @@ workdir: config['projdir']
 
 rule all:
     input: 
-        trios = TRIOGEMS,
-        phased = config['datadirs']['vcfs'] + "/joint.all.trio.phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        trios = TRIOVCFS,
+        families = FAMILYVCFS,
+        phased = config['datadirs']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+#include TRIOGEMS for gemini (GRCh37 only)
+
 
 rule sample_concordance:
     output:
@@ -144,7 +152,9 @@ rule printbams:
 
 rule printtrios:
     run:
-        print(TRIOGEMS)
+        print(EXISTINGSAMPLES)
+        print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
+        print("gems: {0}".format(TRIOGEMS))
 
 #### Sequence ####
 # make symlinks
@@ -542,16 +552,22 @@ rule make_gvcf:
         -o {output.gvcf}
         """
 
-# only one trio per vcf
-# the family argument is really for sanity checking
+# if supplid a subject return either only one trio for that subject
+# if supplied 'family' as the subject, then all members, including siblings are returned
+# the family argument is really for sanity checking if a subject is given
 def gvcf_samples_in_family(family,subject):
     # joint means all existing samples
     if family == 'joint':
         return [GVCFS,GVCFSLIST]
     else:
-        rows = sample_table.loc[sample_table['FamilyID'] ==  sample_table['Subject'] == subject]
+        if subject == 'family':
+            rows = sample_table.loc[(sample_table['FamilyID'] == family)]
+        else:
+            rows = sample_table.loc[(sample_table['FamilyID'] == family) & (sample_table['Subject'] == subject)]
         samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
-        assert(len(samples)<=3 and len(samples)>0)
+        assert(len(samples)>0)
+        if subject != 'family':
+            assert(len(samples)==3)
         gvcfs = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
         gvcfslist = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
         return [gvcfs, gvcfslist]
@@ -561,7 +577,7 @@ rule trio_vcfs:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{family}.{subject}.trio.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{family}_{subject}.trio.vcf"
     params:
         jar = config['jars']['gatk'],
         ref = config['ref'],
@@ -578,7 +594,30 @@ rule trio_vcfs:
         {params.gvcfslist} \
         -o {output.vcf}
         """
-        
+
+rule family_vcfs:
+    input:
+        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
+        java = config['tools']['java']
+    output:
+        vcf = config['datadirs']['vcfs'] + "/{family}.family.vcf"
+    params:
+        jar = config['jars']['gatk'],
+        ref = config['ref'],
+        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[1],
+        javaopts = config['tools']['javaopts'],
+        db = config['dbsnp']
+    shell:
+        """
+        {input.java} {params.javaopts} -jar {params.jar} \
+        -T GenotypeGVCFs \
+        --dbsnp {params.db} \
+        -nt 8 \
+        -R {params.ref} \
+        {params.gvcfslist} \
+        -o {output.vcf}
+        """
+
 def samples_in_family(family):
     rows = sample_table.loc[sample_table['FamilyID'] ==  family]
     for row in rows:
@@ -635,11 +674,11 @@ rule sample_table_to_pedfile:
 
 rule run_phase_by_transmission:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.trio.vcf",
         ped = config['pedfile'],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.phased.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.trio.phased.vcf",
         mvf = config['datadirs']['vcfs'] + "/{file}.mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
