@@ -624,7 +624,8 @@ rule family_vcfs:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{family}.family.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{family}.family.vcf",
+        idx = config['datadirs']['vcfs'] + "/{family}.family.vcf.idx"
     log:
         config['datadirs']['log'] + "/{family}.family.vcf.log"
     params:
@@ -725,6 +726,7 @@ rule run_phase_by_transmission:
         java = config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.trio.phased.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.trio.phased.vcf.idx",
         mvf = config['datadirs']['vcfs'] + "/{file}.mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
@@ -751,13 +753,14 @@ rule gatk_snps_only:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.snps.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log:
-        config['datadirs']['log'] + "log/{file}.gatk_snps_only.log"
+        config['datadirs']['log'] + "/{file}.gatk_snps_only.log"
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -773,13 +776,14 @@ rule gatk_indels_only:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.indels.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log:
-        config['datadirs']['log'] + "log/{file}.gatk_indels_only.log"
+        config['datadirs']['log'] + "/{file}.gatk_indels_only.log"
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -797,7 +801,8 @@ rule gatk_hard_filtration_snps:
         vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf",
         java = config['tools']['java']
     output:
-        config['datadirs']['vcfs'] + "/{file}.snps.hard.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.snps.hard.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.snps.hard.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -808,7 +813,7 @@ rule gatk_hard_filtration_snps:
         "{input.java} {params.javaopts} -jar {params.jar} "
         "-R {params.ref} "
         "-T VariantFiltration "
-        "-o {output} "
+        "-o {output.vcf} "
         "--variant {input.vcf} "
         "--filterExpression \"QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0\" "
         "--filterName \"GATK3.5-hard-filter\" "
@@ -819,7 +824,8 @@ rule gatk_hard_filtration_indels:
         vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf",
         java = config['tools']['java']
     output:
-        config['datadirs']['vcfs'] + "/{file}.indels.hard.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.indels.hard.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.indels.hard.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -830,7 +836,7 @@ rule gatk_hard_filtration_indels:
         "{input.java} {params.javaopts} -jar {params.jar} "
         "-R {params.ref} "
         "-T VariantFiltration "
-        "-o {output} "
+        "-o {output.vcf} "
         "--variant {input.vcf} "
         "--filterExpression \"QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0\" "
         "--filterName \"GATK3.5-hard-filter\" "
@@ -841,7 +847,8 @@ rule select_passing:
         vcf = config['datadirs']['vcfs'] + "/{file}.{type}.hard.vcf",
         java = config['tools']['java']
     output:
-        config['datadirs']['vcfs'] + "/{file}.{type}.filtered.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.{type}.filtered.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.{type}.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -852,7 +859,7 @@ rule select_passing:
         "{input.java} {params.javaopts} -jar {params.jar} "
         "-R {params.ref} "
         " -T SelectVariants "
-        "-o {output} "
+        "-o {output.vcf} "
         "--variant {input.vcf} "
         "--excludeFiltered "
         ">& {log}"
@@ -868,7 +875,8 @@ rule gatk_combine_variants:
         indels = config['datadirs']['vcfs'] + "/{file}.indels.filtered.vcf",
         java = config['tools']['java']
     output:
-        combo = config['datadirs']['vcfs'] + "/{file}.com.filtered.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.com.filtered.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.com.filtered.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -881,7 +889,7 @@ rule gatk_combine_variants:
         "-T CombineVariants "
         "--variant  {input.snps} "
         "--variant  {input.indels} "
-        "-o {output} "
+        "-o {output.vcf} "
         "--assumeIdenticalSamples "
         ">& {log}"
 
