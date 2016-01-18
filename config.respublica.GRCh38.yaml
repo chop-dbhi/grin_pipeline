@@ -16,20 +16,21 @@ projdir: /mnt/lustre/users/leipzigj/GRIN/
 datadirs:
     fastq:            fastq
     samples:          samples
-    fastqc:           fastqc
-    sams:             sams
-    bams:             bams
-    picard:           picard
-    realigned:        realigned
-    lists:            lists
-    recalibrated:     recalibrated
-    postrecalibrated: postrecalibrated
-    pdfs:             pdfs
-    gvcfs:            gvcfs
-    vcfs:             vcfs
-    gemini:           gemini
+    fastqc:           qc/fastqc
+    sams:             GRCh38/sams
+    bams:             GRCh38/bams
+    picard:           GRCh38/picard
+    realigned:        GRCh38/realigned
+    lists:            GRCh38/lists
+    recalibrated:     GRCh38/recalibrated
+    postrecalibrated: GRCh38/postrecalibrated
+    pdfs:             GRCh38/pdfs
+    gvcfs:            GRCh38/gvcfs
+    vcfs:             GRCh38/vcfs
+    vtpeek:           GRCh38/qc/vcf
+    gemini:           GRCh38/gemini
+    analysis:         GRCh38/analysis
     log:              logs
-
 # !!python/object/apply:os.path.join
 
 tools:
@@ -73,6 +74,23 @@ jars:
         db:
             GRCh38.76
         ud:
-            10
+            '10'
         format:
             -classic
+analysis:
+    rlibrary:
+        /mnt/isilon/cbmi/variome/leipzig/R/x86_64-redhat-linux-gnu-library/3.2
+    bsgenome:
+        BSgenome.Hsapiens.UCSC.hg38
+    txdb:
+        TxDb.Hsapiens.UCSC.hg38.knownGene
+    snpdb:
+        SNPlocs.Hsapiens.dbSNP144.GRCh38
+    esp:
+        MafDb.ESP6500SI.V2.SSA137
+    exac:
+        MafDb.ExAC.r0.3.sites
+    sift:
+        SIFT.Hsapiens.dbSNP137
+    phylo:
+        humanGenesPhylostrata

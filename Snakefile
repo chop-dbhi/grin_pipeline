@@ -1,6 +1,7 @@
 import glob
 import re
 import pandas
+from snakemake.utils import R
 from functools import cmp_to_key
 """
 run on respublica
@@ -41,10 +42,18 @@ assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
-# includes quads
-COMPLETETRIOSFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+# a quad produces two trios
+COMPLETETRIOSFAMIDS = set([row['FamilyID']+'_'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
-TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".db" for trio in COMPLETETRIOSFAMIDS]
+
+# quads are one family
+COMPLETEFAMILYFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
+
+TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
+
+ANALYSES = [config['datadirs']['analysis'] + "/" + trio + ".html" for trio in COMPLETETRIOSFAMIDS]
+
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -71,16 +80,17 @@ workdir: config['projdir']
 
 rule all:
     input: 
-        trios = TRIOGEMS,
-        phased = config['datadirs']['vcfs'] + "/joint.trio.phased.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        trios = TRIOVCFS,
+        families = FAMILYVCFS,
+        analysis = ANALYSES,
+        phased = config['datadirs']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+#include TRIOGEMS for gemini (GRCh37 only)
 
-rule basehead:
-    run:
-        print(FASTQS)
+rule triovcfs:
+    input: TRIOVCFS
 
-rule print_allpairs:
-    run:
-        print(ALLPAIRNAMES)
+rule analyses:
+    input: ANALYSES
 
 rule sample_concordance:
     output:
@@ -98,7 +108,11 @@ rule sample_concordance:
             f.write("{0}\n".format(sample))
         print("Manifested Pairs (in sample table): {0}".format(len(PAIRNAMESINSAMPLETABLE)))
         print("Fastqs: {0} Lanes in sample table {1}".format(len(FASTQS), len(PAIRNAMESINSAMPLETABLE)))
-        
+
+rule mkdirs:
+    run:
+        for adir in config['datadirs']:
+            shell("mkdir -p " + config['datadirs'][adir])
 
 rule dummy:    # just to test the python codes above
     input: "Snakefile"
@@ -142,6 +156,16 @@ rule make_bais:
 rule sortbams:
     input: DBAMS
 
+rule printbams:
+    run:
+        print(BAMS)
+
+rule printtrios:
+    run:
+        print(EXISTINGSAMPLES)
+        print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
+        print("gems: {0}".format(TRIOGEMS))
+
 #### Sequence ####
 # make symlinks
 # do this once
@@ -157,11 +181,11 @@ rule symlinks:
 ### QC ####
 rule fastqc: 
     input: 
-        pair1 = config['datadirs']['samples'] + "/{sample}1.fastq.gz",
-        pair2 = config['datadirs']['samples'] + "/{sample}2.fastq.gz",
+        pair1 = config['datadirs']['fastq'] + "/{sample}1.fastq.gz",
+        pair2 = config['datadirs']['fastq'] + "/{sample}2.fastq.gz",
         seq2qc = config['tools']['seq2qc']
     log: 
-        config['datadirs']['log'] + "/{sample}.log" 
+        config['datadirs']['log'] + "/{sample}.fastqc.log" 
     output: 
         pair1 = config['datadirs']['fastqc'] + "/{sample}1_fastqc.zip",
         pair2 = config['datadirs']['fastqc'] + "/{sample}2_fastqc.zip",
@@ -175,18 +199,20 @@ rule fastqc:
 #### Alignment ####
 rule align:
     input:
-        pair1 = config['datadirs']['samples'] + "/{sample}_R1.fastq.gz",
-        pair2 = config['datadirs']['samples'] + "/{sample}_R2.fastq.gz",
-        makesam = config['tools']['makesam']
+        pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq.gz",
+        pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
+        align = config['tools']['align']
     output:
         sam = config['datadirs']['sams'] + "/{sample}.sam" # may be set to temp
     threads:
         12   # also depends on -j
+    log: 
+        config['datadirs']['log'] + "/{sample}.novoalign.log"
     params:
         refidx = config['refidx']
     shell:
         """
-        {input.makesam} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} > {output.sam}
+        {input.align} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} 1> {output.sam} 2> {log}
         """
 
 rule sam_to_bam:
@@ -432,7 +458,8 @@ rule analyze_bqsr:
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
 def get_all_sorted_bams(samplename):
-    return glob.glob("{0}*.sorted.bam".format(samplename))
+    bams = [bam for bam in BAMS if bam.startswith(samplename)]
+    return(bams)
 
 rule merge_lanes:
     input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = config['tools']['samtools']
@@ -535,40 +562,91 @@ rule make_gvcf:
         -o {output.gvcf}
         """
 
-def gvcf_samples_in_family(family):
+# if supplid a subject return either only one trio for that subject
+# if supplied 'family' as the subject, then all members, including siblings are returned
+# the family argument is really for sanity checking if a subject is given
+def gvcf_samples_in_family(family,subject):
     # joint means all existing samples
     if family == 'joint':
         return [GVCFS,GVCFSLIST]
     else:
-        rows = sample_table.loc[sample_table['FamilyID'] ==  family]
+        if subject == 'family':
+            rows = sample_table.loc[(sample_table['FamilyID'] == family)]
+        else:
+            rows = sample_table.loc[(sample_table['FamilyID'] == family) & (sample_table['Subject'] == subject)]
         samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+        assert(len(samples)>0)
+        if subject != 'family':
+            assert(len(samples)==3)
         gvcfs = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
         gvcfslist = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
         return [gvcfs, gvcfslist]
 
+# make sure the family is done first
+# if family size is 3, then you're done, just copy
+# otherwise make both trios
 rule trio_vcfs:
     input:
-        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family)[0],
+        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
+        family = config['datadirs']['vcfs'] + "/{family}.family.vcf",
+        familygvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{family}.trio.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{family}_{subject}.trio.vcf"
+    log:
+        config['datadirs']['log'] + "/{family}_{subject}.trio.vcf.log"
     params:
         jar = config['jars']['gatk'],
         ref = config['ref'],
-        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family)[1],
+        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[1],
         javaopts = config['tools']['javaopts'],
         db = config['dbsnp']
+    threads: 8
+    run:
+        assert(len(gvcfs)==3)
+        # use the family count to determine course of action
+        if len(familygvcfs)==3:
+            shell("cp {input.family} {output.vcf}")
+        else:
+            shell("""
+            {input.java} {params.javaopts} -jar {params.jar} \
+            -T GenotypeGVCFs \
+            --disable_auto_index_creation_and_locking_when_reading_rods \
+            --dbsnp {params.db} \
+            -nt {threads} \
+            -R {params.ref} \
+            {params.gvcfslist} \
+            -o {output.vcf} 2> {log}
+            """)
+
+rule family_vcfs:
+    input:
+        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
+        java = config['tools']['java']
+    output:
+        vcf = config['datadirs']['vcfs'] + "/{family}.family.vcf",
+        idx = config['datadirs']['vcfs'] + "/{family}.family.vcf.idx"
+    log:
+        config['datadirs']['log'] + "/{family}.family.vcf.log"
+    params:
+        jar = config['jars']['gatk'],
+        ref = config['ref'],
+        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[1],
+        javaopts = config['tools']['javaopts'],
+        db = config['dbsnp']
+    threads: 8
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T GenotypeGVCFs \
+        --disable_auto_index_creation_and_locking_when_reading_rods \
         --dbsnp {params.db} \
-        -nt 8 \
+        -nt {threads} \
         -R {params.ref} \
         {params.gvcfslist} \
-        -o {output.vcf}
+        -o {output.vcf} 2> {log}
         """
-        
+
 def samples_in_family(family):
     rows = sample_table.loc[sample_table['FamilyID'] ==  family]
     for row in rows:
@@ -595,8 +673,8 @@ rule sample_table_to_pedfile:
         complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
         trios = st.loc[complete_trios]
         trios['Sex']=trios['Sex'].replace(['M','F'],[1,2])
-        trios['Affected_status']=trios['Affected_status'].replace('unaffected',0)
-        trios['Affected_status']=trios['Affected_status'].replace('[^0].+', 1, regex=True)
+        trios['Affected_status']=trios['Affected_status'].replace('unaffected',1)
+        trios['Affected_status']=trios['Affected_status'].replace('[^1].+', 2, regex=True)
         ped = trios[[0,1,3,2,4,5]]
         ped = ped.fillna(0)
         moms = [mom for mom in list(ped['Mother'].dropna()) if mom not in list(ped['Subject'])]
@@ -608,7 +686,7 @@ rule sample_table_to_pedfile:
         momdf['Father']=0
         momdf['Mother']=0
         momdf['Sex']=2
-        momdf['Affected_status']=0
+        momdf['Affected_status']=1
         
         dadfams=ped[ped['Father'].isin(dads)]['FamilyID']
         daddf = pandas.DataFrame(dadfams)
@@ -616,20 +694,39 @@ rule sample_table_to_pedfile:
         daddf['Father']=0
         daddf['Mother']=0
         daddf['Sex']=1
-        daddf['Affected_status']=0
+        daddf['Affected_status']=1
         
         ped = ped.append([momdf,daddf])
         ped = ped.drop_duplicates()
         ped = ped.sort_values(by=['FamilyID','Subject'])
         ped.to_csv("{0}".format(output), sep='\t',index=False)
 
+# R's Varia
+rule analysis_pedfile:
+    input:
+        config['pedfile']
+    output:
+        config['datadirs']['analysis'] + "/{family}_{subject}.pedfile"
+    run:
+        globalpedfile = pandas.read_table("{0}".format(input))
+        # hashes in the family names confuse R
+        globalpedfile = globalpedfile.replace('#','',regex=True)
+        probandrow = globalpedfile[(globalpedfile['FamilyID'] == wildcards.family) & (globalpedfile['Subject'] == wildcards.subject)]
+        assert(len(probandrow)==1)
+        parentalrows = globalpedfile[(globalpedfile['Subject'] == probandrow['Father'].item()) | (globalpedfile['Subject'] == probandrow['Mother'].item())]
+        assert(len(parentalrows)==2)
+        ped = probandrow.append([parentalrows])
+        ped.to_csv("{0}".format(output), sep='\t',index=False)
+        
+        
 rule run_phase_by_transmission:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.trio.vcf",
         ped = config['pedfile'],
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.phased.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.trio.phased.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.trio.phased.vcf.idx",
         mvf = config['datadirs']['vcfs'] + "/{file}.mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
@@ -653,16 +750,17 @@ rule run_phase_by_transmission:
 
 rule gatk_snps_only:
     input:
-        vcf = "vcfs/{file}.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = "vcfs/{file}.snps.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.snps.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log:
-        config['datadirs']['log'] + "log/{file}.gatk_snps_only.log"
+        config['datadirs']['log'] + "/{file}.gatk_snps_only.log"
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -675,16 +773,17 @@ rule gatk_snps_only:
 
 rule gatk_indels_only:
     input:
-        vcf = "vcfs/{file}.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         java = config['tools']['java']
     output:
-        vcf = "vcfs/{file}.indels.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.indels.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
         javaopts = config['tools']['javaopts']
     log:
-        config['datadirs']['log'] + "log/{file}.gatk_indels_only.log"
+        config['datadirs']['log'] + "/{file}.gatk_indels_only.log"
     shell:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
@@ -699,10 +798,11 @@ rule gatk_indels_only:
 # this "filters out, not filters for" filterExpression
 rule gatk_hard_filtration_snps:
     input:
-        vcf = "vcfs/{file}.snps.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf",
         java = config['tools']['java']
     output:
-        "vcfs/{file}.snps.hard.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.snps.hard.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.snps.hard.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -713,7 +813,7 @@ rule gatk_hard_filtration_snps:
         "{input.java} {params.javaopts} -jar {params.jar} "
         "-R {params.ref} "
         "-T VariantFiltration "
-        "-o {output} "
+        "-o {output.vcf} "
         "--variant {input.vcf} "
         "--filterExpression \"QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0\" "
         "--filterName \"GATK3.5-hard-filter\" "
@@ -721,10 +821,11 @@ rule gatk_hard_filtration_snps:
 
 rule gatk_hard_filtration_indels:
     input:
-        vcf = "vcfs/{file}.indels.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf",
         java = config['tools']['java']
     output:
-        "vcfs/{file}.indels.hard.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.indels.hard.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.indels.hard.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -735,7 +836,7 @@ rule gatk_hard_filtration_indels:
         "{input.java} {params.javaopts} -jar {params.jar} "
         "-R {params.ref} "
         "-T VariantFiltration "
-        "-o {output} "
+        "-o {output.vcf} "
         "--variant {input.vcf} "
         "--filterExpression \"QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0\" "
         "--filterName \"GATK3.5-hard-filter\" "
@@ -743,10 +844,11 @@ rule gatk_hard_filtration_indels:
 
 rule select_passing:
     input:
-        vcf = "vcfs/{file}.{type}.hard.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.{type}.hard.vcf",
         java = config['tools']['java']
     output:
-        "vcfs/{file}.{type}.filtered.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.{type}.filtered.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.{type}.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -757,7 +859,7 @@ rule select_passing:
         "{input.java} {params.javaopts} -jar {params.jar} "
         "-R {params.ref} "
         " -T SelectVariants "
-        "-o {output} "
+        "-o {output.vcf} "
         "--variant {input.vcf} "
         "--excludeFiltered "
         ">& {log}"
@@ -769,11 +871,12 @@ rule select_passing:
 # """
 rule gatk_combine_variants:
     input:
-        snps = "vcfs/{file}.snps.filtered.vcf",
-        indels = "vcfs/{file}.indels.filtered.vcf",
+        snps = config['datadirs']['vcfs'] + "/{file}.snps.filtered.vcf",
+        indels = config['datadirs']['vcfs'] + "/{file}.indels.filtered.vcf",
         java = config['tools']['java']
     output:
-        combo = "vcfs/{file}.com.filtered.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.com.filtered.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.com.filtered.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -786,31 +889,31 @@ rule gatk_combine_variants:
         "-T CombineVariants "
         "--variant  {input.snps} "
         "--variant  {input.indels} "
-        "-o {output} "
+        "-o {output.vcf} "
         "--assumeIdenticalSamples "
         ">& {log}"
 
-rule gatk_cat_variants:
-    input:
-        snps = "vcfs/{file}.snps.filtered.vcf",
-        indels = "vcfs/{file}.indels.filtered.vcf",
-        java = config['tools']['java']
-    output:
-        combo = "vcfs/{file}.cat.filtered.vcf"
-    params:
-        jar  = config['jars']['gatk'],
-        ref = config['ref'],
-        javaopts = config['tools']['javaopts']
-    log:
-        "log/{file}.select_passing_variants.log"
-    shell:
-        "{input.java} {params.javaopts} -cp {params.jar} "
-        "org.broadinstitute.gatk.tools.CatVariants "
-        "-R {params.ref} "
-        "-V  {input.snps} "
-        "-V  {input.indels} "
-        "-out {output} "
-        ">& {log}"
+# rule gatk_cat_variants:
+#     input:
+#         snps = config['datadirs']['vcfs'] + "/{file}.snps.filtered.vcf",
+#         indels = config['datadirs']['vcfs'] + "/{file}.indels.filtered.vcf",
+#         java = config['tools']['java']
+#     output:
+#         combo = config['datadirs']['vcfs'] + "/{file}.cat.filtered.vcf"
+#     params:
+#         jar  = config['jars']['gatk'],
+#         ref = config['ref'],
+#         javaopts = config['tools']['javaopts']
+#     log:
+#         "log/{file}.select_passing_variants.log"
+#     shell:
+#         "{input.java} {params.javaopts} -cp {params.jar} "
+#         "org.broadinstitute.gatk.tools.CatVariants "
+#         "-R {params.ref} "
+#         "-V  {input.snps} "
+#         "-V  {input.indels} "
+#         "-out {output} "
+#         ">& {log}"
     
 #### Annotation ####
 rule ad_vcf:
@@ -850,6 +953,33 @@ rule normalize_for_gemini:
         {input.vt} normalize -r {params.ref} -o {output} {input.vcf}
         """
 
+rule vcf_qt:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf",
+        vt = config['tools']['vt']
+    output:
+        vcf = config['datadirs']['vtpeek'] + "/{file}.vtpeek.txt"
+    params:
+        ref = config['ref']
+    shell:
+        """
+        {input.vt} peek -o {output} {input.vcf}
+        """
+
+rule vcf_profile:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf",
+        vt = config['tools']['vt'],
+        ped = config['pedfile']
+    output:
+        vcf = config['datadirs']['vtpeek'] + "/{file}.vtmendelprofile.txt"
+    params:
+        ref = config['ref']
+    shell:
+        """
+        {input.vt} profile_mendelian -o {output} -p {input.ped} -x mendel {input.vcf}
+        """
+        
 # ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
@@ -879,18 +1009,18 @@ rule compress_vcf:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
         bgzip = config['tools']['bgzip']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.gz",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.bgz",
     shell:
         """
-        {input.bgzip} {input.vcf}
+        {input.bgzip} -c {input.vcf} > {output}
         """
 
 rule tabix:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.gz",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.bgz",
         tabix = config['tools']['tabix']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.gz.tbi",
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf.bgz.tbi",
     shell:
         """
         {input.tabix} -p vcf {input.vcf}
@@ -898,8 +1028,8 @@ rule tabix:
 
 rule gemini_db:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.gz",
-        tbi = config['datadirs']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.gz.tbi",
+        vcf = config['datadirs']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
+        tbi = config['datadirs']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz.tbi",
         ped = config['pedfile'],
         gemini = config['tools']['gemini']
     output:
@@ -911,6 +1041,61 @@ rule gemini_db:
         {input.gemini} load --cores {threads} -t snpEff -v {input.vcf} -p {input.ped} {output}
         """
 
+#### Analysis ####
+rule variantAnalysisSetup:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.ad.de.nm.vcf.bgz",
+        ped = config['pedfile'],
+    output:
+        config['datadirs']['analysis'] + "/{familypro}.uind.RData",
+        config['datadirs']['analysis'] + "/{familypro}.denovo.RData"
+    params:
+        rlibrary = config['analysis']['rlibrary'],
+        bsgenome = config['analysis']['bsgenome'],
+        txdb     = config['analysis']['txdb'],
+        snpdb    = config['analysis']['snpdb'],
+        esp      = config['analysis']['esp'],
+        exac     = config['analysis']['exac'],
+        sift     = config['analysis']['sift'],
+        phylo    = config['analysis']['phylo']
+    run:
+        R("""
+        .libPaths( c( .libPaths(), "{params.rlibrary}") )
+        param <- VariantFilteringParam(vcfFilenames={input.vcf},
+                                       pedFilename={input.pedfile}, bsgenome="{params.bsgenome}", 
+                                       txdb="{params.txdb}",   
+                                       snpdb="{params.snpdb}",
+                                       otherAnnotations=c("{params.esp}",
+                                                          "{params.exac}",
+                                                          "{params.sift}",
+                                                          "{params.phylo}"
+                                                         )
+        )
+        uind <- unrelatedIndividuals(param)
+        save(uind,file="{output.uind}")
+        denovo<-deNovo(param)
+        save(denovo,file="{output.denovo}")
+        """)
+
+rule variantAnalysis:
+    input:
+        config['datadirs']['analysis'] + "{familypro}.uind.RData",
+        config['datadirs']['analysis'] + "{familypro}.denovo.RData",
+        config['datadirs']['analysis'] + "{familypro}.pedfile"
+    output:
+        config['datadirs']['analysis'] + "{familypro}.html"
+    params:
+        rlibrary = config['analysis']['rlibrary']
+    run:
+        R("""
+        .libPaths( c( .libPaths(), "{params.rlibrary}") )
+        library(rmarkdown)
+        uind<- get(load('{input.uind}'))
+        denovo<- get(load('{input.denovo}'))
+        mytrio<-"{wildcards.familypro}"
+        rmarkdown::render("{input.source}",output_file="{output.html}")
+        """)
+    
 #### Report ####
 # create YAML file used in meta-FastQC report
 rule makeyaml:
