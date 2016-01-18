@@ -29,6 +29,7 @@ datadirs:
     vcfs:             GRCh38/vcfs
     vtpeek:           GRCh38/qc/vcf
     gemini:           GRCh38/gemini
+    analysis:         GRCh38/analysis
     log:              logs
 # !!python/object/apply:os.path.join
 
@@ -76,3 +77,20 @@ jars:
             '10'
         format:
             -classic
+analysis:
+    rlibrary:
+        /mnt/isilon/cbmi/variome/leipzig/R/x86_64-redhat-linux-gnu-library/3.2
+    bsgenome:
+        BSgenome.Hsapiens.UCSC.hg38
+    txdb:
+        TxDb.Hsapiens.UCSC.hg38.knownGene
+    snpdb:
+        SNPlocs.Hsapiens.dbSNP144.GRCh38
+    esp:
+        MafDb.ESP6500SI.V2.SSA137
+    exac:
+        MafDb.ExAC.r0.3.sites
+    sift:
+        SIFT.Hsapiens.dbSNP137
+    phylo:
+        humanGenesPhylostrata

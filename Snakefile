@@ -1,6 +1,7 @@
 import glob
 import re
 import pandas
+from snakemake.utils import R
 from functools import cmp_to_key
 """
 run on respublica
@@ -42,7 +43,7 @@ assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
 # a quad produces two trios
-COMPLETETRIOSFAMIDS = [row['FamilyID']+'_'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+COMPLETETRIOSFAMIDS = set([row['FamilyID']+'_'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
 
 # quads are one family
@@ -50,6 +51,9 @@ COMPLETEFAMILYFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows(
 FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
 
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
+
+ANALYSES = [config['datadirs']['analysis'] + "/" + trio + ".html" for trio in COMPLETETRIOSFAMIDS]
+
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -78,11 +82,15 @@ rule all:
     input: 
         trios = TRIOVCFS,
         families = FAMILYVCFS,
+        analysis = ANALYSES,
         phased = config['datadirs']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 #include TRIOGEMS for gemini (GRCh37 only)
 
 rule triovcfs:
     input: TRIOVCFS
+
+rule analyses:
+    input: ANALYSES
 
 rule sample_concordance:
     output:
@@ -677,7 +685,7 @@ rule sample_table_to_pedfile:
         momdf['Father']=0
         momdf['Mother']=0
         momdf['Sex']=2
-        momdf['Affected_status']=0
+        momdf['Affected_status']=1
         
         dadfams=ped[ped['Father'].isin(dads)]['FamilyID']
         daddf = pandas.DataFrame(dadfams)
@@ -685,22 +693,28 @@ rule sample_table_to_pedfile:
         daddf['Father']=0
         daddf['Mother']=0
         daddf['Sex']=1
-        daddf['Affected_status']=0
+        daddf['Affected_status']=1
         
         ped = ped.append([momdf,daddf])
         ped = ped.drop_duplicates()
         ped = ped.sort_values(by=['FamilyID','Subject'])
         ped.to_csv("{0}".format(output), sep='\t',index=False)
 
+# R's Varia
 rule analysis_pedfile:
     input:
         config['pedfile']
     output:
-        config['datadirs']['analysis'] + "{family}_{subject}.pedfile"
+        config['datadirs']['analysis'] + "/{family}_{subject}.pedfile"
     run:
         globalpedfile = pandas.read_table("{0}".format(input))
-        rows = globalpedfile[(sample_table['FamilyID'] == wildcards.family)&(sample_table['Subject'] == wildcards.subject)]
-        assert(len(rows)==1)
+        # hashes in the family names confuse R
+        globalpedfile = globalpedfile.replace('#','',regex=True)
+        probandrow = globalpedfile[(globalpedfile['FamilyID'] == wildcards.family) & (globalpedfile['Subject'] == wildcards.subject)]
+        assert(len(probandrow)==1)
+        parentalrows = globalpedfile[(globalpedfile['Subject'] == probandrow['Father'].item()) | (globalpedfile['Subject'] == probandrow['Mother'].item())]
+        assert(len(parentalrows)==2)
+        ped = probandrow.append([parentalrows])
         ped.to_csv("{0}".format(output), sep='\t',index=False)
         
         
@@ -1020,13 +1034,59 @@ rule gemini_db:
         """
 
 #### Analysis ####
-rule variantFiltration:
+rule variantAnalysisSetup:
     input:
-        config['datadirs']['vcfs'] + "vcfs/{familypro}.trio.phased.com.filtered.vcf.bgz"
+        vcf = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.ad.de.nm.vcf.bgz",
+        ped = config['pedfile'],
+    output:
+        config['datadirs']['analysis'] + "/{familypro}.uind.RData",
+        config['datadirs']['analysis'] + "/{familypro}.denovo.RData"
+    params:
+        rlibrary = config['analysis']['rlibrary'],
+        bsgenome = config['analysis']['bsgenome'],
+        txdb     = config['analysis']['txdb'],
+        snpdb    = config['analysis']['snpdb'],
+        esp      = config['analysis']['esp'],
+        exac     = config['analysis']['exac'],
+        sift     = config['analysis']['sift'],
+        phylo    = config['analysis']['phylo']
+    run:
+        R("""
+        .libPaths( c( .libPaths(), "{params.rlibrary}") )
+        param <- VariantFilteringParam(vcfFilenames={input.vcf},
+                                       pedFilename={input.pedfile}, bsgenome="{params.bsgenome}", 
+                                       txdb="{params.txdb}",   
+                                       snpdb="{params.snpdb}",
+                                       otherAnnotations=c("{params.esp}",
+                                                          "{params.exac}",
+                                                          "{params.sift}",
+                                                          "{params.phylo}"
+                                                         )
+        )
+        uind <- unrelatedIndividuals(param)
+        save(uind,file="{output.uind}")
+        denovo<-deNovo(param)
+        save(denovo,file="{output.denovo}")
+        """)
+
+rule variantAnalysis:
+    input:
+        config['datadirs']['analysis'] + "{familypro}.uind.RData",
+        config['datadirs']['analysis'] + "{familypro}.denovo.RData",
         config['datadirs']['analysis'] + "{familypro}.pedfile"
     output:
         config['datadirs']['analysis'] + "{familypro}.html"
-    
+    params:
+        rlibrary = config['analysis']['rlibrary']
+    run:
+        R("""
+        .libPaths( c( .libPaths(), "{params.rlibrary}") )
+        library(rmarkdown)
+        uind<- get(load('{input.uind}'))
+        denovo<- get(load('{input.denovo}'))
+        mytrio<-"{wildcards.familypro}"
+        rmarkdown::render("{input.source}",output_file="{output.html}")
+        """)
     
 #### Report ####
 # create YAML file used in meta-FastQC report
