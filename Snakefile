@@ -71,6 +71,9 @@ PDFS = [config['datadirs']['pdfs'] + "/" + name + ".pdf" for name in EXISTINGSAM
 GVCFS = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]
 GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES])
 
+ANNOVARDBS = [config[annovardbdir] + "/" + config['builderve'] + "_" + db + ".installed" for db in config['annovardbs']]
+
+protocol = string.join(config['annovardbs'], ',')
 
 INDELS = config['datadirs']['realigned'] + "/indels.list"
 
@@ -177,6 +180,86 @@ rule symlinks:
         fastq=os.path.basename(input).replace('_001','')
         os.symlink(input,fastq)
         """
+
+#### run annovar  ####
+
+rule table_annovar:
+    input:
+        ANNOVARDBS,
+        avinput = config['datadirs']['gvcfs'] + "/joint.vcf",
+        annovar = config['tools']['table_annovar']
+    output:
+        config['datadirs']['gvcfs'] + "/joint." + config['buildve'] + "_multianno.vcf"
+    params:
+        opts = "-buildver {config['buildve']} \
+                -protocol {protocol} \
+                -operation {config['operations']} \
+                -nastring . \
+                -out joint \
+                -tempdir /tmp \
+                -remove \
+                -dot2underline \
+                -vcfinput",
+        dbdir = config['annovardbdir']
+    shell:
+        """
+        {input.annovar} {params.opts} {input.avinput} {params.dbdir}
+        """
+
+rule run_annovar:
+    input:
+        ANNOVARDBS,
+        avinput = config['datadirs']['gvcfs'] + "/joint.avinput",
+        annovar = config['tools']['annotate_variation']
+    output:
+        config['datadirs']['gvcfs'] + "/annovar.done"
+    params:
+        opts = "-buildver {config['buildve']}",
+        dbdir = config['annovardbdir']
+    run:
+        # gene based annotation
+        shell("{input.annovar} -geneanno {params.opts} {input.avinput} {params.dbdir}")
+
+        for db in config['annovardbs']:
+
+            # region based annotation
+            shell("{input.annovar} -regionanno -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
+
+            # filter based annotation
+            shell("{input.annovar} -filter -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
+
+        shell("touch {ouput}")
+
+rule vcf2avinput:
+    input:
+        vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
+        cmd = config['tools']['vcf2avinput']
+    output:
+        config['datadirs']['gvcfs'] + "/joint.avinput",
+    shell:
+        "{input.cmd} -format vcf2old {input.vcf} -outfile {output}"
+
+rule install_annovar_db:
+    input:
+        annovar = config['tools']['annotate_variation']
+    output:
+        config[annovardbdir] + "/{genome}_{db}.installed"
+    params:
+        dbdir = config['annovardbdir'],
+        opts = config['annovaropts'][{genome}][{db}]
+    run:
+        if {wildcards.db} == 'ALL.sites.2014_10':
+            shell("{input.annovar} -buildver {wildcards.genome} {params.opts} 1000g2014oct {params.dbdir}")
+            shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.genome}_1000g2014oct.zip {wildcards.genome}_{db}.txt")
+        else:
+            shell("{input.annovar} -buildver {wildcards.genome} {params.opts} {wildcards.db} {params.dbdir}")
+        shell("touch {output}")
+
+rule install_1000g2014oct_db:
+    input:
+        annovar = config['tools']['annotate_variation']
+    output:
+        config[annovardbdir] + "/{genome}_{db}.installed"
 
 ### QC ####
 rule fastqc: 

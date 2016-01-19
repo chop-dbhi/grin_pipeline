@@ -1,0 +1,103 @@
+isilon: /mnt/isilon/cbmi/variome
+
+ped: ped.ped  # a PED pedigree file for PhaseByTransmission
+refgen:    /mnt/isilon/cbmi/variome/reference/human/hg19/hg19.fa
+refgenidx: /mnt/isilon/cbmi/variome/reference/human/hg19/hg19.nix
+siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
+
+buildve: hg38
+pedfile: pedfile.txt
+
+annovardbdir: /mnt/isilon/cbmi/variome/annovar/humandb
+annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
+
+# specify operations for table_annovar.pl, correspoinding to above databases
+operations: "g,r,f,f,f,f,f,f,f,f,f,f,f" # g: gene-based
+                                        # r: region-based
+                                        # f: filter-based
+
+annovaropts:
+    hg19:
+        refGene: -downdb -webfrom annovar
+        esp6500siv2_all: -downdb -webfrom annovar
+        esp6500siv2_ea: -downdb -webfrom annovar
+        esp6500siv2_aa: -downdb -webfrom annovar
+        exac03: -downdb -webfrom annovar
+        kaviar_20150923: -downdb -webfrom annovar
+        exac03nontcga: -downdb -webfrom annovar
+        exac03nonpsych: -downdb -webfrom annovar
+        hrcr1: -downdb -webfrom annovar
+        dbnsfp30a: -downdb -webfrom annovar
+        1000g2014oct: -downdb -webfrom annovar
+        snp138: -downdb -webfrom annovar
+        cytoBand: -downdb
+        genomicSuperDups: -downdb
+    hg38:
+        refGene: -downdb -webfrom annovar
+        esp6500siv2_all: -downdb -webfrom annovar
+        esp6500siv2_ea: -downdb -webfrom annovar
+        esp6500siv2_aa: -downdb -webfrom annovar
+        exac03: -downdb -webfrom annovar
+        kaviar_20150923: -downdb -webfrom annovar
+        exac03nontcga: -downdb -webfrom annovar
+        exac03nonpsych: -downdb -webfrom annovar
+        hrcr1: -downdb -webfrom annovar
+        dbnsfp30a: -downdb -webfrom annovar
+        cytoBand: -downdb
+        genomicSuperDups: -downdb
+        1000g2014oct: -downdb
+        snp138: -downdb
+
+projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
+# subdirectories relative to projdir
+datadirs:
+    fastq:            fastq
+    samples:          samples
+    fastqc:           fastqc
+    sams:             sams
+    bams:             bams
+    picard:           picard
+    realigned:        realigned
+    lists:            lists
+    recalibrated:     recalibrated
+    postrecalibrated: postrecalibrated
+    pdfs:             pdfs
+    gvcfs:            gvcfs
+    log:              log 
+
+# !!python/object/apply:os.path.join
+
+tools:
+    java:
+        /mnt/isilon/cbmi/variome/bin/java
+    # must be set separately from java because java will be treated as input
+    javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/
+    seq2qc:
+        /mnt/isilon/cbmi/variome/bin/fastqc
+    sam2bam:
+        /mnt/isilon/cbmi/variome/bin/samtools
+    sortbam:
+        /mnt/isilon/cbmi/variome/bin/novosort
+    makesam:
+        /mnt/isilon/cbmi/variome/bin/novoalign
+    annotate_variation: 
+        /mnt/isilon/cbmi/variome/bin/annotate_variation.pl
+    table_annovar: 
+        /mnt/isilon/cbmi/variome/bin/table_annovar.pl
+    vcf2avinput: 
+        /mnt/isilon/cbmi/variome/bin/"convert2annovar.pl
+jars:
+    picard:
+        /mnt/isilon/cbmi/variome/bin/picard-1.57.jar
+    markduplicates:
+        /mnt/isilon/cbmi/variome/bin/picard/MarkDuplicates.jar
+    buildbamindex:
+        /mnt/isilon/cbmi/variome/bin/picard/BuildBamIndex.jar
+    addorreplacereadgroups:
+        /mnt/isilon/cbmi/variome/bin/picard/AddOrReplaceReadGroups.jar
+    gatk:
+        /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
+    snpeff:
+        /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
+    snpeffcnf:
+        /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.config
