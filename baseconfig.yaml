@@ -1,12 +1,9 @@
 isilon: /mnt/isilon/cbmi/variome
 
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-refgen:    /mnt/isilon/cbmi/variome/reference/human/hg19/hg19.fa
-refgenidx: /mnt/isilon/cbmi/variome/reference/human/hg19/hg19.nix
 siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
-
-buildve: hg38
-pedfile: pedfile.txt
+sample_table: sample_table.txt
+pedfile: samples.ped
 
 annovardbdir: /mnt/isilon/cbmi/variome/annovar/humandb
 annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
@@ -49,21 +46,6 @@ annovaropts:
         snp138: -downdb
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
-# subdirectories relative to projdir
-datadirs:
-    fastq:            fastq
-    samples:          samples
-    fastqc:           fastqc
-    sams:             sams
-    bams:             bams
-    picard:           picard
-    realigned:        realigned
-    lists:            lists
-    recalibrated:     recalibrated
-    postrecalibrated: postrecalibrated
-    pdfs:             pdfs
-    gvcfs:            gvcfs
-    log:              log 
 
 # !!python/object/apply:os.path.join
 
@@ -74,30 +56,48 @@ tools:
     javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/
     seq2qc:
         /mnt/isilon/cbmi/variome/bin/fastqc
-    sam2bam:
+    samtools:
         /mnt/isilon/cbmi/variome/bin/samtools
     sortbam:
         /mnt/isilon/cbmi/variome/bin/novosort
-    makesam:
+    align:
         /mnt/isilon/cbmi/variome/bin/novoalign
+    vt:
+        /mnt/isilon/cbmi/variome/bin/vt/vt
+    tabix:
+        /mnt/isilon/cbmi/variome/bin/tabix
+    bgzip:
+        /mnt/isilon/cbmi/variome/bin/bgzip
+    gemini:
+        /mnt/isilon/cbmi/variome/bin/gemini/bin/gemini
     annotate_variation: 
         /mnt/isilon/cbmi/variome/bin/annotate_variation.pl
     table_annovar: 
         /mnt/isilon/cbmi/variome/bin/table_annovar.pl
     vcf2avinput: 
         /mnt/isilon/cbmi/variome/bin/"convert2annovar.pl
+
 jars:
     picard:
-        /mnt/isilon/cbmi/variome/bin/picard-1.57.jar
-    markduplicates:
-        /mnt/isilon/cbmi/variome/bin/picard/MarkDuplicates.jar
-    buildbamindex:
-        /mnt/isilon/cbmi/variome/bin/picard/BuildBamIndex.jar
-    addorreplacereadgroups:
-        /mnt/isilon/cbmi/variome/bin/picard/AddOrReplaceReadGroups.jar
+        path:
+            /mnt/isilon/cbmi/variome/bin/picard-tools-2.0.1/picard.jar
+        markdups:
+            MarkDuplicates
+        index:
+            BuildBamIndex
+        readgroups:
+            AddOrReplaceReadGroups
     gatk:
         /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
     snpeff:
-        /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
-    snpeffcnf:
-        /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.config
+        path:
+            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
+        cnf:
+            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.GRCh38.config
+        db: 
+            GRCh38.76
+        ud: 
+            '10'
+        format:
+            -classic
+

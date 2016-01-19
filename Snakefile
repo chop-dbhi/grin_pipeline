@@ -9,7 +9,8 @@ source activate snakeenv
 snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G" 
 """
 
-configfile: "config.yaml"
+configfile: "baseconfig.yaml"
+configfile: "config.respublica.GRCh38.yaml" 
 
 SLINK = "GRIN/fastqc/"
 
