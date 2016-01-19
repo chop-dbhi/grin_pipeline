@@ -77,27 +77,3 @@ tools:
     vcf2avinput: 
         /mnt/isilon/cbmi/variome/bin/"convert2annovar.pl
 
-jars:
-    picard:
-        path:
-            /mnt/isilon/cbmi/variome/bin/picard-tools-2.0.1/picard.jar
-        markdups:
-            MarkDuplicates
-        index:
-            BuildBamIndex
-        readgroups:
-            AddOrReplaceReadGroups
-    gatk:
-        /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
-    snpeff:
-        path:
-            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
-        cnf:
-            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.GRCh38.config
-        db: 
-            GRCh38.76
-        ud: 
-            '10'
-        format:
-            -classic
-
