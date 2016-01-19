@@ -52,6 +52,7 @@ FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio i
 
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
+ANALYSISREADY = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
 ANALYSES = [config['datadirs']['analysis'] + "/" + trio + ".html" for trio in COMPLETETRIOSFAMIDS]
 
 
@@ -88,6 +89,9 @@ rule all:
 
 rule triovcfs:
     input: TRIOVCFS
+
+rule analysisready:
+    input: ANALYSISREADY
 
 rule analyses:
     input: ANALYSES
@@ -603,6 +607,7 @@ rule trio_vcfs:
         db = config['dbsnp']
     threads: 8
     run:
+        print(vcf)
         assert(len(gvcfs)==3)
         # use the family count to determine course of action
         if len(familygvcfs)==3:
@@ -709,13 +714,15 @@ rule analysis_pedfile:
         config['datadirs']['analysis'] + "/{family}_{subject}.pedfile"
     run:
         globalpedfile = pandas.read_table("{0}".format(input))
-        # hashes in the family names confuse R
-        globalpedfile = globalpedfile.replace('#','',regex=True)
+        
         probandrow = globalpedfile[(globalpedfile['FamilyID'] == wildcards.family) & (globalpedfile['Subject'] == wildcards.subject)]
         assert(len(probandrow)==1)
         parentalrows = globalpedfile[(globalpedfile['Subject'] == probandrow['Father'].item()) | (globalpedfile['Subject'] == probandrow['Mother'].item())]
         assert(len(parentalrows)==2)
         ped = probandrow.append([parentalrows])
+        
+        # hashes in the family names confuse R
+        ped = ped.replace('#','',regex=True)
         ped.to_csv("{0}".format(output), sep='\t',index=False)
         
         
@@ -742,8 +749,9 @@ rule run_phase_by_transmission:
         -V {input.vcf} \
         -ped {input.ped} \
         -mvf {output.mvf} \
-        -o {output.vcf} >& {log}
+        -o {output.vcf} 2> {log}
         """
+#        --disable_auto_index_creation_and_locking_when_reading_rods \
 
 # https://www.broadinstitute.org/gatk/guide/article?id=2806
 # https://github.com/chapmanb/bcbio-nextgen/blob/master/bcbio/variation/vfilter.py
@@ -768,7 +776,7 @@ rule gatk_snps_only:
         -R {params.ref} \
         -V {input.vcf} \
         -selectType SNP \
-        -o {output.vcf} >& {log}
+        -o {output.vcf} 2> {log}
         """
 
 rule gatk_indels_only:
@@ -791,7 +799,7 @@ rule gatk_indels_only:
         -R {params.ref} \
         -V {input.vcf} \
         -selectType INDEL \
-        -o {output.vcf} >& {log}
+        -o {output.vcf} 2> {log}
         """
         
 # hard filtration
@@ -817,7 +825,7 @@ rule gatk_hard_filtration_snps:
         "--variant {input.vcf} "
         "--filterExpression \"QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0\" "
         "--filterName \"GATK3.5-hard-filter\" "
-        ">& {log}"
+        "2> {log}"
 
 rule gatk_hard_filtration_indels:
     input:
@@ -840,7 +848,7 @@ rule gatk_hard_filtration_indels:
         "--variant {input.vcf} "
         "--filterExpression \"QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0\" "
         "--filterName \"GATK3.5-hard-filter\" "
-        ">& {log}"
+        "2> {log}"
 
 rule select_passing:
     input:
@@ -862,7 +870,7 @@ rule select_passing:
         "-o {output.vcf} "
         "--variant {input.vcf} "
         "--excludeFiltered "
-        ">& {log}"
+        "2> {log}"
 
 # """Run GATK CombineVariants to combine variant files.
 #
@@ -891,7 +899,7 @@ rule gatk_combine_variants:
         "--variant  {input.indels} "
         "-o {output.vcf} "
         "--assumeIdenticalSamples "
-        ">& {log}"
+        "2> {log}"
 
 # rule gatk_cat_variants:
 #     input:
@@ -913,7 +921,7 @@ rule gatk_combine_variants:
 #         "-V  {input.snps} "
 #         "-V  {input.indels} "
 #         "-out {output} "
-#         ">& {log}"
+#         "2> {log}"
     
 #### Annotation ####
 rule ad_vcf:
@@ -1041,14 +1049,20 @@ rule gemini_db:
         {input.gemini} load --cores {threads} -t snpEff -v {input.vcf} -p {input.ped} {output}
         """
 
+rule testR:
+    run:
+        R("""
+        rnorm(100)
+        """)
+
 #### Analysis ####
 rule variantAnalysisSetup:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.ad.de.nm.vcf.bgz",
-        ped = config['pedfile'],
+        vcf = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
+        ped = config['pedfile']
     output:
-        config['datadirs']['analysis'] + "/{familypro}.uind.RData",
-        config['datadirs']['analysis'] + "/{familypro}.denovo.RData"
+        uind = config['datadirs']['analysis'] + "/{familypro}.uind.RData",
+        denovo = config['datadirs']['analysis'] + "/{familypro}.denovo.RData"
     params:
         rlibrary = config['analysis']['rlibrary'],
         bsgenome = config['analysis']['bsgenome'],
@@ -1061,8 +1075,10 @@ rule variantAnalysisSetup:
     run:
         R("""
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
-        param <- VariantFilteringParam(vcfFilenames={input.vcf},
-                                       pedFilename={input.pedfile}, bsgenome="{params.bsgenome}", 
+        library(dplyr)
+        library(VariantFiltering)
+        param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
+                                       pedFilename="{input.ped}", bsgenome="{params.bsgenome}", 
                                        txdb="{params.txdb}",   
                                        snpdb="{params.snpdb}",
                                        otherAnnotations=c("{params.esp}",
@@ -1090,6 +1106,7 @@ rule variantAnalysis:
         R("""
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(rmarkdown)
+        library(DT)
         uind<- get(load('{input.uind}'))
         denovo<- get(load('{input.denovo}'))
         mytrio<-"{wildcards.familypro}"

@@ -13,6 +13,8 @@ source activate snakeenv
 conda install -c bioconda snakemake
 conda install pandas
 conda install drmaa
+conda config --add channels r
+conda install -c https://conda.anaconda.org/bioconda rpy2
 ```
 
 ### To run a trio
