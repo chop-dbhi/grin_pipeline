@@ -187,10 +187,10 @@ rule symlinks:
 rule table_annovar:
     input:
         ANNOVARDBS,
-        avinput = config['datadirs']['gvcfs'] + "/joint.vcf",
+        avinput = config['datadirs']['gvcfs'] + "/{file}.vcf",
         annovar = config['tools']['table_annovar']
     output:
-        config['datadirs']['gvcfs'] + "/joint." + config['buildve'] + "_multianno.vcf"
+        config['datadirs']['gvcfs'] + "/{file}." + config['buildve'] + "_multianno.vcf"
     params:
         opts = "-buildver {config['buildve']} \
                 -protocol {protocol} \
@@ -210,7 +210,7 @@ rule table_annovar:
 rule run_annovar:
     input:
         ANNOVARDBS,
-        avinput = config['datadirs']['gvcfs'] + "/joint.avinput",
+        avinput = config['datadirs']['gvcfs'] + "/{file}.avinput",
         annovar = config['tools']['annotate_variation']
     output:
         config['datadirs']['gvcfs'] + "/annovar.done"
@@ -229,14 +229,14 @@ rule run_annovar:
             # filter based annotation
             shell("{input.annovar} -filter -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
 
-        shell("touch {ouput}")
+        shell("touch {output}")
 
 rule vcf2avinput:
     input:
-        vcf = config['datadirs']['gvcfs'] + "/joint.vcf",
+        vcf = config['datadirs']['gvcfs'] + "/{file}.vcf",
         cmd = config['tools']['vcf2avinput']
     output:
-        config['datadirs']['gvcfs'] + "/joint.avinput",
+        config['datadirs']['gvcfs'] + "/{file}.avinput",
     shell:
         "{input.cmd} -format vcf2old {input.vcf} -outfile {output}"
 
@@ -255,12 +255,6 @@ rule install_annovar_db:
         else:
             shell("{input.annovar} -buildver {wildcards.genome} {params.opts} {wildcards.db} {params.dbdir}")
         shell("touch {output}")
-
-rule install_1000g2014oct_db:
-    input:
-        annovar = config['tools']['annotate_variation']
-    output:
-        config[annovardbdir] + "/{genome}_{db}.installed"
 
 ### QC ####
 rule fastqc: 
