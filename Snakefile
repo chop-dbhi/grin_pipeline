@@ -10,9 +10,9 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 """
 
 configfile: "baseconfig.yaml"
-configfile: "config.respublica.GRCh38.yaml" 
+configfile: "config.yaml" 
 
-SLINK = "GRIN/fastqc/"
+SLINK = "{{SLINK}}"
 
 DOWNLOADDIR = "kiel"
 DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
@@ -54,7 +54,7 @@ FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio i
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
 ANALYSISREADY = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
-ANALYSES = [config['datadirs']['analysis'] + "/" + trio + ".html" for trio in COMPLETETRIOSFAMIDS]
+ANALYSES = [config['datadirs']['analysis'] + "/" + trio + ".denovo.html" for trio in COMPLETETRIOSFAMIDS]
 
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
@@ -73,9 +73,9 @@ PDFS = [config['datadirs']['pdfs'] + "/" + name + ".pdf" for name in EXISTINGSAM
 GVCFS = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]
 GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES])
 
-ANNOVARDBS = [config[annovardbdir] + "/" + config['buildve'] + "_" + db + ".installed" for db in config['annovardbs']]
+ANNOVARDBS = [config['annovardbdir'] + "/" + config['buildve'] + "_" + db + ".installed" for db in config['annovardbs']]
 
-protocol = string.join(config['annovardbs'], ',')
+protocol = ','.join(config['annovardbs'])
 
 INDELS = config['datadirs']['realigned'] + "/indels.list"
 
@@ -248,12 +248,12 @@ rule install_annovar_db:
     input:
         annovar = config['tools']['annotate_variation']
     output:
-        config[annovardbdir] + "/{genome}_{db}.installed"
+        config['annovardbdir'] + "/{genome}_{db}.installed"
     params:
         dbdir = config['annovardbdir'],
     run:
         opts = config['annovaropts'][wildcards.genome][wildcards.db]
-        if {wildcards.db} == 'ALL.sites.2014_10':
+        if wildcards.db == 'ALL.sites.2014_10':
             shell("{input.annovar} -buildver {wildcards.genome} {opts} 1000g2014oct {params.dbdir}")
             shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.genome}_1000g2014oct.zip {wildcards.genome}_{wildcards.db}.txt")
         else:
@@ -1204,14 +1204,14 @@ rule variantAnalysisSetupDeNovo:
         save(denovo,file="{output.denovo}")
         """)
 
-rule variantAnalysis:
+rule variantAnalysisAll:
     input:
         uind = config['datadirs']['analysis'] + "/{familypro}.uind.RData",
         denovo = config['datadirs']['analysis'] + "/{familypro}.denovo.RData",
         ped = config['datadirs']['analysis'] + "/{familypro}.pedfile",
         source = "grin_epilepsy.Rmd"
     output:
-        html = config['datadirs']['analysis'] + "/{familypro}.html"
+        html = config['datadirs']['analysis'] + "/{familypro}.all.html"
     params:
         rlibrary = config['analysis']['rlibrary']
     run:
@@ -1219,11 +1219,30 @@ rule variantAnalysis:
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(rmarkdown)
         uind<- get(load('{input.uind}'))
-        denovo<- get(load('{input.denovo}'))
         mytrio<-"{wildcards.familypro}"
+        ped <-read.table("{input.ped}",header=TRUE)
         rmarkdown::render("{input.source}",output_file="{output.html}")
         """)
-    
+
+rule variantAnalysisDeNovo:
+    input:
+        denovo = config['datadirs']['analysis'] + "/{familypro}.denovo.RData",
+        ped = config['datadirs']['analysis'] + "/{familypro}.pedfile",
+        source = "grin_epilepsy_denovo.Rmd"
+    output:
+        html = config['datadirs']['analysis'] + "/{familypro}.denovo.html"
+    params:
+        rlibrary = config['analysis']['rlibrary']
+    run:
+        R("""
+        .libPaths( c( .libPaths(), "{params.rlibrary}") )
+        library(rmarkdown)
+        denovo<- get(load('{input.denovo}'))
+        mytrio<-"{wildcards.familypro}"
+        ped <-read.table("{input.ped}",header=TRUE)
+        rmarkdown::render("{input.source}",output_file="{output.html}")
+        """)
+        
 #### Report ####
 # create YAML file used in meta-FastQC report
 rule makeyaml:
@@ -1247,7 +1266,7 @@ rule makeyaml:
 #### Create Markdown index of FastQC report files
 rule makemd:
     output: 
-        md = "fastqc.md",
+        md = config['datadirs']['website'] + "/fastqc.md",
     run:
         note = """
 The latest version (v0.11.4) of FastQC was downloaded from the following URL:
@@ -1266,6 +1285,20 @@ and installed as &lt;isilon&gt;/bin/fastqc.
                out.write(" [R2]({{SLINK}}/fastqc/{0}_R2_fastqc.html)".format(name))
                out.write("\n\n")
                idx += 1
+
+rule siteindex:
+    input:
+        "Snakefile"
+    output: config['datadirs']['website'] + "/index.md"
+    run:
+        with open(output[0], 'w') as outfile:
+            outfile.write("""
+            #### FastQC Output
+            [fastqc.md](fastqc.md)
+            #### De novo analysis reports
+            """)
+            for s,p in zip(ANALYSES,COMPLETETRIOSFAMIDS):
+                outfile.write("> [`{0}`]({1}/{2})\n\n".format(p, SLINK, s))
 
 #### Internal
 onsuccess:
