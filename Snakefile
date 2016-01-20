@@ -72,7 +72,7 @@ PDFS = [config['datadirs']['pdfs'] + "/" + name + ".pdf" for name in EXISTINGSAM
 GVCFS = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]
 GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES])
 
-ANNOVARDBS = [config[annovardbdir] + "/" + config['buildve'] + "_" + db + ".installed" for db in config['annovardbs']]
+ANNOVARDBS = [config['annovardbdir'] + "/" + config['buildve'] + "_" + db + ".installed" for db in config['annovardbs']]
 
 protocol = string.join(config['annovardbs'], ',')
 
@@ -244,12 +244,12 @@ rule install_annovar_db:
     input:
         annovar = config['tools']['annotate_variation']
     output:
-        config[annovardbdir] + "/{genome}_{db}.installed"
+        config['annovardbdir'] + "/{genome}_{db}.installed"
     params:
         dbdir = config['annovardbdir'],
     run:
         opts = config['annovaropts'][wildcards.genome][wildcards.db]
-        if {wildcards.db} == 'ALL.sites.2014_10':
+        if wildcards.db == 'ALL.sites.2014_10':
             shell("{input.annovar} -buildver {wildcards.genome} {opts} 1000g2014oct {params.dbdir}")
             shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.genome}_1000g2014oct.zip {wildcards.genome}_{wildcards.db}.txt")
         else:

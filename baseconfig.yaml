@@ -1,7 +1,6 @@
 isilon: /mnt/isilon/cbmi/variome
 
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 sample_table: sample_table.txt
 pedfile: samples.ped
 
