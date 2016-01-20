@@ -1056,12 +1056,46 @@ rule testR:
         """)
 
 #### Analysis ####
-rule variantAnalysisSetup:
+rule variantAnalysisSetupUind:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
-        ped = config['pedfile']
+        filt = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.vcf.bgz",
+        snpeff = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz"
     output:
         uind = config['datadirs']['analysis'] + "/{familypro}.uind.RData",
+    params:
+        rlibrary = config['analysis']['rlibrary'],
+        bsgenome = config['analysis']['bsgenome'],
+        txdb     = config['analysis']['txdb'],
+        snpdb    = config['analysis']['snpdb'],
+        esp      = config['analysis']['esp'],
+        exac     = config['analysis']['exac'],
+        sift     = config['analysis']['sift'],
+        phylo    = config['analysis']['phylo']
+    run:
+        R("""
+        .libPaths( c( .libPaths(), "{params.rlibrary}") )
+        library(dplyr)
+        library(VariantFiltering)
+        uind_param <- VariantFilteringParam(vcfFilenames="{input.snpeff}",
+                                       bsgenome="{params.bsgenome}", 
+                                       txdb="{params.txdb}",   
+                                       snpdb="{params.snpdb}",
+                                       otherAnnotations=c("{params.esp}",
+                                                          "{params.exac}",
+                                                          "{params.sift}",
+                                                          "{params.phylo}"
+                                                         )
+        )
+        cat("loading unrelated\n")
+        uind <- unrelatedIndividuals(uind_param)
+        save(uind,file="{output.uind}")
+        """)
+
+rule variantAnalysisSetupDeNovo:
+    input:
+        filt = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.vcf.bgz",
+        ped = config['datadirs']['analysis'] + "/{familypro}.pedfile"
+    output:
         denovo = config['datadirs']['analysis'] + "/{familypro}.denovo.RData"
     params:
         rlibrary = config['analysis']['rlibrary'],
@@ -1077,7 +1111,7 @@ rule variantAnalysisSetup:
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(dplyr)
         library(VariantFiltering)
-        param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
+        denovo_param <- VariantFilteringParam(vcfFilenames="{input.filt}",
                                        pedFilename="{input.ped}", bsgenome="{params.bsgenome}", 
                                        txdb="{params.txdb}",   
                                        snpdb="{params.snpdb}",
@@ -1087,26 +1121,25 @@ rule variantAnalysisSetup:
                                                           "{params.phylo}"
                                                          )
         )
-        uind <- unrelatedIndividuals(param)
-        save(uind,file="{output.uind}")
-        denovo<-deNovo(param)
+        cat("loading denovo\n")
+        denovo<-deNovo(denovo_param)
         save(denovo,file="{output.denovo}")
         """)
 
 rule variantAnalysis:
     input:
-        config['datadirs']['analysis'] + "{familypro}.uind.RData",
-        config['datadirs']['analysis'] + "{familypro}.denovo.RData",
-        config['datadirs']['analysis'] + "{familypro}.pedfile"
+        uind = config['datadirs']['analysis'] + "/{familypro}.uind.RData",
+        denovo = config['datadirs']['analysis'] + "/{familypro}.denovo.RData",
+        ped = config['datadirs']['analysis'] + "/{familypro}.pedfile",
+        source = "grin_epilepsy.Rmd"
     output:
-        config['datadirs']['analysis'] + "{familypro}.html"
+        html = config['datadirs']['analysis'] + "/{familypro}.html"
     params:
         rlibrary = config['analysis']['rlibrary']
     run:
         R("""
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(rmarkdown)
-        library(DT)
         uind<- get(load('{input.uind}'))
         denovo<- get(load('{input.denovo}'))
         mytrio<-"{wildcards.familypro}"
