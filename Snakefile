@@ -247,13 +247,13 @@ rule install_annovar_db:
         config[annovardbdir] + "/{genome}_{db}.installed"
     params:
         dbdir = config['annovardbdir'],
-        opts = config['annovaropts'][{genome}][{db}]
     run:
+        opts = config['annovaropts'][wildcards.genome][wildcards.db]
         if {wildcards.db} == 'ALL.sites.2014_10':
-            shell("{input.annovar} -buildver {wildcards.genome} {params.opts} 1000g2014oct {params.dbdir}")
-            shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.genome}_1000g2014oct.zip {wildcards.genome}_{db}.txt")
+            shell("{input.annovar} -buildver {wildcards.genome} {opts} 1000g2014oct {params.dbdir}")
+            shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.genome}_1000g2014oct.zip {wildcards.genome}_{wildcards.db}.txt")
         else:
-            shell("{input.annovar} -buildver {wildcards.genome} {params.opts} {wildcards.db} {params.dbdir}")
+            shell("{input.annovar} -buildver {wildcards.genome} {opts} {wildcards.db} {params.dbdir}")
         shell("touch {output}")
 
 ### QC ####
