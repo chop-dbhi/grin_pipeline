@@ -72,7 +72,7 @@ PDFS = [config['datadirs']['pdfs'] + "/" + name + ".pdf" for name in EXISTINGSAM
 GVCFS = [config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]
 GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES])
 
-ANNOVARDBS = [config[annovardbdir] + "/" + config['builderve'] + "_" + db + ".installed" for db in config['annovardbs']]
+ANNOVARDBS = [config[annovardbdir] + "/" + config['buildve'] + "_" + db + ".installed" for db in config['annovardbs']]
 
 protocol = string.join(config['annovardbs'], ',')
 
