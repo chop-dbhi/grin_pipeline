@@ -74,7 +74,7 @@ GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + 
 
 ANNOVARDBS = [config['annovardbdir'] + "/" + config['buildve'] + "_" + db + ".installed" for db in config['annovardbs']]
 
-protocol = string.join(config['annovardbs'], ',')
+protocol = ','.join(config['annovardbs'])
 
 INDELS = config['datadirs']['realigned'] + "/indels.list"
 
