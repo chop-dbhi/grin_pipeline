@@ -78,6 +78,7 @@ ANNOVARDBS = [config['annovardbdir'] + "/" + config['buildve'] + "_" + db + ".in
 
 ANNOVAR_PROTOCOLS = ','.join(config['annovardbs'])
 
+
 INDELS = config['datadirs']['realigned'] + "/indels.list"
 
 dlocs = dict()
@@ -198,7 +199,6 @@ rule symlinks:
         fastq=os.path.basename(input).replace('_001','')
         os.symlink(input,fastq)
         """
-
 
 
 ### QC ####
