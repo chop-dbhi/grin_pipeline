@@ -15,6 +15,7 @@ conda install pandas
 conda install drmaa
 conda config --add channels r
 conda install -c https://conda.anaconda.org/bioconda rpy2
+conda install -c https://conda.anaconda.org/bioconda bioconductor-variantannotation
 ```
 
 ### To run a trio
