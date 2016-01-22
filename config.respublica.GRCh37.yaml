@@ -1,12 +1,12 @@
 admins: leipzig@gmail.com
 #zhangs3@email.chop.edu
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-ref:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
-refidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
-known:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
+ref:    /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta.gz
+refidx: /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.nix
+known:       /mnt/isilon/cbmi/variome/reference/human/Mills_and_1000G_gold_standard.indels.b37.sites.vcf
 #tabixed this:
-dbsnp: /mnt/isilon/cbmi/variome/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
-buildve: hg38
+dbsnp: /mnt/isilon/cbmi/variome/reference/human/GrCH37/dbSNP146.GRCh37.vcf.gz
+buildve: hg19
 sample_table: sample_table.txt
 pedfile: samples.ped
 
@@ -17,20 +17,20 @@ datadirs:
     fastq:            fastq
     samples:          samples
     fastqc:           qc/fastqc
-    sams:             GRCh38/sams
-    bams:             GRCh38/bams
-    picard:           GRCh38/picard
-    realigned:        GRCh38/realigned
-    lists:            GRCh38/lists
-    recalibrated:     GRCh38/recalibrated
-    postrecalibrated: GRCh38/postrecalibrated
-    pdfs:             GRCh38/pdfs
-    gvcfs:            GRCh38/gvcfs
-    vcfs:             GRCh38/vcfs
-    vtpeek:           GRCh38/qc/vcf
-    gemini:           GRCh38/gemini
-    analysis:         GRCh38/analysis
-    website:          site
+    sams:             GRCh37/sams
+    bams:             GRCh37/bams
+    picard:           GRCh37/picard
+    realigned:        GRCh37/realigned
+    lists:            GRCh37/lists
+    recalibrated:     GRCh37/recalibrated
+    postrecalibrated: GRCh37/postrecalibrated
+    pdfs:             GRCh37/pdfs
+    gvcfs:            GRCh37/gvcfs
+    vcfs:             GRCh37/vcfs
+    vtpeek:           GRCh37/qc/vcf
+    gemini:           GRCh37/gemini
+    analysis:         GRCh37/analysis
+    website:          GRCh37/website
     log:              logs
 # !!python/object/apply:os.path.join
 
@@ -73,7 +73,7 @@ jars:
         cnf:
             /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.GRCh38.config
         db:
-            GRCh38.76
+            GRCh37.75
         ud:
             '10'
         format:
@@ -82,11 +82,11 @@ analysis:
     rlibrary:
         /mnt/isilon/cbmi/variome/leipzig/R/x86_64-redhat-linux-gnu-library/3.2
     bsgenome:
-        BSgenome.Hsapiens.UCSC.hg38
+        BSgenome.Hsapiens.UCSC.hg19
     txdb:
-        TxDb.Hsapiens.UCSC.hg38.knownGene
+        TxDb.Hsapiens.UCSC.hg19.knownGene
     snpdb:
-        SNPlocs.Hsapiens.dbSNP144.GRCh38
+        SNPlocs.Hsapiens.dbSNP144.GRCh37
     esp:
         MafDb.ESP6500SI.V2.SSA137
     exac:
