@@ -42,7 +42,7 @@ tools:
     seq2qc:
         /mnt/isilon/cbmi/variome/bin/fastqc
     samtools:
-        /mnt/isilon/cbmi/variome/bin/samtools
+        /mnt/isilon/cbmi/variome/bin/samtools-1.3/samtools
     sortbam:
         /mnt/isilon/cbmi/variome/bin/novosort
     align:
