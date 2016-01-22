@@ -1,0 +1,50 @@
+---
+title: "GRIN Epilepsy Trio Analysis"
+author: "Jeremy Leipzig"
+date: "1/16/2016"
+output: html_document
+---
+```{r preload, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+if(!exists("uind")) uind <- get(load('GRCh38/analysis/PRG_MAE_1_E01038.uind.RData'))
+if(!exists("ped")) ped <-read.table("GRCh38/analysis/PRG_MAE_1_E01038.pedfile",header=TRUE)
+if(!exists("mytrio")) mytrio<-"PRG_MAE_1_E01038"
+```
+
+```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+library(dplyr)
+library(VariantFiltering)
+library(DT)
+library(ggplot2)
+
+options(DT.options = list(pageLength = 100))
+# http://www.r-bloggers.com/identifying-records-in-data-frame-a-that-are-not-contained-in-data-frame-b-%E2%80%93-a-comparison/
+thisnotinthat <- function(x.1,x.2,...){
+     x.1p <- do.call("paste", x.1)
+     x.2p <- do.call("paste", x.2)
+     x.1[! x.1p %in% x.2p, ]
+ }
+```
+
+
+## Variant frequency summaries for `r mytrio`
+```{r setup, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+samples<- samples(uind)
+
+#these are less detailed breakdowns
+#basic_summary<- summary(uind)
+#bioc_summary <- summary(uind, method="bioc")
+
+full_summary <- VariantFiltering::summary(uind, method="SOfull")
+```
+There are samples `r samples` in `r mytrio`
+
+This represents a taxonomy of the full passing variant list with no inheritance models imposed.
+```{r alltaxo, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+datatable(data.frame(full_summary) %>% dplyr::rename(Variants = Nr..Variants, Perc = X..Variants) %>% arrange(Level),rownames=FALSE)
+```
+
+
+## Session Info
+```{r}
+args(VariantFilteringParam) 
+```
