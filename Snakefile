@@ -11,6 +11,8 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "baseconfig.yaml"
 configfile: "config.respublica.GRCh38.yaml" 
+configfile: "test.yaml" 
+# print(config['admins'])
 
 SLINK = "GRIN/fastqc/"
 
@@ -119,7 +121,7 @@ rule mkdirs:
             shell("mkdir -p " + config['datadirs'][adir])
 
 rule dummy:    # just to test the python codes above
-    input: "Snakefile"
+    input: workflow.basedir + "/Snakefile"
 
 rule target_lists:
     input: LISTS
@@ -177,11 +179,21 @@ rule printtrios:
 rule symlinks:
      input: DOWNLOADS
      run:
-        """
-        fastq=os.path.basename(input).replace('_001','')
-        os.symlink(input,fastq)
-        """
+        for name in input:
+            fastq=os.path.basename(name).replace('_001','')
+            os.symlink('../' + name, 'fastq/' + fastq)
 
+#### run multiqc  ####
+
+rule run_multiqc:
+    input:
+        GBAMS
+
+    shell:
+        """
+        multiqc -o multiqc picard fastqc # will detect input file types?
+        """
+     
 #### run annovar  ####
 
 rule table_annovar:
@@ -244,7 +256,7 @@ rule install_annovar_db:
     input:
         annovar = config['tools']['annotate_variation']
     output:
-        config[annovardbdir] + "/{genome}_{db}.installed"
+        config['annovardbdir'] + "/{genome}_{db}.installed"
     params:
         dbdir = config['annovardbdir'],
     run:
@@ -303,7 +315,8 @@ rule sam_to_bam:
         12   # also depends on -j
     shell:
         """
-        {input.samtools} view -@ {threads} -bS {input.sam} > {output.bam}
+        #{input.samtools} view -@ {threads} -bS {input.sam} > {output.bam}
+        {input.samtools} view -bS {input.sam} > {output.bam}
         """
 
 # novosort creates index
