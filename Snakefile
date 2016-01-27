@@ -10,9 +10,9 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 """
 
 configfile: "baseconfig.yaml"
-configfile: "config.respublica.GRCh38.yaml" 
+configfile: "config.yaml" 
 
-SLINK = "GRIN/fastqc/"
+SLINK = "{{SLINK}}"
 
 DOWNLOADDIR = "kiel"
 DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
@@ -44,17 +44,19 @@ assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
 # a quad produces two trios
-COMPLETETRIOSFAMIDS = set([row['FamilyID']+'_'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
+COMPLETETRIOSFAMIDS = sorted(list(set([row['FamilyID']+'_'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])))
 TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
 
 # quads are one family
-COMPLETEFAMILYFAMIDS = [row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]
+COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
 
+INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
-ANALYSES = [config['datadirs']['analysis'] + "/" + trio + ".html" for trio in COMPLETETRIOSFAMIDS]
-
+ANALYSISREADY = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
+RDATA         = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.denovo.RData" for trio in COMPLETETRIOSFAMIDS]
+ANALYSES      = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.denovo.html" for trio in COMPLETETRIOSFAMIDS]
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -74,7 +76,8 @@ GVCFSLIST = ' '.join(["--variant " + config['datadirs']['gvcfs'] + "/" + name + 
 
 ANNOVARDBS = [config['annovardbdir'] + "/" + config['buildve'] + "_" + db + ".installed" for db in config['annovardbs']]
 
-protocol = ','.join(config['annovardbs'])
+ANNOVAR_PROTOCOLS = ','.join(config['annovardbs'])
+
 
 INDELS = config['datadirs']['realigned'] + "/indels.list"
 
@@ -85,20 +88,25 @@ workdir: config['projdir']
 rule all:
     input: 
         trios = TRIOVCFS,
-        families = FAMILYVCFS,
         analysis = ANALYSES,
         phased = config['datadirs']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 #include TRIOGEMS for gemini (GRCh37 only)
 
+rule rdata:
+    input: RDATA
+
 rule triovcfs:
     input: TRIOVCFS
+
+rule analysisready:
+    input: ANALYSISREADY
 
 rule analyses:
     input: ANALYSES
 
 rule sample_concordance:
     output:
-        ms="missingsamples.txt", ump="unmanifestedpairs.txt"
+        ms="missingsamples.txt", ump="unmanifestedpairs.txt", ic="incompletefamilies.txt"
     run:
         print("Received Pairs (on disk): {0}".format(len(ALLPAIRNAMES)))
         print("Unmanifested Pairs (on disk, not in sample table): {0}".format(len(UNMANIFESTEDPAIRS)))
@@ -112,6 +120,16 @@ rule sample_concordance:
             f.write("{0}\n".format(sample))
         print("Manifested Pairs (in sample table): {0}".format(len(PAIRNAMESINSAMPLETABLE)))
         print("Fastqs: {0} Lanes in sample table {1}".format(len(FASTQS), len(PAIRNAMESINSAMPLETABLE)))
+        print("Complete Families (trios or quads): {0}".format(len(COMPLETEFAMILYFAMIDS)))
+        print("Incomplete Families (files missing): {0}".format(len(INCOMPLETEFAMILIES)))
+        f = open(output.ic, 'w')
+        for index, row in sample_table.iterrows():
+            if row['FamilyID'] in INCOMPLETEFAMILIES:
+                f.write("{0}".format(row['FamilyID']))
+                for member in ['Mother','Father','Subject']:
+                    if row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]):
+                        f.write("\t{0}".format(row[member]))
+                f.write("\n")
 
 rule mkdirs:
     run:
@@ -181,80 +199,6 @@ rule symlinks:
         fastq=os.path.basename(input).replace('_001','')
         os.symlink(input,fastq)
         """
-
-#### run annovar  ####
-
-rule table_annovar:
-    input:
-        ANNOVARDBS,
-        avinput = config['datadirs']['gvcfs'] + "/{file}.vcf",
-        annovar = config['tools']['table_annovar']
-    output:
-        config['datadirs']['gvcfs'] + "/{file}." + config['buildve'] + "_multianno.vcf"
-    params:
-        opts = "-buildver {config['buildve']} \
-                -protocol {protocol} \
-                -operation {config['operations']} \
-                -nastring . \
-                -out joint \
-                -tempdir /tmp \
-                -remove \
-                -dot2underline \
-                -vcfinput",
-        dbdir = config['annovardbdir']
-    shell:
-        """
-        {input.annovar} {params.opts} {input.avinput} {params.dbdir}
-        """
-
-rule run_annovar:
-    input:
-        ANNOVARDBS,
-        avinput = config['datadirs']['gvcfs'] + "/{file}.avinput",
-        annovar = config['tools']['annotate_variation']
-    output:
-        config['datadirs']['gvcfs'] + "/annovar.done"
-    params:
-        opts = "-buildver {config['buildve']}",
-        dbdir = config['annovardbdir']
-    run:
-        # gene based annotation
-        shell("{input.annovar} -geneanno {params.opts} {input.avinput} {params.dbdir}")
-
-        for db in config['annovardbs']:
-
-            # region based annotation
-            shell("{input.annovar} -regionanno -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
-
-            # filter based annotation
-            shell("{input.annovar} -filter -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
-
-        shell("touch {output}")
-
-rule vcf2avinput:
-    input:
-        vcf = config['datadirs']['gvcfs'] + "/{file}.vcf",
-        cmd = config['tools']['vcf2avinput']
-    output:
-        config['datadirs']['gvcfs'] + "/{file}.avinput",
-    shell:
-        "{input.cmd} -format vcf2old {input.vcf} -outfile {output}"
-
-rule install_annovar_db:
-    input:
-        annovar = config['tools']['annotate_variation']
-    output:
-        config['annovardbdir'] + "/{genome}_{db}.installed"
-    params:
-        dbdir = config['annovardbdir'],
-    run:
-        opts = config['annovaropts'][wildcards.genome][wildcards.db]
-        if wildcards.db == 'ALL.sites.2014_10':
-            shell("{input.annovar} -buildver {wildcards.genome} {opts} 1000g2014oct {params.dbdir}")
-            shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.genome}_1000g2014oct.zip {wildcards.genome}_{wildcards.db}.txt")
-        else:
-            shell("{input.annovar} -buildver {wildcards.genome} {opts} {wildcards.db} {params.dbdir}")
-        shell("touch {output}")
 
 ### QC ####
 rule fastqc: 
@@ -681,6 +625,7 @@ rule trio_vcfs:
         db = config['dbsnp']
     threads: 8
     run:
+        print(vcf)
         assert(len(gvcfs)==3)
         # use the family count to determine course of action
         if len(familygvcfs)==3:
@@ -787,13 +732,15 @@ rule analysis_pedfile:
         config['datadirs']['analysis'] + "/{family}_{subject}.pedfile"
     run:
         globalpedfile = pandas.read_table("{0}".format(input))
-        # hashes in the family names confuse R
-        globalpedfile = globalpedfile.replace('#','',regex=True)
+        
         probandrow = globalpedfile[(globalpedfile['FamilyID'] == wildcards.family) & (globalpedfile['Subject'] == wildcards.subject)]
         assert(len(probandrow)==1)
         parentalrows = globalpedfile[(globalpedfile['Subject'] == probandrow['Father'].item()) | (globalpedfile['Subject'] == probandrow['Mother'].item())]
         assert(len(parentalrows)==2)
         ped = probandrow.append([parentalrows])
+        
+        # hashes in the family names confuse R
+        ped = ped.replace('#','',regex=True)
         ped.to_csv("{0}".format(output), sep='\t',index=False)
         
         
@@ -820,8 +767,9 @@ rule run_phase_by_transmission:
         -V {input.vcf} \
         -ped {input.ped} \
         -mvf {output.mvf} \
-        -o {output.vcf} >& {log}
+        -o {output.vcf} 2> {log}
         """
+#        --disable_auto_index_creation_and_locking_when_reading_rods \
 
 # https://www.broadinstitute.org/gatk/guide/article?id=2806
 # https://github.com/chapmanb/bcbio-nextgen/blob/master/bcbio/variation/vfilter.py
@@ -846,7 +794,7 @@ rule gatk_snps_only:
         -R {params.ref} \
         -V {input.vcf} \
         -selectType SNP \
-        -o {output.vcf} >& {log}
+        -o {output.vcf} 2> {log}
         """
 
 rule gatk_indels_only:
@@ -869,7 +817,7 @@ rule gatk_indels_only:
         -R {params.ref} \
         -V {input.vcf} \
         -selectType INDEL \
-        -o {output.vcf} >& {log}
+        -o {output.vcf} 2> {log}
         """
         
 # hard filtration
@@ -895,7 +843,7 @@ rule gatk_hard_filtration_snps:
         "--variant {input.vcf} "
         "--filterExpression \"QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0\" "
         "--filterName \"GATK3.5-hard-filter\" "
-        ">& {log}"
+        "2> {log}"
 
 rule gatk_hard_filtration_indels:
     input:
@@ -918,7 +866,7 @@ rule gatk_hard_filtration_indels:
         "--variant {input.vcf} "
         "--filterExpression \"QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0\" "
         "--filterName \"GATK3.5-hard-filter\" "
-        ">& {log}"
+        "2> {log}"
 
 rule select_passing:
     input:
@@ -940,7 +888,7 @@ rule select_passing:
         "-o {output.vcf} "
         "--variant {input.vcf} "
         "--excludeFiltered "
-        ">& {log}"
+        "2> {log}"
 
 # """Run GATK CombineVariants to combine variant files.
 #
@@ -969,7 +917,7 @@ rule gatk_combine_variants:
         "--variant  {input.indels} "
         "-o {output.vcf} "
         "--assumeIdenticalSamples "
-        ">& {log}"
+        "2> {log}"
 
 # rule gatk_cat_variants:
 #     input:
@@ -991,7 +939,7 @@ rule gatk_combine_variants:
 #         "-V  {input.snps} "
 #         "-V  {input.indels} "
 #         "-out {output} "
-#         ">& {log}"
+#         "2> {log}"
     
 #### Annotation ####
 rule ad_vcf:
@@ -1082,6 +1030,81 @@ rule run_snpeff:
          {input.vcf} > {output.vcf}
         """
 
+#### run annovar  ####
+
+rule table_annovar:
+    input:
+        ANNOVARDBS,
+        avinput = config['datadirs']['vcfs'] + "/{file}.vcf",
+        annovar = config['tools']['table_annovar']
+    output:
+        config['datadirs']['vcfs'] + "/{file}.annovar.vcf"
+    params:
+        opts = "-buildver "+config['buildve']
+                +" -protocol "+ANNOVAR_PROTOCOLS
+                +" -operation "+config['operations']
+                +" -nastring . \
+                -out joint \
+                -tempdir /tmp \
+                -remove \
+                -dot2underline \
+                -vcfinput",
+        dbdir = config['annovardbdir']
+    shell:
+        """
+        {input.annovar} {params.opts} {input.avinput} {params.dbdir}
+        """
+
+rule run_annovar:
+    input:
+        ANNOVARDBS,
+        avinput = config['datadirs']['vcfs'] + "/{file}.avinput",
+        annovar = config['tools']['annotate_variation']
+    output:
+        config['datadirs']['vcfs'] + "/annovar.done"
+    params:
+        opts = "-buildver {config['buildve']}",
+        dbdir = config['annovardbdir']
+    run:
+        # gene based annotation
+        shell("{input.annovar} -geneanno {params.opts} {input.avinput} {params.dbdir}")
+
+        for db in config['annovardbs']:
+
+            # region based annotation
+            shell("{input.annovar} -regionanno -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
+
+            # filter based annotation
+            shell("{input.annovar} -filter -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
+
+        shell("touch {output}")
+
+rule vcf2avinput:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
+        cmd = config['tools']['vcf2avinput']
+    output:
+        config['datadirs']['vcfs'] + "/{file}.avinput",
+    shell:
+        "{input.cmd} -format vcf2old {input.vcf} -outfile {output}"
+
+rule install_annovar_db:
+    input:
+        annovar = config['tools']['annotate_variation']
+    output:
+        config['annovardbdir'] + "/{genome}_{db}.installed"
+    params:
+        dbdir = config['annovardbdir'],
+    run:
+        opts = config['annovaropts'][wildcards.genome][wildcards.db]
+        if wildcards.db == 'ALL.sites.2014_10':
+            shell("{input.annovar} -buildver {wildcards.genome} {opts} 1000g2014oct {params.dbdir}")
+            shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.genome}_1000g2014oct.zip {wildcards.genome}_{wildcards.db}.txt")
+        else:
+            shell("{input.annovar} -buildver {wildcards.genome} {opts} {wildcards.db} {params.dbdir}")
+        shell("touch {output}")
+
+
 rule compress_vcf:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
@@ -1119,14 +1142,19 @@ rule gemini_db:
         {input.gemini} load --cores {threads} -t snpEff -v {input.vcf} -p {input.ped} {output}
         """
 
+rule testR:
+    run:
+        R("""
+        rnorm(100)
+        """)
+
+#trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz
 #### Analysis ####
-rule variantAnalysisSetup:
+rule variantAnalysisSetupUind:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{familypro}.trio.phased.com.filtered.ad.de.nm.vcf.bgz",
-        ped = config['pedfile'],
+        vcf = config['datadirs']['vcfs'] + "/{familypro}.vcf.bgz",
     output:
-        config['datadirs']['analysis'] + "/{familypro}.uind.RData",
-        config['datadirs']['analysis'] + "/{familypro}.denovo.RData"
+        uind = config['datadirs']['analysis'] + "/{familypro}.uind.RData",
     params:
         rlibrary = config['analysis']['rlibrary'],
         bsgenome = config['analysis']['bsgenome'],
@@ -1139,8 +1167,10 @@ rule variantAnalysisSetup:
     run:
         R("""
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
-        param <- VariantFilteringParam(vcfFilenames={input.vcf},
-                                       pedFilename={input.pedfile}, bsgenome="{params.bsgenome}", 
+        library(dplyr)
+        library(VariantFiltering)
+        uind_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
+                                       bsgenome="{params.bsgenome}", 
                                        txdb="{params.txdb}",   
                                        snpdb="{params.snpdb}",
                                        otherAnnotations=c("{params.esp}",
@@ -1149,19 +1179,54 @@ rule variantAnalysisSetup:
                                                           "{params.phylo}"
                                                          )
         )
-        uind <- unrelatedIndividuals(param)
+        cat("loading unrelated\n")
+        uind <- unrelatedIndividuals(uind_param)
         save(uind,file="{output.uind}")
-        denovo<-deNovo(param)
+        """)
+
+rule variantAnalysisSetupDeNovo:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
+        ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile"
+    output:
+        denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData"
+    params:
+        rlibrary = config['analysis']['rlibrary'],
+        bsgenome = config['analysis']['bsgenome'],
+        txdb     = config['analysis']['txdb'],
+        snpdb    = config['analysis']['snpdb'],
+        esp      = config['analysis']['esp'],
+        exac     = config['analysis']['exac'],
+        sift     = config['analysis']['sift'],
+        phylo    = config['analysis']['phylo']
+    run:
+        R("""
+        .libPaths( c( .libPaths(), "{params.rlibrary}") )
+        library(dplyr)
+        library(VariantFiltering)
+        denovo_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
+                                       pedFilename="{input.ped}", bsgenome="{params.bsgenome}", 
+                                       txdb="{params.txdb}",   
+                                       snpdb="{params.snpdb}",
+                                       otherAnnotations=c("{params.esp}",
+                                                          "{params.exac}",
+                                                          "{params.sift}",
+                                                          "{params.phylo}"
+                                                         )
+        )
+        cat("loading denovo\n")
+        denovo<-deNovo(denovo_param)
         save(denovo,file="{output.denovo}")
         """)
 
-rule variantAnalysis:
+rule variantAnalysisAll:
     input:
-        config['datadirs']['analysis'] + "{familypro}.uind.RData",
-        config['datadirs']['analysis'] + "{familypro}.denovo.RData",
-        config['datadirs']['analysis'] + "{familypro}.pedfile"
+        uind = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.uind.RData",
+        denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
+        ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile",
+        source = "grin_epilepsy.Rmd"
     output:
-        config['datadirs']['analysis'] + "{familypro}.html"
+        html = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.all.html"
     params:
         rlibrary = config['analysis']['rlibrary']
     run:
@@ -1169,11 +1234,30 @@ rule variantAnalysis:
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(rmarkdown)
         uind<- get(load('{input.uind}'))
-        denovo<- get(load('{input.denovo}'))
-        mytrio<-"{wildcards.familypro}"
+        mytrio<-"{wildcards.trio} ({wildcards.pro})"
+        ped <-read.table("{input.ped}",header=TRUE)
         rmarkdown::render("{input.source}",output_file="{output.html}")
         """)
-    
+
+rule variantAnalysisDeNovo:
+    input:
+        denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
+        ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile",
+        source = "grin_epilepsy_denovo.Rmd"
+    output:
+        html = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.html"
+    params:
+        rlibrary = config['analysis']['rlibrary']
+    run:
+        R("""
+        .libPaths( c( .libPaths(), "{params.rlibrary}") )
+        library(rmarkdown)
+        denovo<- get(load('{input.denovo}'))
+        mytrio<-"{wildcards.trio} ({wildcards.pro})"
+        ped <-read.table("{input.ped}",header=TRUE)
+        rmarkdown::render("{input.source}",output_file="{output.html}")
+        """)
+        
 #### Report ####
 # create YAML file used in meta-FastQC report
 rule makeyaml:
@@ -1197,7 +1281,7 @@ rule makeyaml:
 #### Create Markdown index of FastQC report files
 rule makemd:
     output: 
-        md = "fastqc.md",
+        md = config['datadirs']['website'] + "/fastqc.md",
     run:
         note = """
 The latest version (v0.11.4) of FastQC was downloaded from the following URL:
@@ -1216,6 +1300,23 @@ and installed as &lt;isilon&gt;/bin/fastqc.
                out.write(" [R2]({{SLINK}}/fastqc/{0}_R2_fastqc.html)".format(name))
                out.write("\n\n")
                idx += 1
+
+rule siteindex:
+    input:
+        "Snakefile"
+    output: config['datadirs']['website'] + "/index.md"
+    run:
+        with open(output[0], 'w') as outfile:
+            outfile.write("""
+#### De novo analysis reports
+""")
+            for s,p in zip(ANALYSES,COMPLETETRIOSFAMIDS):
+                outfile.write("> [`{0}`]({1}/{2})\n\n".format(p, SLINK, s))
+            outfile.write("""
+#### Annotated trio vcfs
+""")
+            for s in ANALYSISREADY:
+                outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
 
 #### Internal
 onsuccess:
