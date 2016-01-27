@@ -626,10 +626,9 @@ rule trio_vcfs:
         db = config['dbsnp']
     threads: 8
     run:
-        print(vcf)
-        assert(len(gvcfs)==3)
+        assert(len(input.gvcfs)==3)
         # use the family count to determine course of action
-        if len(familygvcfs)==3:
+        if len(input.familygvcfs)==3:
             shell("cp {input.family} {output.vcf}")
         else:
             shell("""
@@ -1147,6 +1146,16 @@ rule testR:
     run:
         R("""
         rnorm(100)
+        """)
+
+rule describeR:
+    run:
+        R("""
+        .libPaths( c( .libPaths("/mnt/isilon/cbmi/variome/leipzig/GRIN/Rlibrary")))
+        library(dplyr)
+        library(VariantFiltering)
+        cat(.libPaths())
+        sessionInfo()
         """)
 
 #trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz
