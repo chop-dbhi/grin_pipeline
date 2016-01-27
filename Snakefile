@@ -200,7 +200,6 @@ rule symlinks:
         os.symlink(input,fastq)
         """
 
-
 ### QC ####
 rule fastqc: 
     input: 
