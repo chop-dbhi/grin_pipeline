@@ -1155,7 +1155,7 @@ rule describeR:
         library(dplyr)
         library(VariantFiltering)
         cat(.libPaths())
-        sessionInfo()
+        print(sessionInfo())
         """)
 
 #trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz
