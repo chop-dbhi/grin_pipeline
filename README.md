@@ -19,6 +19,8 @@ conda install -c https://conda.anaconda.org/bioconda bioconductor-variantannotat
 conda install -c https://conda.anaconda.org/r r-dplyr
 conda install -c https://conda.anaconda.org/bioconda bioconductor-biocgenerics
 conda install -c https://conda.anaconda.org/bioconda bioconductor-variantannotation
+conda install -c https://conda.anaconda.org/r r-shiny
+conda install -c https://conda.anaconda.org/bioconda bioconductor-rbgl
 ```
 
 ### To run a trio
