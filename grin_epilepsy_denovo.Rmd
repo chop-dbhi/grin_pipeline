@@ -1,0 +1,102 @@
+---
+title: "GRIN Epilepsy Trio Analysis"
+author: "Jeremy Leipzig"
+date: "1/16/2016"
+output: html_document
+---
+```{r preload, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+if(!exists("denovo"))  denovo <- get(load('GRCh38/analysis/12MAE_E01020.denovo.RData'))
+if(!exists("ped")) ped <-read.table("GRCh38/analysis/12MAE_E01020.pedfile",header=TRUE)
+if(!exists("mytrio")) mytrio<-"12MAE_E01020"
+```
+
+```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+library(dplyr)
+library(VariantFiltering)
+library(DT)
+library(ggplot2)
+
+options(DT.options = list(pageLength = 100))
+# http://www.r-bloggers.com/identifying-records-in-data-frame-a-that-are-not-contained-in-data-frame-b-%E2%80%93-a-comparison/
+thisnotinthat <- function(x.1,x.2,...){
+     x.1p <- do.call("paste", x.1)
+     x.2p <- do.call("paste", x.2)
+     x.1[! x.1p %in% x.2p, ]
+ }
+```
+
+## De novo analysis
+
+## Variant summary for de novo variants
+This represents a brief summary of the de novo variants.
+
+```{r denovo_summary, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+datatable(data.frame(VariantFiltering::summary(denovo)) %>% dplyr::rename(Variants = Nr..Variants, Perc = X..Variants),rownames=FALSE)
+```
+
+## De novo variants of interest
+The de novo filter of VariantFiltering looks for present genotypes in all members of the trio. The parents are always "0/0".
+
+```{r denovo_variants, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+vrl<- filteredVariants(denovo)
+
+#if(ped[1,"Subject"] != names(vrl)[1]) stop("name of proband does not match first genotype")
+
+vrl.df <- as.data.frame(vrl[[1]])
+
+#order location so coding is most important
+vrl.df$LOCATION<-factor(vrl.df$LOCATION,levels=c("coding","fiveUTR","threeUTR","promoter","intron","intergenic"),ordered=TRUE)
+genotypes<-data.frame(vrl[[1]]$GT,vrl[[2]]$GT,vrl[[3]]$GT)
+names(genotypes) <- paste("GT_",names(vrl),sep="")
+
+
+vrl.df.g<-cbind(vrl.df,genotypes)
+
+```
+There are `r nrow(vrl.df.g)` de novo variants.
+
+
+```{r varfiltsetup, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+
+#short list of recurrent genes
+recurrent_genes<-read.table("annotations/recurrentgenes.txt")$V1
+#longer list
+literature_genes<-read.table("annotations/literaturegenes.txt")$V1
+
+rvis<-get(load("annotations/rvis.RData"))
+vrl.df.g %>% left_join(rvis,by="GENE")  %>% dplyr::select(seqnames,dbSNP,start,ref,alt,refDepth,altDepth,TYPE,LOCATION,GENE,HGVSc,AAchange,RVIS,starts_with("GT")) %>% dplyr::rename(chr = seqnames, pos = start, type = TYPE, location = LOCATION, gene = GENE) %>% arrange(chr,pos,location) %>% distinct(chr, pos, ref, alt) -> disp_df
+```
+
+#### Triage 1: De novo variants in recurrent genes
+These are variants found in the `r length(recurrent_genes)` genes associated with recurrent mutations in epilepsy.
+```{r recurrent, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+disp_df %>% filter(gene %in% recurrent_genes) -> in_recurrent
+if (nrow(in_recurrent) == 0){print("No variants found in recurrent genes<br/>")}else{datatable(in_recurrent)}
+```
+
+#### Triage 2: De novo variants in literature genes with low tolerance
+These are the remaining variants cited in the `r length(literature_genes)` genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
+
+```{r literature, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+disp_df %>% filter(gene %in% literature_genes) %>% filter(RVIS <= 0) %>% thisnotinthat(in_recurrent) -> litlotol
+if (nrow(litlotol) == 0){print("No remaining variants found in literature genes<br/>")}else{datatable(litlotol)}
+```
+
+#### Triage 3: De novo coding variants not in the above
+These are remaining variants that are located in the coding sequence of at least one transcript.
+```{r coding, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+disp_df %>% filter(location == 'coding') %>% thisnotinthat(litlotol)-> codingonly
+if (nrow(codingonly) == 0){print("No remaining variants found in coding genes<br/>")}else{datatable(codingonly)}
+```
+
+#### Other de novo variants
+These are the remaining de novo variants
+```{r others, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+disp_df %>%  thisnotinthat(codingonly) -> others
+datatable(others)
+```
+
+## Session Info
+```{r}
+args(denovo) 
+```
