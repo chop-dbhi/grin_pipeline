@@ -549,6 +549,7 @@ rule analyze_bqsr:
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
 def get_all_sorted_bams(samplename):
+    #bams = [bam.replace('bam$', 'sorted.bam', perl=T) for bam in BAMS if bam.startswith(samplename)]
     bams = [bam for bam in BAMS if bam.startswith(samplename)]
     return(bams)
 
