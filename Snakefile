@@ -60,7 +60,8 @@ ANALYSES      = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
-MBAMS = [config['datadirs']['bams'] + "/" + name + "sorted.merged.bam" for name in EXISTINGSAMPLES]
+SBAMS = [config['datadirs']['bams'] + "/" + name + ".sorted.bam" for name in SAMPLELANES]
+MBAMS = [config['datadirs']['bams'] + "/" + name + ".sorted.merged.bam" for name in EXISTINGSAMPLES]
 DBAIS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bai" for name in EXISTINGSAMPLES]
 DBAMS = [config['datadirs']['picard'] + "/" + name + ".rmdup.bam" for name in EXISTINGSAMPLES]
 GBAIS = [config['datadirs']['picard'] + "/" + name + ".group.bai" for name in EXISTINGSAMPLES]
@@ -480,7 +481,7 @@ rule analyze_bqsr:
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
 def get_all_sorted_bams(samplename):
-    bams = [bam for bam in BAMS if bam.startswith(samplename)]
+    bams = [bam for bam in SBAMS if bam.startswith(samplename) and bam.endswith(".sorted.bam")]
     return(bams)
 
 rule merge_lanes:
