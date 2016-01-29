@@ -12,6 +12,13 @@ conda create --name grinenv --file requirements.txt
 source activate grinenv
 ```
 
+In R. (We use the latest VariantFiltering)
+```
+install.packages("devtools")
+library(devtools)
+install_github("VariantFiltering", "rcastelo")
+```
+
 ### To run a trio
 ```
 source activate grinenv
