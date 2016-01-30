@@ -423,7 +423,7 @@ rule recalibrate_bam:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T PrintReads \
-        -nct {threads}
+        -nct {threads} \
         -R {params.ref} \
         -I {input.bam} \
         -BQSR {input.table} \
