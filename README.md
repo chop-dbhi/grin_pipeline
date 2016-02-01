@@ -16,6 +16,8 @@ source activate grinenv
 
 In R. (We use the latest VariantFiltering)
 ```
+source("http://bioconductor.org/biocLite.R")
+library(BiocInstaller)
 install.packages("devtools")
 library(devtools)
 install_github("VariantFiltering", "rcastelo")
