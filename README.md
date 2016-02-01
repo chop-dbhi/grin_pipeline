@@ -8,6 +8,8 @@ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 sh Miniconda3-latest-Linux-x86_64.sh
 # type "yes"
 # allow this to install into your home
+conda config --add channels bioconda
+conda config --add channels r
 conda create --name grinenv --file requirements.txt
 source activate grinenv
 ```
