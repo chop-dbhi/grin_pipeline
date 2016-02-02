@@ -423,7 +423,7 @@ rule recalibrate_bam:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T PrintReads \
-        -nct {threads} \
+        -nct {threads}
         -R {params.ref} \
         -I {input.bam} \
         -BQSR {input.table} \
@@ -868,7 +868,6 @@ rule gatk_hard_filtration_indels:
         "--filterName \"GATK3.5-hard-filter\" "
         "2> {log}"
 
-# {pro,\w+}
 rule select_passing:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
@@ -920,27 +919,6 @@ rule gatk_combine_variants:
         "--assumeIdenticalSamples "
         "2> {log}"
 
-# rule gatk_cat_variants:
-#     input:
-#         snps = config['datadirs']['vcfs'] + "/{file}.snps.filtered.vcf",
-#         indels = config['datadirs']['vcfs'] + "/{file}.indels.filtered.vcf",
-#         java = config['tools']['java']
-#     output:
-#         combo = config['datadirs']['vcfs'] + "/{file}.cat.filtered.vcf"
-#     params:
-#         jar  = config['jars']['gatk'],
-#         ref = config['ref'],
-#         javaopts = config['tools']['javaopts']
-#     log:
-#         "log/{file}.select_passing_variants.log"
-#     shell:
-#         "{input.java} {params.javaopts} -cp {params.jar} "
-#         "org.broadinstitute.gatk.tools.CatVariants "
-#         "-R {params.ref} "
-#         "-V  {input.snps} "
-#         "-V  {input.indels} "
-#         "-out {output} "
-#         "2> {log}"
     
 #### Annotation ####
 rule ad_vcf:
