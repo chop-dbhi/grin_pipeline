@@ -1039,9 +1039,11 @@ rule run_snpeff:
 rule run_multiqc:
     input:
         GBAMS
+    params:
+        dirs = config['datadirs']['picard'] + ' fastqc'
     shell:
         """
-        multiqc -o multiqc picard fastqc # will detect input file types?
+        multiqc -o multiqc {params.dirs} # will detect input file types?
         """
 
 #### run annovar  ####
@@ -1263,6 +1265,8 @@ rule variantAnalysisDeNovo:
     params:
         rlibrary = config['analysis']['rlibrary']
     run:
+        print(input.denovo)
+        print(input.ped)
         R("""
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(rmarkdown)

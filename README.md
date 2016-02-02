@@ -8,22 +8,30 @@ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 sh Miniconda3-latest-Linux-x86_64.sh
 # type "yes"
 # allow this to install into your home
-conda create -n snakeenv python=3.4
-source activate snakeenv
-conda install -c bioconda snakemake
-conda install pandas
-conda install drmaa
+conda config --add channels bioconda
+conda config --add channels r
+conda create --name grinenv --file requirements.txt
+source activate grinenv
+```
+
+In R. (We use the latest VariantFiltering)
+```
+source("http://bioconductor.org/biocLite.R")
+library(BiocInstaller)
+install.packages("devtools")
+library(devtools)
+install_github("rcastelo/VariantFiltering")
 ```
 
 ### To run a trio
 ```
-source activate snakeenv
+source activate grinenv
 snakemake GRCh37/gemini/PRG_MAE_1.gemini.db
 ```
 
 ### To generate a VCF of all trios, separately and combined
 ```
-source activate snakeenv
+source activate grinenv
 snakemake
 ```
 
@@ -31,6 +39,6 @@ snakemake
 ## To run on Respublica
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`
 ```
-source activate snakeenv
+source activate grinenv
 snakemake -c "qsub -l h_vmem=40G -l mem_free=40G" -j 
 ```
