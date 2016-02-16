@@ -19,6 +19,7 @@ SLINK = "{{SLINK}}"
 
 DOWNLOADDIR = "kiel"
 DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
+FASTQCS = glob.glob("fastqc/*_fastqc.zip")
 
 FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
 
@@ -1295,6 +1296,25 @@ rule makeyaml:
                out.write("  {0}\n".format(name)) 
                out.write("  - {0}/{1}_R1_fastqc.zip\n".format(params.fastqc,name))
                out.write("  - {0}/{1}_R2_fastqc.zip\n".format(params.fastqc,name))
+
+#### Create fastqc summary
+
+rule make_yaml:
+    input: FASTQCS
+    output: yaml = 'summary_fastqc.yaml'
+    run:
+        # print(FASTQCS)
+        NAMES = [re.sub("\_R1_fastqc\.zip$", "", os.path.basename(name)) for name in FASTQCS if re.search("_R1_fastqc\.zip$", name)]
+        #print(NAMES)
+        with open(output.yaml, "w") as out:
+            out.write("paired: yes\n")
+            out.write("output: " + config['summary_fastqc'] + "\n");
+            out.write("fastqc:\n");
+            for name in NAMES:
+                out.write('  ' + name + ":\n");
+                out.write('  - ' + config['projdir'] + '/' + name + "_R1.fastqc.zip\n");
+                out.write('  - ' + config['projdir'] + '/' + name + "_R2.fastqc.zip\n");
+
 
 #### Create Markdown index of FastQC report files
 rule makemd:
