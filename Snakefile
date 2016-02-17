@@ -1299,6 +1299,31 @@ rule makeyaml:
 
 #### Create fastqc summary
 
+rule fastqc_summary:
+    iinput: yaml = 'summary_fastqc.yaml'
+    output: html = 'summary_fastqc.html'
+    run: 
+        R("""
+        knitr::opts_chunk$set(dpi=300, fig.pos="H", dev=c('png', 'pdf'), echo=FALSE, warning=FALSE, message=FALSE);
+
+        library(GtUtility);
+        source('~/R/source/GtUtility/R/parseFastQC.r');
+
+        PROJECT_HOME<-"/nas/is1/Mosse";
+        path.out<-"/nas/is1/Mosse/fastqc/summary";
+        fn.yaml<-"/nas/is1/zhangz/projects/mosse/2015-10_Neuroblastoma_Exome/source/summary_fastqc.yaml"; 
+        fn.report.index<-"fastqc.md";
+        slink<-TRUE; # replace path prefix with {{SLINK}}. 
+
+        if (!file.exists(path.out)) dir.create(path.out, recursive = TRUE);
+        path.fig<-paste(path.out, 'figure_', sep='/');
+
+        yaml<-yaml::yaml.load_file(fn.yaml);
+        paired<-yaml$paired;
+        N<-length(yaml$fastqc);
+        """)
+
+
 rule make_yaml:
     input: FASTQCS
     output: yaml = 'summary_fastqc.yaml'
