@@ -1300,6 +1300,9 @@ rule makeyaml:
 #### Create fastqc summary
 
 rule fastqc_summary:
+    """
+    copied from Jim Zhang
+    """
     iinput: yaml = 'summary_fastqc.yaml'
     output: html = 'summary_fastqc.html'
     run: 
