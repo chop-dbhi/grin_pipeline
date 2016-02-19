@@ -1303,27 +1303,12 @@ rule fastqc_summary:
     """
     copied from Jim Zhang
     """
-    iinput: yaml = 'summary_fastqc.yaml'
+    input: yaml = 'summary_fastqc.yaml'
     output: html = 'summary_fastqc.html'
     run: 
         R("""
-        knitr::opts_chunk$set(dpi=300, fig.pos="H", dev=c('png', 'pdf'), echo=FALSE, warning=FALSE, message=FALSE);
-
-        library(GtUtility);
-        source('~/R/source/GtUtility/R/parseFastQC.r');
-
-        PROJECT_HOME<-"/nas/is1/Mosse";
-        path.out<-"/nas/is1/Mosse/fastqc/summary";
-        fn.yaml<-"/nas/is1/zhangz/projects/mosse/2015-10_Neuroblastoma_Exome/source/summary_fastqc.yaml"; 
-        fn.report.index<-"fastqc.md";
-        slink<-TRUE; # replace path prefix with {{SLINK}}. 
-
-        if (!file.exists(path.out)) dir.create(path.out, recursive = TRUE);
-        path.fig<-paste(path.out, 'figure_', sep='/');
-
-        yaml<-yaml::yaml.load_file(fn.yaml);
-        paired<-yaml$paired;
-        N<-length(yaml$fastqc);
+        knitr::knit("summary_fastqc.Rmd")
+        rmarkdown::render('summary_fastqc.md', output_format='html_document')
         """)
 
 
@@ -1333,15 +1318,15 @@ rule make_yaml:
     run:
         # print(FASTQCS)
         NAMES = [re.sub("\_R1_fastqc\.zip$", "", os.path.basename(name)) for name in FASTQCS if re.search("_R1_fastqc\.zip$", name)]
-        #print(NAMES)
+        # print(NAMES)
         with open(output.yaml, "w") as out:
             out.write("paired: yes\n")
             out.write("output: " + config['summary_fastqc'] + "\n");
             out.write("fastqc:\n");
             for name in NAMES:
                 out.write('  ' + name + ":\n");
-                out.write('  - ' + config['projdir'] + '/' + name + "_R1.fastqc.zip\n");
-                out.write('  - ' + config['projdir'] + '/' + name + "_R2.fastqc.zip\n");
+                out.write('  - ' + config['projdir'] + '/fastqc/' + name + "_R1_fastqc.zip\n");
+                out.write('  - ' + config['projdir'] + '/fastqc/' + name + "_R2_fastqc.zip\n");
 
 
 #### Create Markdown index of FastQC report files
