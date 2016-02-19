@@ -1302,11 +1302,22 @@ rule makeyaml:
 rule fastqc_summary:
     """
     copied from Jim Zhang
+    must installl pandoc on commandline as following:
+    % conda install --channel https://conda.anaconda.org/userDil pandoc
     """
     input: yaml = 'summary_fastqc.yaml'
     output: html = 'summary_fastqc.html'
     run: 
         R("""
+        install.packages("devtools")
+        library(devtools)
+        install_github("zhezhangsh/GtUtility")
+        install_github("zhezhangsh/awsomics")
+        library(GtUtility)
+        library(awsomics)
+        install.packages("DT")
+        source("http://bioconductor.org/biocLite.R")
+        biocLite()
         knitr::knit("summary_fastqc.Rmd")
         rmarkdown::render('summary_fastqc.md', output_format='html_document')
         """)

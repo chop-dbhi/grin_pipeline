@@ -13,9 +13,9 @@ knitr::opts_chunk$set(dpi=300, fig.pos="H", dev=c('png', 'pdf'), echo=FALSE, war
 
 library(GtUtility);
 
-PROJECT_HOME<-"/nas/is1/zhangs3/projects/data/grin";
-path.out<-"/nas/is1/zhangs3/projects/data/grin/fastqc/summary";
-fn.yaml<-"/nas/is1/zhangs3/projects/data/grin/summary_fastqc.yaml"; 
+PROJECT_HOME<-"/mnt/isilon/cbmi/variome/zhangs3/projects/data/grin";
+path.out<-"/mnt/isilon/cbmi/variome/zhangs3/projects/data/grin/fastqc/summary";
+fn.yaml<-"/mnt/isilon/cbmi/variome/zhangs3/projects/data/grin/summary_fastqc.yaml"; 
 fn.report.index<-"fastqc.md";
 slink<-FALSE; # replace path prefix with {{SLINK}}. 
 
