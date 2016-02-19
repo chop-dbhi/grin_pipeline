@@ -423,7 +423,7 @@ rule recalibrate_bam:
         """
         {input.java} {params.javaopts} -jar {params.jar} \
         -T PrintReads \
-        -nct {threads}
+        -nct {threads} \
         -R {params.ref} \
         -I {input.bam} \
         -BQSR {input.table} \
@@ -1130,7 +1130,6 @@ rule testR:
 rule describeR:
     run:
         R("""
-        .libPaths( c( .libPaths("/mnt/isilon/cbmi/variome/leipzig/GRIN/Rlibrary")))
         library(dplyr)
         library(VariantFiltering)
         cat(.libPaths())
@@ -1155,7 +1154,6 @@ rule variantAnalysisSetupUind:
         phylo    = config['analysis']['phylo']
     run:
         R("""
-        .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(dplyr)
         library(VariantFiltering)
         uind_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
@@ -1190,7 +1188,6 @@ rule variantAnalysisSetupDeNovo:
         phylo    = config['analysis']['phylo']
     run:
         R("""
-        .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(dplyr)
         library(VariantFiltering)
         denovo_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
@@ -1220,7 +1217,6 @@ rule variantAnalysisAll:
         rlibrary = config['analysis']['rlibrary']
     run:
         R("""
-        .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(rmarkdown)
         uind<- get(load('{input.uind}'))
         mytrio<-"{wildcards.trio} ({wildcards.pro})"
