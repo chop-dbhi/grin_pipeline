@@ -1307,19 +1307,27 @@ rule fastqc_summary:
     """
     input: yaml = 'summary_fastqc.yaml'
     output: html = 'summary_fastqc.html'
+    params: projdir = config['projdir']
     run: 
         R("""
-        install.packages("devtools")
-        library(devtools)
-        install_github("zhezhangsh/GtUtility")
-        install_github("zhezhangsh/awsomics")
-        library(GtUtility)
-        library(awsomics)
-        install.packages("DT")
-        source("http://bioconductor.org/biocLite.R")
-        biocLite()
+        #install.packages("devtools")
+        #library(devtools)
+        #install_github("zhezhangsh/GtUtility")
+        #install_github("zhezhangsh/awsomics")
+        #library(GtUtility)
+        #library(awsomics)
+        #install.packages("DT")
+        #source("http://bioconductor.org/biocLite.R")
+        #biocLite()
+        # PROJECT_HOME<-"/mnt/isilon/cbmi/variome/zhangs3/projects/data/grin";
+
+	PROJECT_HOME<-"{params.projdir}";
+        path.out<-"{params.projdir}/fastqc/summary";
+        fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
+
         knitr::knit("summary_fastqc.Rmd")
         rmarkdown::render('summary_fastqc.md', output_format='html_document')
+
         """)
 
 
