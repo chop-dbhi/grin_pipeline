@@ -1383,6 +1383,8 @@ rule siteindex:
             for s in ANALYSISREADY:
                 outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
 
+            outfile.write("[fastqc summary]({{SLINK}}}/summary_fastqc.html\n")
+
 #### Internal
 onsuccess:
     print("Workflow finished, no error")
