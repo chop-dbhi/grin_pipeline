@@ -19,9 +19,13 @@ SLINK = "{{SLINK}}"
 
 DOWNLOADDIR = "kiel"
 DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
-FASTQCS = glob.glob("fastqc/*_fastqc.zip")
 
 FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
+# FASTQCS = glob.glob("fastqc/*_fastqc.zip")
+
+FASTQCS = [config['datadirs']['fastqc'] + "/" + re.sub("\.fastq.gz$", "_fastqc.zip", os.path.basename(name)) for name in FASTQS]
+# print(FASTQCS)
+# quit()
 
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
 #Trio_SL        C2952   C2953   C2954   f       EOEE
@@ -32,6 +36,7 @@ MANIFESTSAMPLES = list(set(list(sample_table['Subject'])+list(sample_table['Moth
 
 # ['E0974_GCTACGC_L006_R1', 'E0975_CGAGGCT_L006_R1', 'E0977_GTAGAGG_L006_R1', 'E0975_CGAGGCT_L006_R2', 'E0977_GTAGAGG_L006_R2', 'E0974_GCTACGC_L006_R2']
 ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQS])
+
 
 # some files may not be manifested
 PAIRNAMESINSAMPLETABLE = [name for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
@@ -1344,8 +1349,8 @@ rule make_yaml:
             out.write("fastqc:\n");
             for name in NAMES:
                 out.write('  ' + name + ":\n");
-                out.write('  - ' + config['projdir'] + '/fastqc/' + name + "_R1_fastqc.zip\n");
-                out.write('  - ' + config['projdir'] + '/fastqc/' + name + "_R2_fastqc.zip\n");
+                out.write('  - ' + config['datadirs']['fastqc'] + '/' + name + "_R1_fastqc.zip\n");
+                out.write('  - ' + config['datadirs']['fastqc'] + '/' + name + "_R2_fastqc.zip\n");
 
 
 #### Create Markdown index of FastQC report files
