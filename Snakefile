@@ -12,7 +12,7 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "baseconfig.yaml"
 configfile: "config.yaml"
-configfile: "test.yaml"
+#configfile: "test.yaml"
 
 SLINK = "{{SLINK}}"
 
@@ -207,6 +207,33 @@ rule symlinks:
         """
         fastq=os.path.basename(input).replace('_001','')
         os.symlink(input,fastq)
+        """
+
+### Extract reads from older BAM files
+rule extractreads:
+    input:
+        java = config['tools']['java'],
+        bam = config['datadirs']['oldbams'] + "/{sample}.bam"
+    output:
+        pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq",
+        pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq",
+        unpaired = config['datadirs']['fastq'] + "/{sample}_U.fastq"
+    log:
+        config['datadirs']['log'] + "/{sample}.extract.log"
+    params:
+        picard = config['jars']['picard']['path'],
+        md = config['jars']['picard']['samtofastq'],
+        javaopts = config['tools']['javaopts'],
+        metrics = config['datadirs']['picard']
+    shell:
+        """
+        {input.java} {params.javaopts} -jar {params.picard} \
+        {params.md} \
+        INPUT={input.bam} \
+        FASTQ={output.pair1} \
+        SECOND_END_FASTQ={output.pair2} \
+        UNPAIRED_FASTQ={output.unpaired} \
+        INCLUDE_NON_PF_READS=TRUE 2> {log}
         """
 
 ### QC ####
