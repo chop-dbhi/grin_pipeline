@@ -11,10 +11,7 @@ sample_table: sample_table.txt
 pedfile: samples.ped
 
 projdir: /mnt/lustre/users/leipzigj/GRIN/
-<<<<<<< HEAD
 summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc
-=======
->>>>>>> master
 
 # subdirectories relative to projdir
 datadirs:
