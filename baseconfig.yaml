@@ -1,15 +1,20 @@
 isilon: /mnt/isilon/cbmi/variome
 
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-siv:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 sample_table: sample_table.txt
 pedfile: samples.ped
 
 annovardbdir: /mnt/isilon/cbmi/variome/annovar/humandb
+<<<<<<< HEAD
 #annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
 annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a'] # removed 'genomicSuperDups',
 # specify operations for table_annovar.pl, correspoinding to above databases
 #operations: "g,r,f,f,f,f,f,f,f,f,f,f,f" # g: gene-based
+=======
+annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
+
+# specify operations for table_annovar.pl, correspoinding to above databases
+>>>>>>> master
 operations: "g,r,f,f,f,f,f,f,f,f,f,f" # g: gene-based
                                         # r: region-based
                                         # f: filter-based

@@ -11,9 +11,8 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 """
 
 configfile: "baseconfig.yaml"
-configfile: "config.respublica.GRCh38.yaml"
+configfile: "config.yaml"
 configfile: "test.yaml"
-# print(yaml.dump(config, default_flow_style=False))
 
 SLINK = "{{SLINK}}"
 
@@ -635,10 +634,9 @@ rule trio_vcfs:
         db = config['dbsnp']
     threads: 8
     run:
-        print(vcf)
-        assert(len(gvcfs)==3)
+        assert(len(input.gvcfs)==3)
         # use the family count to determine course of action
-        if len(familygvcfs)==3:
+        if len(input.familygvcfs)==3:
             shell("cp {input.family} {output.vcf}")
         else:
             shell("""
@@ -880,11 +878,11 @@ rule gatk_hard_filtration_indels:
 
 rule select_passing:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{file}.{type}.hard.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
         java = config['tools']['java']
     output:
-        vcf = config['datadirs']['vcfs'] + "/{file}.{type}.filtered.vcf",
-        idx = config['datadirs']['vcfs'] + "/{file}.{type}.filtered.vcf"
+        vcf = config['datadirs']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
+        idx = config['datadirs']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
@@ -929,28 +927,6 @@ rule gatk_combine_variants:
         "--assumeIdenticalSamples "
         "2> {log}"
 
-# rule gatk_cat_variants:
-#     input:
-#         snps = config['datadirs']['vcfs'] + "/{file}.snps.filtered.vcf",
-#         indels = config['datadirs']['vcfs'] + "/{file}.indels.filtered.vcf",
-#         java = config['tools']['java']
-#     output:
-#         combo = config['datadirs']['vcfs'] + "/{file}.cat.filtered.vcf"
-#     params:
-#         jar  = config['jars']['gatk'],
-#         ref = config['ref'],
-#         javaopts = config['tools']['javaopts']
-#     log:
-#         "log/{file}.select_passing_variants.log"
-#     shell:
-#         "{input.java} {params.javaopts} -cp {params.jar} "
-#         "org.broadinstitute.gatk.tools.CatVariants "
-#         "-R {params.ref} "
-#         "-V  {input.snps} "
-#         "-V  {input.indels} "
-#         "-out {output} "
-#         "2> {log}"
-    
 #### Annotation ####
 rule ad_vcf:
     input:
@@ -1170,6 +1146,15 @@ rule testR:
         rnorm(100)
         """)
 
+rule describeR:
+    run:
+        R("""
+        library(dplyr)
+        library(VariantFiltering)
+        cat(.libPaths())
+        print(sessionInfo())
+        """)
+
 #trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz
 #### Analysis ####
 rule variantAnalysisSetupUind:
@@ -1188,7 +1173,6 @@ rule variantAnalysisSetupUind:
         phylo    = config['analysis']['phylo']
     run:
         R("""
-        .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(dplyr)
         library(VariantFiltering)
         uind_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
@@ -1223,7 +1207,6 @@ rule variantAnalysisSetupDeNovo:
         phylo    = config['analysis']['phylo']
     run:
         R("""
-        .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(dplyr)
         library(VariantFiltering)
         denovo_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
@@ -1253,7 +1236,6 @@ rule variantAnalysisAll:
         rlibrary = config['analysis']['rlibrary']
     run:
         R("""
-        .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(rmarkdown)
         uind<- get(load('{input.uind}'))
         mytrio<-"{wildcards.trio} ({wildcards.pro})"
@@ -1271,8 +1253,6 @@ rule variantAnalysisDeNovo:
     params:
         rlibrary = config['analysis']['rlibrary']
     run:
-        print(input.denovo)
-        print(input.ped)
         R("""
         .libPaths( c( .libPaths(), "{params.rlibrary}") )
         library(rmarkdown)
