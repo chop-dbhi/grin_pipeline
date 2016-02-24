@@ -1,6 +1,7 @@
 import glob
 import re
 import pandas
+import yaml
 from snakemake.utils import R
 from functools import cmp_to_key
 """
@@ -10,7 +11,8 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 """
 
 configfile: "baseconfig.yaml"
-configfile: "config.yaml" 
+configfile: "config.yaml"
+configfile: "test.yaml"
 
 SLINK = "{{SLINK}}"
 
@@ -18,6 +20,11 @@ DOWNLOADDIR = "kiel"
 DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
 
 FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
+# FASTQCS = glob.glob("fastqc/*_fastqc.zip")
+
+FASTQCS = [config['datadirs']['fastqc'] + "/" + re.sub("\.fastq.gz$", "_fastqc.zip", os.path.basename(name)) for name in FASTQS]
+# print(FASTQCS)
+# quit()
 
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
 #Trio_SL        C2952   C2953   C2954   f       EOEE
@@ -28,6 +35,7 @@ MANIFESTSAMPLES = list(set(list(sample_table['Subject'])+list(sample_table['Moth
 
 # ['E0974_GCTACGC_L006_R1', 'E0975_CGAGGCT_L006_R1', 'E0977_GTAGAGG_L006_R1', 'E0975_CGAGGCT_L006_R2', 'E0977_GTAGAGG_L006_R2', 'E0974_GCTACGC_L006_R2']
 ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQS])
+
 
 # some files may not be manifested
 PAIRNAMESINSAMPLETABLE = [name for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
@@ -138,7 +146,7 @@ rule mkdirs:
             shell("mkdir -p " + config['datadirs'][adir])
 
 rule dummy:    # just to test the python codes above
-    input: "Snakefile"
+    input:  workflow.basedir + "/Snakefile"
 
 rule target_lists:
     input: LISTS
@@ -919,7 +927,6 @@ rule gatk_combine_variants:
         "--assumeIdenticalSamples "
         "2> {log}"
 
-    
 #### Annotation ####
 rule ad_vcf:
     input:
@@ -1007,6 +1014,18 @@ rule run_snpeff:
         -ud {params.updown} \
         {params.format} \
          {input.vcf} > {output.vcf}
+        """
+
+#### run multiqc  ####
+
+rule run_multiqc:
+    input:
+        GBAMS
+    params:
+        dirs = config['datadirs']['picard'] + ' fastqc'
+    shell:
+        """
+        multiqc -o multiqc {params.dirs} # will detect input file types?
         """
 
 #### run annovar  ####
@@ -1263,6 +1282,47 @@ rule makeyaml:
                out.write("  - {0}/{1}_R1_fastqc.zip\n".format(params.fastqc,name))
                out.write("  - {0}/{1}_R2_fastqc.zip\n".format(params.fastqc,name))
 
+#### Create fastqc summary
+
+rule fastqc_summary:
+    """
+    copied from Jim Zhang
+    must installl pandoc on commandline as following:
+    % conda install --channel https://conda.anaconda.org/userDil pandoc
+    """
+    input: yaml = 'summary_fastqc.yaml'
+    output: html = 'summary_fastqc.html'
+    params: projdir = config['projdir']
+    run: 
+        R("""
+
+	PROJECT_HOME<-"{params.projdir}";
+        path.out<-"{params.projdir}/fastqc/summary";
+        fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
+
+        knitr::knit("summary_fastqc.Rmd")
+        rmarkdown::render('summary_fastqc.md', output_format='html_document')
+
+        """)
+
+
+rule make_yaml:
+    input: FASTQCS
+    output: yaml = 'summary_fastqc.yaml'
+    run:
+        # print(FASTQCS)
+        NAMES = [re.sub("\_R1_fastqc\.zip$", "", os.path.basename(name)) for name in FASTQCS if re.search("_R1_fastqc\.zip$", name)]
+        # print(NAMES)
+        with open(output.yaml, "w") as out:
+            out.write("paired: yes\n")
+            out.write("output: " + config['summary_fastqc'] + "\n");
+            out.write("fastqc:\n");
+            for name in NAMES:
+                out.write('  ' + name + ":\n");
+                out.write('  - ' + config['datadirs']['fastqc'] + '/' + name + "_R1_fastqc.zip\n");
+                out.write('  - ' + config['datadirs']['fastqc'] + '/' + name + "_R2_fastqc.zip\n");
+
+
 #### Create Markdown index of FastQC report files
 rule makemd:
     output: 
@@ -1302,6 +1362,8 @@ rule siteindex:
 """)
             for s in ANALYSISREADY:
                 outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
+
+            outfile.write("[fastqc summary]({{SLINK}}}/summary_fastqc.html)\n")
 
 #### Internal
 onsuccess:

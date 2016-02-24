@@ -5,8 +5,8 @@ sample_table: sample_table.txt
 pedfile: samples.ped
 
 annovardbdir: /mnt/isilon/cbmi/variome/annovar/humandb
-annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
-
+#annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
+annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a'] # removed 'genomicSuperDups',
 # specify operations for table_annovar.pl, correspoinding to above databases
 operations: "g,r,f,f,f,f,f,f,f,f,f,f" # g: gene-based
                                         # r: region-based
