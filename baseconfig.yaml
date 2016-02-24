@@ -74,5 +74,5 @@ tools:
     table_annovar: 
         /mnt/isilon/cbmi/variome/bin/table_annovar.pl
     vcf2avinput: 
-        /mnt/isilon/cbmi/variome/bin/"convert2annovar.pl
+        /mnt/isilon/cbmi/variome/bin/convert2annovar.pl
 
