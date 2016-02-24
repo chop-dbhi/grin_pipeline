@@ -10,10 +10,7 @@ sh Miniconda3-latest-Linux-x86_64.sh
 # allow this to install into your home
 conda config --add channels bioconda
 conda config --add channels r
-<<<<<<< HEAD
-=======
 conda config --add channels asmeurer
->>>>>>> master
 conda create --name grinenv --file requirements.txt
 source activate grinenv
 ```
@@ -24,11 +21,7 @@ source("http://bioconductor.org/biocLite.R")
 library(BiocInstaller)
 install.packages("devtools")
 library(devtools)
-<<<<<<< HEAD
-install_github("rcastelo/VariantFiltering")
-=======
 install_github("VariantFiltering", "rcastelo")
->>>>>>> master
 ```
 
 ### To run a trio
