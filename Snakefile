@@ -12,19 +12,19 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "baseconfig.yaml"
 configfile: "config.yaml"
-configfile: "test.yaml"
+#configfile: "test.yaml"
 
 SLINK = "{{SLINK}}"
 
 DOWNLOADDIR = "kiel"
 DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
 
+EXTRACT = [config['datadirs']['fastq'] + "/"+os.path.basename(name).rsplit(".")[0]+"_"+pair+".fastq.gz" for name in glob.glob(config['datadirs']['oldbams'] + "/*bam") for pair in ["R1","R2"]]
+
 FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
-# FASTQCS = glob.glob("fastqc/*_fastqc.zip")
 
 FASTQCS = [config['datadirs']['fastqc'] + "/" + re.sub("\.fastq.gz$", "_fastqc.zip", os.path.basename(name)) for name in FASTQS]
-# print(FASTQCS)
-# quit()
+
 
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
 #Trio_SL        C2952   C2953   C2954   f       EOEE
@@ -36,7 +36,6 @@ MANIFESTSAMPLES = list(set(list(sample_table['Subject'])+list(sample_table['Moth
 # ['E0974_GCTACGC_L006_R1', 'E0975_CGAGGCT_L006_R1', 'E0977_GTAGAGG_L006_R1', 'E0975_CGAGGCT_L006_R2', 'E0977_GTAGAGG_L006_R2', 'E0974_GCTACGC_L006_R2']
 ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQS])
 
-
 # some files may not be manifested
 PAIRNAMESINSAMPLETABLE = [name for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
 SAMPLESONDISK = [sample for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
@@ -46,8 +45,6 @@ UNMANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name not in PAIRNAMESINSAM
 # pair up
 # ['E0974_GCTACGC_L006', 'E0975_CGAGGCT_L006', 'E0977_GTAGAGG_L006']
 SAMPLELANES = set([name.rsplit("_",maxsplit=1)[0] for name in PAIRNAMESINSAMPLETABLE])
-
-assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
 
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
@@ -101,6 +98,10 @@ rule all:
         phased = config['datadirs']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 #include TRIOGEMS for gemini (GRCh37 only)
 
+#this is useful for extracting sequences from bams
+rule extract:
+    input: EXTRACT
+
 rule rdata:
     input: RDATA
 
@@ -117,6 +118,7 @@ rule sample_concordance:
     output:
         ms="missingsamples.txt", ump="unmanifestedpairs.txt", ic="incompletefamilies.txt"
     run:
+        assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
         print("Received Pairs (on disk): {0}".format(len(ALLPAIRNAMES)))
         print("Unmanifested Pairs (on disk, not in sample table): {0}".format(len(UNMANIFESTEDPAIRS)))
         f = open(output.ump, 'w')
@@ -197,6 +199,14 @@ rule printtrios:
         print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
         print("gems: {0}".format(TRIOGEMS))
 
+rule gzip:
+    input: "{sample}.{ext,(fq|fastq)}"
+    output: "{sample}.{ext}.gz"
+    shell:
+        """
+        gzip -c {input} > {output}
+        """
+
 #### Sequence ####
 # make symlinks
 # do this once
@@ -207,6 +217,34 @@ rule symlinks:
         """
         fastq=os.path.basename(input).replace('_001','')
         os.symlink(input,fastq)
+        """
+
+### Extract reads from older BAM files
+rule extractreads:
+    input:
+        java = config['tools']['java'],
+        bam = config['datadirs']['oldbams'] + "/{sample}.bam"
+    output:
+        pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq",
+        pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq",
+        unpaired = config['datadirs']['fastq'] + "/{sample}_U.fastq"
+    log:
+        config['datadirs']['log'] + "/{sample}.extract.log"
+    params:
+        picard = config['jars']['picard']['path'],
+        md = config['jars']['picard']['samtofastq'],
+        javaopts = config['tools']['javaopts'],
+        metrics = config['datadirs']['picard']
+    shell:
+        """
+        {input.java} {params.javaopts} -jar {params.picard} \
+        {params.md} \
+        INPUT={input.bam} \
+        FASTQ={output.pair1} \
+        SECOND_END_FASTQ={output.pair2} \
+        UNPAIRED_FASTQ={output.unpaired} \
+        INCLUDE_NON_PF_READS=TRUE \
+        VALIDATION_STRINGENCY=LENIENT 2> {log}
         """
 
 ### QC ####
