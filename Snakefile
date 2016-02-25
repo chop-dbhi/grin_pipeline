@@ -19,12 +19,12 @@ SLINK = "{{SLINK}}"
 DOWNLOADDIR = "kiel"
 DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
 
+EXTRACT = [config['datadirs']['fastq'] + "/"+os.path.basename(name).rsplit(".")[0]+"_"+pair+".fastq.gz" for name in glob.glob(config['datadirs']['oldbams'] + "/*bam") for pair in ["R1","R2"]]
+
 FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
-# FASTQCS = glob.glob("fastqc/*_fastqc.zip")
 
 FASTQCS = [config['datadirs']['fastqc'] + "/" + re.sub("\.fastq.gz$", "_fastqc.zip", os.path.basename(name)) for name in FASTQS]
-# print(FASTQCS)
-# quit()
+
 
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
 #Trio_SL        C2952   C2953   C2954   f       EOEE
@@ -35,7 +35,6 @@ MANIFESTSAMPLES = list(set(list(sample_table['Subject'])+list(sample_table['Moth
 
 # ['E0974_GCTACGC_L006_R1', 'E0975_CGAGGCT_L006_R1', 'E0977_GTAGAGG_L006_R1', 'E0975_CGAGGCT_L006_R2', 'E0977_GTAGAGG_L006_R2', 'E0974_GCTACGC_L006_R2']
 ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQS])
-
 
 # some files may not be manifested
 PAIRNAMESINSAMPLETABLE = [name for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
@@ -100,6 +99,10 @@ rule all:
         analysis = ANALYSES,
         phased = config['datadirs']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 #include TRIOGEMS for gemini (GRCh37 only)
+
+#this is useful for extracting sequences from bams
+rule extract:
+    input: EXTRACT
 
 rule rdata:
     input: RDATA
@@ -197,6 +200,14 @@ rule printtrios:
         print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
         print("gems: {0}".format(TRIOGEMS))
 
+rule gzip:
+    input: "{sample}.{ext,(fq|fastq)}"
+    output: "{sample}.{ext}.gz"
+    shell:
+        """
+        gzip -c {input} > {output}
+        """
+
 #### Sequence ####
 # make symlinks
 # do this once
@@ -233,7 +244,8 @@ rule extractreads:
         FASTQ={output.pair1} \
         SECOND_END_FASTQ={output.pair2} \
         UNPAIRED_FASTQ={output.unpaired} \
-        INCLUDE_NON_PF_READS=TRUE 2> {log}
+        INCLUDE_NON_PF_READS=TRUE \
+        VALIDATION_STRINGENCY=LENIENT 2> {log}
         """
 
 ### QC ####
