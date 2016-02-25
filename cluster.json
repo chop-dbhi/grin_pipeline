@@ -1,0 +1,12 @@
+{
+    "__default__" :
+    {
+        "h_vmem": "50G",
+	"mem_free": "50G"
+    },
+    "gzip" :
+    {
+        "h_vmem": "10G",
+        "mem_free": "10G"
+    }
+}

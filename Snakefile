@@ -46,8 +46,6 @@ UNMANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name not in PAIRNAMESINSAM
 # ['E0974_GCTACGC_L006', 'E0975_CGAGGCT_L006', 'E0977_GTAGAGG_L006']
 SAMPLELANES = set([name.rsplit("_",maxsplit=1)[0] for name in PAIRNAMESINSAMPLETABLE])
 
-assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
-
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
 # a quad produces two trios
@@ -120,6 +118,7 @@ rule sample_concordance:
     output:
         ms="missingsamples.txt", ump="unmanifestedpairs.txt", ic="incompletefamilies.txt"
     run:
+        assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
         print("Received Pairs (on disk): {0}".format(len(ALLPAIRNAMES)))
         print("Unmanifested Pairs (on disk, not in sample table): {0}".format(len(UNMANIFESTEDPAIRS)))
         f = open(output.ump, 'w')
