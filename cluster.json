@@ -6,7 +6,14 @@
     },
     "gzip" :
     {
-        "h_vmem": "10G",
-        "mem_free": "10G"
+        "h_vmem": "10M",
+        "mem_free": "10M",
+	"reference": "http://www.real-world-systems.com/docs/gzip.1.html"
+    },
+    "novosortbam":
+    {
+        "h_vmem": "2G",
+        "mem_free": "2G",
+        "reference": "http://www.novocraft.com/documentation/novosort-2/"
     }
 }
