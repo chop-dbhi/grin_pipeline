@@ -1,5 +1,9 @@
 {
-    "__default__" :
+    "__default__":
+    {
+        "mem": "2G",
+    },
+    "sample_concordance":
     {
         "mem": "2G",
     },
