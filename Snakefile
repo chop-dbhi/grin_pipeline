@@ -219,6 +219,16 @@ rule symlinks:
         os.symlink(input,fastq)
         """
 
+rule validateBam:
+    input:
+        bam = config['datadirs']['oldbams'] + "/{sample}.bam"
+    output:
+        report = config['datadirs']['oldbams'] + "/{sample}.report.txt"
+    shell:
+        """
+        picard ValidateSamFile I={input.bam} O={output.report}
+        """
+
 ### Extract reads from older BAM files
 rule extractreads:
     input:
@@ -233,11 +243,11 @@ rule extractreads:
     params:
         picard = config['jars']['picard']['path'],
         md = config['jars']['picard']['samtofastq'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         metrics = config['datadirs']['picard']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.picard} \
+        {input.java} {params.opts} -jar {params.picard} \
         {params.md} \
         INPUT={input.bam} \
         FASTQ={output.pair1} \
@@ -289,7 +299,7 @@ rule sam_to_bam:
         sam = config['datadirs']['sams'] + "/{sample}.sam",
         samtools = config['tools']['samtools']
     output:
-        bam = config['datadirs']['bams'] + "/{sample}.bam"
+        bam = config['datadirs']['bams'] + "/{sample,[^.]+}.bam"
     threads:
         12   # also depends on -j
     shell:
@@ -327,14 +337,14 @@ rule target_list: # create individual realign target list
         config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
         jar = config['jars']['gatk'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['high'],
         ref = config['ref'],
         knownsites = config['known']
     threads:
         24
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T RealignerTargetCreator \
         -nt {threads} \
         -R {params.ref} \
@@ -408,12 +418,12 @@ rule realign_target:   # with one combined list file
         rbam = config['datadirs']['realigned'] + "/{sample}.bam"
     params:
         jar = config['jars']['gatk'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         ref = config['ref'],
         known = config['known']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T IndelRealigner \
         -R {params.ref} \
         -I {config[datadirs][picard]}/{wildcards.sample}.group.bam \
@@ -435,12 +445,12 @@ rule generate_recalibration_table:
         config['datadirs']['log'] + "/{sample}.generate_recalibration_table.log"
     params:
         jar = config['jars']['gatk'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         ref = config['ref'],
         known = config['known']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T BaseRecalibrator \
         -R {params.ref} \
         -I {input.bam} \
@@ -461,13 +471,13 @@ rule recalibrate_bam:
         config['datadirs']['log'] + "/{sample}.recalibrate_bam.log"
     params:
         jar = config['jars']['gatk'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         ref = config['ref']
     threads:
         8
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T PrintReads \
         -nct {threads} \
         -R {params.ref} \
@@ -485,12 +495,12 @@ rule post_recalibrated_table:
         table = config['datadirs']['postrecalibrated'] + "/{sample}.table",
     params:
         jar = config['jars']['gatk'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         ref = config['ref'],
         known = config['known']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T BaseRecalibrator \
         -R {params.ref} \
         -I {input.bam} \
@@ -510,13 +520,13 @@ rule analyze_bqsr:
         pdf = config['datadirs']['pdfs'] + "/{sample}.pdf"
     params:
         jar = config['jars']['gatk'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         ref = config['ref']
     shell:
         """
         source ~/.bashrc
         module load R/3.2.2
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T AnalyzeCovariates \
         -R {params.ref} \
         -before {input.before} \
@@ -552,14 +562,14 @@ rule mark_duplicates:
     params:
         picard = config['jars']['picard']['path'],
         md = config['jars']['picard']['markdups'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         metrics = config['datadirs']['picard']
     shell:
         # will (and need the permision to) create a tmp directory
         # with the name of login under specified tmp directory
         # Exception in thread "main" net.sf.picard.PicardException: Exception creating temporary directory.
         """
-        {input.java} {params.javaopts} -jar {params.picard} \
+        {input.java} {params.opts} -jar {params.picard} \
         {params.md} \
         INPUT={input.bam} \
         OUTPUT={output.bam} \
@@ -591,11 +601,11 @@ rule add_readgroup:
         config['datadirs']['log'] + "/{sample}.add_readgroup.log"
     params:
         picard = config['jars']['picard']['path'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         rg = config['jars']['picard']['readgroups']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.picard} \
+        {input.java} {params.opts} -jar {params.picard} \
         {params.rg} \
         I={input.bam} \
         O={output.bam} \
@@ -614,11 +624,11 @@ rule make_gvcf:
         gvcf = config['datadirs']['gvcfs'] + "/{sample}.gvcf"
     params:
         jar = config['jars']['gatk'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         ref = config['ref']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T HaplotypeCaller \
         -R {params.ref} \
         -I {input.bam} \
@@ -668,7 +678,7 @@ rule trio_vcfs:
         jar = config['jars']['gatk'],
         ref = config['ref'],
         gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[1],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         db = config['dbsnp']
     threads: 8
     run:
@@ -678,7 +688,7 @@ rule trio_vcfs:
             shell("cp {input.family} {output.vcf}")
         else:
             shell("""
-            {input.java} {params.javaopts} -jar {params.jar} \
+            {input.java} {params.opts} -jar {params.jar} \
             -T GenotypeGVCFs \
             --disable_auto_index_creation_and_locking_when_reading_rods \
             --dbsnp {params.db} \
@@ -701,12 +711,12 @@ rule family_vcfs:
         jar = config['jars']['gatk'],
         ref = config['ref'],
         gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[1],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         db = config['dbsnp']
     threads: 8
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T GenotypeGVCFs \
         --disable_auto_index_creation_and_locking_when_reading_rods \
         --dbsnp {params.db} \
@@ -802,12 +812,12 @@ rule run_phase_by_transmission:
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
-        javaopts = config['tools']['javaopts']
+        opts = config['tools']['opts']['med']
     log: 
         config['datadirs']['log'] + "/{file}.phase_by_transmission.log" 
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T PhaseByTransmission \
         -R {params.ref} \
         -V {input.vcf} \
@@ -830,12 +840,12 @@ rule gatk_snps_only:
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
-        javaopts = config['tools']['javaopts']
+        opts = config['tools']['opts']['low']
     log:
         config['datadirs']['log'] + "/{file}.gatk_snps_only.log"
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T SelectVariants \
         -R {params.ref} \
         -V {input.vcf} \
@@ -853,12 +863,12 @@ rule gatk_indels_only:
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
-        javaopts = config['tools']['javaopts']
+        opts = config['tools']['opts']['low']
     log:
         config['datadirs']['log'] + "/{file}.gatk_indels_only.log"
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -T SelectVariants \
         -R {params.ref} \
         -V {input.vcf} \
@@ -878,11 +888,11 @@ rule gatk_hard_filtration_snps:
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
-        javaopts = config['tools']['javaopts']
+        opts = config['tools']['opts']['low']
     log:
         "log/{file}.gatk_hard_filtration.log"
     shell:
-        "{input.java} {params.javaopts} -jar {params.jar} "
+        "{input.java} {params.opts} -jar {params.jar} "
         "-R {params.ref} "
         "-T VariantFiltration "
         "-o {output.vcf} "
@@ -901,11 +911,11 @@ rule gatk_hard_filtration_indels:
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
-        javaopts = config['tools']['javaopts']
+        opts = config['tools']['opts']['low']
     log:
         "log/{file}.gatk_hard_filtration.log"
     shell:
-        "{input.java} {params.javaopts} -jar {params.jar} "
+        "{input.java} {params.opts} -jar {params.jar} "
         "-R {params.ref} "
         "-T VariantFiltration "
         "-o {output.vcf} "
@@ -924,11 +934,11 @@ rule select_passing:
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
-        javaopts = config['tools']['javaopts']
+        opts = config['tools']['opts']['low']
     log:
         "log/{file}.select_passing_variants.log"
     shell:
-        "{input.java} {params.javaopts} -jar {params.jar} "
+        "{input.java} {params.opts} -jar {params.jar} "
         "-R {params.ref} "
         " -T SelectVariants "
         "-o {output.vcf} "
@@ -952,11 +962,11 @@ rule gatk_combine_variants:
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'],
-        javaopts = config['tools']['javaopts']
+        opts = config['tools']['opts']['med']
     log:
         "log/{file}.select_passing_variants.log"
     shell:
-        "{input.java} {params.javaopts} -jar {params.jar} "
+        "{input.java} {params.opts} -jar {params.jar} "
         "-R {params.ref} "
         "-T CombineVariants "
         "--variant  {input.snps} "
@@ -1040,13 +1050,13 @@ rule run_snpeff:
     params:
         jar  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],
-        javaopts = config['tools']['javaopts'],
+        opts = config['tools']['opts']['med'],
         database = config['jars']['snpeff']['db'],
         updown = config['jars']['snpeff']['ud'],
         format = config['jars']['snpeff']['format']
     shell:
         """
-        {input.java} {params.javaopts} -jar {params.jar} \
+        {input.java} {params.opts} -jar {params.jar} \
         -c {params.conf} \
         -t {params.database} \
         -ud {params.updown} \
@@ -1323,11 +1333,6 @@ rule makeyaml:
 #### Create fastqc summary
 
 rule fastqc_summary:
-    """
-    copied from Jim Zhang
-    must installl pandoc on commandline as following:
-    % conda install --channel https://conda.anaconda.org/userDil pandoc
-    """
     input: yaml = 'summary_fastqc.yaml'
     output: html = 'summary_fastqc.html'
     params: projdir = config['projdir']

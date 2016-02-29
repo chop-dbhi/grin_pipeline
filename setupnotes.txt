@@ -16,3 +16,5 @@ http://genic-intolerance.org/data/SCORES_n12_4NR_v16May15.txt
 
 
 for f in DRA1   DRA11  DRA13  DRA15  DRA17  DRA19  DRA20  DRA22  DRA24  DRA26  DRA28  DRA3   DRA31 DRA10  DRA12  DRA14  DRA16  DRA18  DRA2   DRA21  DRA23  DRA25  DRA27 DRA29  DRA30; do for g in `ls NEWSEQS2-ATC/$f/*`; do ln -s "../"$g oldbams/`echo $g | sed -e 's/.recal//;s/reads.//;s/.*\///'`; done; done;
+
+for f in  DRA32  DRA4  DRA5  DRA6  DRA7  DRA8  DRA9 ; do for g in `ls NEWSEQS2-ATC/$f/*`; do ln -s "../"$g oldbams/`echo $g | sed -e 's/.recal//;s/reads.//;s/.*\///'`; done; done;

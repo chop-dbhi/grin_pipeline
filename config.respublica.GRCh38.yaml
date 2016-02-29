@@ -31,7 +31,7 @@ datadirs:
     vcfs:             lustre/GRCh38/vcfs
     vtpeek:           lustre/GRCh38/qc/vcf
     gemini:           lustre/GRCh38/gemini
-    analysis:         lustre/GRCh38/analysis
+    analysis:         GRCh38/analysis
     website:          site
     log:              logs
 
@@ -39,7 +39,13 @@ tools:
     java:
         /mnt/isilon/cbmi/variome/bin/java
     # must be set separately from java because java will be treated as input
-    javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/
+    opts:
+        high:
+            '-Xmx48g -Xms24g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
+        med:
+            '-Xmx32g -Xms16g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
+        low:
+            '-Xmx16g -Xms8g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
     seq2qc:
         /mnt/isilon/cbmi/variome/bin/fastqc
     samtools:
