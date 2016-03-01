@@ -39,7 +39,7 @@ tools:
     java:
         /mnt/isilon/cbmi/variome/bin/java
     # must be set separately from java because java will be treated as input
-    javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/tmp/
+    opts: -Xmx32g -Xms16g -Djava.io.tmpdir=/tmp/
     seq2qc:
         /mnt/isilon/cbmi/variome/bin/fastqc
     samtools:
