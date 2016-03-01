@@ -41,5 +41,5 @@ snakemake
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`
 ```
 source activate grinenv
-snakemake -c "qsub -l h_vmem=40G -l mem_free=40G" -j 
+snakemake -j --cluster-config cluster.json -c "qsub -l h_vmem={cluster.h_vmem} -l mem_free={cluster.mem_free}"
 ```

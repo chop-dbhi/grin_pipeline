@@ -10,31 +10,31 @@ buildve: hg38
 sample_table: sample_table.txt
 pedfile: samples.ped
 
-projdir: /mnt/lustre/users/leipzigj/GRIN/
+projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN/
 summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc
 
 # subdirectories relative to projdir
 datadirs:
     multiqc:          multiqc
+    oldbams:          oldbams
     fastq:            fastq
     samples:          samples
     fastqc:           qc/fastqc
-    sams:             GRCh38/sams
-    bams:             GRCh38/bams
-    picard:           GRCh38/picard
-    realigned:        GRCh38/realigned
-    lists:            GRCh38/lists
-    recalibrated:     GRCh38/recalibrated
-    postrecalibrated: GRCh38/postrecalibrated
-    pdfs:             GRCh38/pdfs
-    gvcfs:            GRCh38/gvcfs
-    vcfs:             GRCh38/vcfs
-    vtpeek:           GRCh38/qc/vcf
-    gemini:           GRCh38/gemini
-    analysis:         GRCh38/analysis
+    sams:             lustre/GRCh38/sams
+    bams:             lustre/GRCh38/bams
+    picard:           lustre/GRCh38/picard
+    realigned:        lustre/GRCh38/realigned
+    lists:            lustre/GRCh38/lists
+    recalibrated:     lustre/GRCh38/recalibrated
+    postrecalibrated: lustre/GRCh38/postrecalibrated
+    pdfs:             lustre/GRCh38/pdfs
+    gvcfs:            lustre/GRCh38/gvcfs
+    vcfs:             lustre/GRCh38/vcfs
+    vtpeek:           lustre/GRCh38/qc/vcf
+    gemini:           lustre/GRCh38/gemini
+    analysis:         lustre/GRCh38/analysis
     website:          site
     log:              logs
-# !!python/object/apply:os.path.join
 
 tools:
     java:
@@ -67,6 +67,8 @@ jars:
             BuildBamIndex
         readgroups:
             AddOrReplaceReadGroups
+        samtofastq:
+            SamToFastq
     gatk:
         /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
     snpeff:
