@@ -15,6 +15,7 @@ summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc
 
 # subdirectories relative to projdir
 datadirs:
+    multiqc:          multiqc
     fastq:            fastq
     samples:          samples
     fastqc:           qc/fastqc

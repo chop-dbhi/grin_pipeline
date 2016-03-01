@@ -12,7 +12,7 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "baseconfig.yaml"
 configfile: "config.yaml"
-configfile: "test.yaml"
+#configfile: "test.yaml"
 
 SLINK = "{{SLINK}}"
 
@@ -1021,11 +1021,13 @@ rule run_snpeff:
 rule run_multiqc:
     input:
         GBAMS
+    output: config['datadirs']['multiqc'] + '/multiqc_report.html'
     params:
-        dirs = config['datadirs']['picard'] + ' fastqc'
+        dirs = config['datadirs']['picard'] + ' fastqc',
+        outdir = config['datadirs']['multiqc'] 
     shell:
         """
-        multiqc -o multiqc {params.dirs} # will detect input file types?
+        multiqc -o {params.outdir} {params.dirs} # will detect input file types?
         """
 
 #### run annovar  ####
@@ -1043,7 +1045,7 @@ rule table_annovar:
                 +" -operation "+config['operations']
                 +" -nastring . \
                 -out joint \
-                -tempdir /tmp \
+                -tempdir {config['tmpdir']} \
                 -remove \
                 -dot2underline \
                 -vcfinput",
@@ -1347,8 +1349,7 @@ and installed as &lt;isilon&gt;/bin/fastqc.
                idx += 1
 
 rule siteindex:
-    input:
-        "Snakefile"
+    input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
     output: config['datadirs']['website'] + "/index.md"
     run:
         with open(output[0], 'w') as outfile:
@@ -1363,7 +1364,10 @@ rule siteindex:
             for s in ANALYSISREADY:
                 outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
 
-            outfile.write("[fastqc summary]({{SLINK}}}/summary_fastqc.html)\n")
+            outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
+            outfile.write("<p>\n")
+            outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
+
 
 #### Internal
 onsuccess:
