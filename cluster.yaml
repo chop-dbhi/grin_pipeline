@@ -1,114 +1,114 @@
 ---
   __default__: 
-    mem: "2G"
+    mem: 2G
   fastqc: 
-    mem: "10G"
+    mem: 10G
   align: 
-    mem: "30G"
+    mem: 30G
   sam_to_bam: 
-    mem: "30G"
+    mem: 30G
   merge_lanes: 
-    mem: "30G"
+    mem: 30G
   make_index: 
-    mem: "10G"
+    mem: 10G
   ad_vcf: 
-    mem: "10G"
+    mem: 10G
   decompose_for_gemini: 
-    mem: "10G"
+    mem: 10G
   normalize_for_gemini: 
-    mem: "10G"
+    mem: 10G
   vcf_qt: 
-    mem: "10G"
+    mem: 10G
   vcf_profile: 
-    mem: "10G"
+    mem: 10G
   run_multiqc: 
-    mem: "20G"
+    mem: 20G
   table_annovar: 
-    mem: "30G"
+    mem: 30G
   run_annovar: 
-    mem: "30G"
+    mem: 30G
   vcf2avinput: 
-    mem: "30G"
+    mem: 30G
   install_annovar_db: 
-    mem: "30G"
+    mem: 30G
   tabix: 
-    mem: "20G"
+    mem: 20G
   gemini_db: 
-    mem: "30G"
+    mem: 30G
   variantAnalysisSetupUind: 
-    mem: "30G"
+    mem: 30G
   variantAnalysisSetupDeNovo: 
-    mem: "30G"
+    mem: 30G
   variantAnalysisAll: 
-    mem: "30G"
+    mem: 30G
   variantAnalysisDeNovo: 
-    mem: "30G"
+    mem: 30G
   compress_vcf: 
-    mem: "10M"
-    reference: "http://www.real-world-systems.com/docs/gzip.1.html"
+    mem: 10M
+    reference: http://www.real-world-systems.com/docs/gzip.1.html
   gzip: 
-    mem: "10M"
-    reference: "http://www.real-world-systems.com/docs/gzip.1.html"
+    mem: 10M
+    reference: http://www.real-world-systems.com/docs/gzip.1.html
   novosortbam: 
-    mem: "2G"
-    reference: "http://www.novocraft.com/documentation/novosort-2/"
+    mem: 2G
+    reference: http://www.novocraft.com/documentation/novosort-2/
   target_list: 
-    mem: "64G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 64G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   extractreads: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   realign_target: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   generate_recalibration_table: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   recalibrate_bam: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   post_recalibrated_table: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   analyze_bqsr: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   mark_duplicates: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   add_readgroup: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   make_gvcf: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   trio_vcfs: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   family_vcfs: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   run_phase_by_transmission: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   gatk_combine_variants: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   run_snpeff: 
-    mem: "48G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 48G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   gatk_snps_only: 
-    mem: "24G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 24G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   gatk_indels_only: 
-    mem: "24G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 24G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   gatk_hard_filtration_snps: 
-    mem: "24G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 24G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   gatk_hard_filtration_indels: 
-    mem: "24G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 24G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
   select_passing: 
-    mem: "24G"
-    reference: "https://www.broadinstitute.org/gatk/guide/article?id=1975"
+    mem: 24G
+    reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
