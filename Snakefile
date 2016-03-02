@@ -12,7 +12,7 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "baseconfig.yaml"
 configfile: "config.yaml"
-configfile: "test.yaml"
+#configfile: "test.yaml"
 
 SLINK = "{{SLINK}}"
 
