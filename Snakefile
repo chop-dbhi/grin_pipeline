@@ -12,7 +12,7 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "baseconfig.yaml"
 configfile: "config.yaml"
-#configfile: "test.yaml"
+configfile: "test.yaml"
 
 SLINK = "{{SLINK}}"
 
@@ -1402,9 +1402,13 @@ rule siteindex:
             for s in ANALYSISREADY:
                 outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
 
-            outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
+            # this link won't be treated as a child page
+            #outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
+            # must add a child index to the mybic project admin page to treat this link as a child page
+            outfile.write('<a href="summary_fastqc.html">fastqc summary</a>' + "\n")
             outfile.write("<p>\n")
-            outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
+            #outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
+            outfile.write('<a href="multiqc_report.html">multiqc report</a>' + "\n")
 
 
 #### Internal
