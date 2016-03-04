@@ -12,7 +12,7 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "baseconfig.yaml"
 configfile: "config.yaml"
-#configfile: "test.yaml"
+configfile: "test.yaml"
 
 SLINK = "{{SLINK}}"
 
@@ -1392,8 +1392,9 @@ and installed as &lt;isilon&gt;/bin/fastqc.
                idx += 1
 
 rule siteindex:
-    input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
-    output: config['datadirs']['website'] + "/index.md"
+    #input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
+    output:
+        config['datadirs']['website'] + "/index.md"
     run:
         with open(output[0], 'w') as outfile:
             outfile.write("""
