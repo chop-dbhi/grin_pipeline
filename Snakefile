@@ -284,7 +284,7 @@ rule align:
     output:
         sam = config['datadirs']['sams'] + "/{sample}.sam" # may be set to temp
     threads:
-        12   # also depends on -j
+        12
     log: 
         config['datadirs']['log'] + "/{sample}.novoalign.log"
     params:
