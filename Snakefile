@@ -1429,8 +1429,8 @@ rule depth_of_coverage:
 		"{sample}.DoC"
 	params:
 		jar = config['jars']['gatk'],
-        opts = config['tools']['opts']['med'],
-        ref = config['ref']
+		opts = config['tools']['opts']['med'],
+		ref = config['ref']
     shell:
     	"""
     	{input.java} {params.opts} -jar {params.jar} \
