@@ -1420,3 +1420,33 @@ onsuccess:
 onerror:
     print("An error occurred")
     shell("mail -s 'an error occurred' "+config['admins']+" < {log}")
+
+rule depth_of_coverage:
+	input:
+		bam = config['datadirs']['recalibrated'] + "/{sample}.bam"
+		java = config['tools']['java']
+	output:
+		"{sample}.DoC"
+	params:
+		jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'],
+        ref = config['ref']
+    shell:
+    	"""
+    	{input.java} {params.opts} -jar {params.jar} \
+    	-T DepthOfCoverage \
+    	-I {input.bam} \
+    	-R {params.ref} \
+    	-L {params.targets} \
+    	-l INFO \
+    	-dt BY_SAMPLE \
+        --omitDepthOutputAtEachBase \
+        --omitLocusTable \
+        --minBaseQuality 0 \
+        --minMappingQuality 20 \
+        --start 1 \
+        --stop 5000 \
+        --nBins 200 \
+        --includeRefNSites \
+        -o {output}
+        """
