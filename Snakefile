@@ -1431,22 +1431,22 @@ rule depth_of_coverage:
 		jar = config['jars']['gatk'],
 		opts = config['tools']['opts']['med'],
 		ref = config['ref']
-    shell:
-    	"""
-    	{input.java} {params.opts} -jar {params.jar} \
-    	-T DepthOfCoverage \
-    	-I {input.bam} \
-    	-R {params.ref} \
-    	-L {params.targets} \
-    	-l INFO \
-    	-dt BY_SAMPLE \
-        --omitDepthOutputAtEachBase \
-        --omitLocusTable \
-        --minBaseQuality 0 \
-        --minMappingQuality 20 \
-        --start 1 \
-        --stop 5000 \
-        --nBins 200 \
-        --includeRefNSites \
-        -o {output}
-        """
+	shell:
+		"""
+		{input.java} {params.opts} -jar {params.jar} \
+		-T DepthOfCoverage \
+		-I {input.bam} \
+		-R {params.ref} \
+		-L {params.targets} \
+		-l INFO \
+		-dt BY_SAMPLE \
+		--omitDepthOutputAtEachBase \
+		--omitLocusTable \
+		--minBaseQuality 0 \
+		--minMappingQuality 20 \
+		--start 1 \
+		--stop 5000 \
+		--nBins 200 \
+		--includeRefNSites \
+		-o {output}
+		"""
