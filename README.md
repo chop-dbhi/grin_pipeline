@@ -43,3 +43,14 @@ snakemake
 source activate grinenv
 snakemake -j --cluster-config cluster.json -c "qsub -l h_vmem={cluster.mem} -l mem_free={cluster.mem} -pe smp {threads}"
 ```
+
+### Development
+To update the requirements file (after installing some new package):
+```
+conda list -e > requirements.txt
+```
+
+To update your conda environment with a new requirements file:
+```
+conda install --name grinenv --file  requirements.txt
+```
