@@ -127,3 +127,4 @@ wheel=0.29.0=py34_0
 xz=5.0.5=1
 yaml=0.1.6=0
 zlib=1.2.8=0
+denovogear=1.1.1=0
