@@ -284,7 +284,7 @@ rule align:
     output:
         sam = config['datadirs']['sams'] + "/{sample}.sam" # may be set to temp
     threads:
-        12   # also depends on -j
+        12
     log: 
         config['datadirs']['log'] + "/{sample}.novoalign.log"
     params:
@@ -550,6 +550,36 @@ rule merge_lanes:
             shell("{input.samtools} merge {output} {input.bams}")
         else:
             shell("cp {input.bams} {output}")
+
+rule depth_of_coverage:
+    input:
+        bam = config['datadirs']['recalibrated'] + "/{sample}.bam",
+        java = config['tools']['java']
+    output:
+    "{sample}.DoC"
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'],
+        ref = config['ref']
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T DepthOfCoverage \
+        -I {input.bam} \
+        -R {params.ref} \
+        -L {params.targets} \
+        -l INFO \
+        -dt BY_SAMPLE \
+        --omitDepthOutputAtEachBase \
+        --omitLocusTable \
+        --minBaseQuality 0 \
+        --minMappingQuality 20 \
+        --start 1 \
+        --stop 5000 \
+        --nBins 200 \
+        --includeRefNSites \
+        -o {output}
+        """
 
 rule mark_duplicates:
     input:
@@ -1069,11 +1099,13 @@ rule run_snpeff:
 rule run_multiqc:
     input:
         GBAMS
+    output: config['datadirs']['multiqc'] + '/multiqc_report.html'
     params:
-        dirs = config['datadirs']['picard'] + ' fastqc'
+        dirs = config['datadirs']['picard'] + ' fastqc',
+        outdir = config['datadirs']['multiqc'] 
     shell:
         """
-        multiqc -o multiqc {params.dirs} # will detect input file types?
+        multiqc -o {params.outdir} {params.dirs} # will detect input file types?
         """
 
 #### run annovar  ####
@@ -1091,7 +1123,7 @@ rule table_annovar:
                 +" -operation "+config['operations']
                 +" -nastring . \
                 -out joint \
-                -tempdir /tmp \
+                -tempdir {config['tmpdir']} \
                 -remove \
                 -dot2underline \
                 -vcfinput",
@@ -1390,8 +1422,7 @@ and installed as &lt;isilon&gt;/bin/fastqc.
                idx += 1
 
 rule siteindex:
-    input:
-        "Snakefile"
+    input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
     output: config['datadirs']['website'] + "/index.md"
     run:
         with open(output[0], 'w') as outfile:
@@ -1406,7 +1437,10 @@ rule siteindex:
             for s in ANALYSISREADY:
                 outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
 
-            outfile.write("[fastqc summary]({{SLINK}}}/summary_fastqc.html)\n")
+            outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
+            outfile.write("<p>\n")
+            outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
+
 
 #### Internal
 onsuccess:
@@ -1416,3 +1450,5 @@ onsuccess:
 onerror:
     print("An error occurred")
     shell("mail -s 'an error occurred' "+config['admins']+" < {log}")
+
+
