@@ -2,6 +2,7 @@ import glob
 import re
 import pandas
 import yaml
+import configparser
 from snakemake.utils import R
 from functools import cmp_to_key
 """
@@ -274,6 +275,32 @@ rule fastqc:
         qcdir = config['datadirs']['fastqc']
     # how to run qsub?
     shell: "{input.seq2qc} -o {params.qcdir} {input.pair1} {input.pair2} 2> {log}" 
+
+### Mirror to Cavatica
+# waiting on boto fix to accept cbttc bucket name with dots in it
+#import configparser
+#awsconfig = configparser.ConfigParser()
+#awsconfig.read("/home/leipzigj/.aws/credentials")
+#from snakemake.remote.S3 import RemoteProvider as S3RemoteProvider
+#S3 = S3RemoteProvider(access_key_id=awsconfig['default']['aws_access_key_id'], secret_access_key=awsconfig['default']['aws_secret_access_key'], aws_s3_calling_format='boto.s3.connection.OrdinaryCallingFormat')
+
+rule copy_to_cavatica:
+    input:
+        config['datadirs']['fastq'] + "/{filename}"
+    output:
+        "aws/{filename}.sent"
+        #S3.remote("cbttc.seq.data/Ingo_project/{filename}")
+    threads: 1
+    shell:
+        """
+        /home/leipzigj/miniconda3/envs/grinenv/bin/aws s3 cp {input} s3://cbttc.seq.data/Ingo_project/{wildcards.filename}
+        touch {output}
+        """
+
+rule mirror:
+    input:
+        expand("aws/{filename}_{pair}.fastq.gz.sent",filename=SAMPLELANES,pair=['R1','R2'])
+#        S3.remote(expand("cbttc.seq.data/Ingo_project/{filename}.fastq.gz",filename=SAMPLELANES))
 
 #### Alignment ####
 rule align:
@@ -556,7 +583,7 @@ rule depth_of_coverage:
         bam = config['datadirs']['recalibrated'] + "/{sample}.bam",
         java = config['tools']['java']
     output:
-    "{sample}.DoC"
+        "{sample}.DoC"
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
@@ -1370,14 +1397,11 @@ rule fastqc_summary:
     params: projdir = config['projdir']
     run: 
         R("""
-
-	PROJECT_HOME<-"{params.projdir}";
+        PROJECT_HOME<-"{params.projdir}";
         path.out<-"{params.projdir}/fastqc/summary";
         fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
-
         knitr::knit("summary_fastqc.Rmd")
         rmarkdown::render('summary_fastqc.md', output_format='html_document')
-
         """)
 
 
