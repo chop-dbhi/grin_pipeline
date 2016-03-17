@@ -187,7 +187,7 @@ rule add_group:    # must be run before create_target
 rule make_bais:
     input: DBAIS
 
-rule sortbams:
+rule rmdupbams:
     input: DBAMS
 
 rule printbams:
