@@ -38,7 +38,7 @@ datadirs:
 
 tools:
     java:
-        /mnt/isilon/cbmi/variome/bin/java
+        java
     # must be set separately from java because java will be treated as input
     opts:
         high:
@@ -48,25 +48,25 @@ tools:
         low:
             '-Xmx16g -Xms8g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
     seq2qc:
-        /mnt/isilon/cbmi/variome/bin/fastqc
+        fastqc
     samtools:
-        /mnt/isilon/cbmi/variome/bin/samtools-1.3/samtools
+        samtools-1.3/samtools
     sortbam:
-        /mnt/isilon/cbmi/variome/bin/novosort
+        novosort
     align:
-        /mnt/isilon/cbmi/variome/bin/novoalign
+        novoalign
     vt:
-        /mnt/isilon/cbmi/variome/bin/vt/vt
+        vt/vt
     tabix:
-        /mnt/isilon/cbmi/variome/bin/tabix
+        tabix
     bgzip:
-        /mnt/isilon/cbmi/variome/bin/bgzip
+        bgzip
     gemini:
-        /mnt/isilon/cbmi/variome/bin/gemini/bin/gemini
+        gemini/bin/gemini
 jars:
     picard:
         path:
-            /mnt/isilon/cbmi/variome/bin/picard-tools-2.0.1/picard.jar
+            picard
         markdups:
             MarkDuplicates
         index:
@@ -76,12 +76,12 @@ jars:
         samtofastq:
             SamToFastq
     gatk:
-        /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
+        GATK/GenomeAnalysisTK.jar
     snpeff:
         path:
-            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.jar
+            snpEff
         cnf:
-            /mnt/isilon/cbmi/variome/bin/snpeff/4.0/snpEff.GRCh38.config
+            configs/snpEff.GRCh38.config
         db:
             GRCh38.76
         ud:
