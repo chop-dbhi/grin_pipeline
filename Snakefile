@@ -11,9 +11,8 @@ source activate snakeenv
 snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G" 
 """
 
-configfile: "baseconfig.yaml"
-configfile: "config.yaml"
-#configfile: "test.yaml"
+configfile: "configs/baseconfig.yaml"
+configfile: "configs/config.yaml"
 
 SLINK = "{{SLINK}}"
 
@@ -1336,7 +1335,7 @@ rule variantAnalysisAll:
         uind = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.uind.RData",
         denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
         ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile",
-        source = "grin_epilepsy.Rmd"
+        source = "reports/grin_epilepsy.Rmd"
     output:
         html = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.all.html"
     params:
@@ -1354,7 +1353,7 @@ rule variantAnalysisDeNovo:
     input:
         denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
         ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile",
-        source = "grin_epilepsy_denovo.Rmd"
+        source = "reports/grin_epilepsy_denovo.Rmd"
     output:
         html = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.html"
     params:
@@ -1400,7 +1399,7 @@ rule fastqc_summary:
         PROJECT_HOME<-"{params.projdir}";
         path.out<-"{params.projdir}/fastqc/summary";
         fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
-        knitr::knit("summary_fastqc.Rmd")
+        knitr::knit("reports/summary_fastqc.Rmd")
         rmarkdown::render('summary_fastqc.md', output_format='html_document')
         """)
 
