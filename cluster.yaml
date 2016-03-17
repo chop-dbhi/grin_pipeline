@@ -73,7 +73,7 @@ analyze_bqsr:
   mem: 48G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 mark_duplicates: 
-  mem: 48G
+  mem: 60G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 add_readgroup: 
   mem: 48G

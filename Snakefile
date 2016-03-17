@@ -169,6 +169,9 @@ rule make_bams:
 rule make_sams:
     input: SAMS
 
+rule make_merged:
+    input: MBAMS
+
 rule pdfs:
     input: PDFS
 
