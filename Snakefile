@@ -684,7 +684,7 @@ rule make_gvcf:
         gvcf = config['datadirs']['gvcfs'] + "/{sample}.gvcf"
     params:
         jar = config['jars']['gatk'],
-        opts = config['tools']['opts']['med'],
+        opts = config['tools']['opts']['high'],
         ref = config['ref']
     shell:
         """
