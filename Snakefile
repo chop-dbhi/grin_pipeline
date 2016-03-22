@@ -2,6 +2,7 @@ import glob
 import re
 import pandas
 import yaml
+import subprocess
 from snakemake.utils import R
 from functools import cmp_to_key
 """
@@ -149,6 +150,9 @@ rule mkdirs:
 
 rule dummy:    # just to test the python codes above
     input:  workflow.basedir + "/Snakefile"
+
+    run:
+        check_gvcfs(GVCFS)
 
 rule target_lists:
     input: LISTS
@@ -641,6 +645,24 @@ rule make_gvcf:
         -o {output.gvcf}
         """
 
+# sanity check on gvcf files
+
+def check_gvcfs(gvcfs):
+    for file in gvcfs:
+        cmd = "tail -1 " + file
+        # print(cmd)
+        (output, error) = call_command(cmd)
+        line = output.decode()
+        if not re.search("^chrEBV.*\n", line):
+            print(file + ' is incomplete')
+            quit()
+    
+def call_command(command):
+    process = subprocess.Popen(command.split(' '),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    return process.communicate()
+
 # if supplid a subject return either only one trio for that subject
 # if supplied 'family' as the subject, then all members, including siblings are returned
 # the family argument is really for sanity checking if a subject is given
@@ -683,6 +705,8 @@ rule trio_vcfs:
     threads: 8
     run:
         assert(len(input.gvcfs)==3)
+        check_gvcfs(input.gvcfs) 
+        check_gvcfs(input.familygvcfs)
         # use the family count to determine course of action
         if len(input.familygvcfs)==3:
             shell("cp {input.family} {output.vcf}")
@@ -714,8 +738,10 @@ rule family_vcfs:
         opts = config['tools']['opts']['med'],
         db = config['dbsnp']
     threads: 8
-    shell:
-        """
+    run:
+        check_gvcfs(input.gvcfs) 
+        check_gvcfs(params.gvcfslist) 
+        shell("""
         {input.java} {params.opts} -jar {params.jar} \
         -T GenotypeGVCFs \
         --disable_auto_index_creation_and_locking_when_reading_rods \
@@ -724,7 +750,7 @@ rule family_vcfs:
         -R {params.ref} \
         {params.gvcfslist} \
         -o {output.vcf} 2> {log}
-        """
+        """)
 
 def samples_in_family(family):
     rows = sample_table.loc[sample_table['FamilyID'] ==  family]
@@ -1063,6 +1089,23 @@ rule run_snpeff:
         {params.format} \
          {input.vcf} > {output.vcf}
         """
+
+#### run VEP  ####
+
+rule run_vep:
+    input: "{file}.vcf.gz"
+    output: "{file}.vep.vcf.gz"
+    run:
+        shell("""
+          perl ./vep/ensembl-tools-release-78/scripts/variant_effect_predictor/variant_effect_predictor.pl \
+              --everything --vcf --allele_number --no_stats --cache --offline \
+              --dir ./vep_cache/ --force_overwrite --cache_version 78 \
+              --fasta ./vep_cache/homo_sapiens/78_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa \
+              --assembly GRCh37 --tabix \
+              --plugin LoF,human_ancestor_fa:./loftee_data/human_ancestor.fa.gz,filter_position:0.05,min_intron_size:15 \
+              --plugin dbNSFP,./reference_data/dbNSFP/dbNSFPv2.9.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
+              -i {wildcards.file}.vcf.gz -o {wildcards.file}.vep.vcf.gz
+        """)
 
 #### run multiqc  ####
 
