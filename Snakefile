@@ -800,7 +800,6 @@ rule family_vcfs:
     threads: 8
     run:
         check_gvcfs(input.gvcfs) 
-        check_gvcfs(params.gvcfslist) 
         shell("""
         {input.java} {params.opts} -jar {params.jar} \
         -T GenotypeGVCFs \
