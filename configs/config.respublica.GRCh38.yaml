@@ -7,8 +7,8 @@ known:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gol
 #tabixed this:
 dbsnp: /mnt/isilon/cbmi/variome/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
 buildve: hg38
-sample_table: sample_table.txt
-pedfile: samples.ped
+sample_table: metadata/sample_table.txt
+pedfile: metadata/samples.ped
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN/
 summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc

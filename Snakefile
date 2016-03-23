@@ -114,6 +114,51 @@ rule analysisready:
 rule analyses:
     input: ANALYSES
 
+# this is a utility to put things in the correct order in case something upstream gets touched
+rule catchup:
+    params:
+        picard = config['datadirs']['picard'],
+        lists = config['datadirs']['lists'],
+        realigned = picard = config['datadirs']['realigned'],
+        recalibrated = picard = config['datadirs']['recalibrated'],
+        postrecalibrated = picard = config['datadirs']['postrecalibrated'],
+        gvcfs = config['datadirs']['gvcfs'],
+        vcfs = config['datadirs']['vcfs'],
+        analysis = config['datadirs']['analysis']
+    shell:
+        """
+        touch {params.picard}/*rmdup.bam
+        touch {params.picard}/*txt
+        sleep 2
+        touch {params.picard}/*rmdup.bai
+        sleep 2
+        touch {params.picard}/*group.bam
+        sleep 2
+        touch {params.picard}/*group.bai
+        sleep 2
+        touch {params.lists}/lists/*
+        sleep 2
+        touch {params.realigned}/*bam
+        sleep 2
+        touch {params.realigned}/*bai
+        sleep 2
+        touch {params.recalibrated}/*table
+        sleep 2
+        touch {params.recalibrated}/*bam
+        sleep 2
+        touch {params.recalibrated}/*bai
+        sleep 2
+        touch {params.postrecalibrated}/*bam
+        sleep 2
+        touch {params.postrecalibrated}/*bai
+        sleep 2
+        touch {params.gvcfs}/*
+        sleep 2
+        touch {params.vcfs}/*
+        sleep 2
+        touch {params.analysis}/*
+        """
+
 rule sample_concordance:
     output:
         ms="missingsamples.txt", ump="unmanifestedpairs.txt", ic="incompletefamilies.txt"
@@ -357,7 +402,6 @@ rule target_list: # create individual realign target list
         bam = config['datadirs']['picard'] + "/{sample}.group.bam",
         java = config['tools']['java']
     output:
-        sentinel = config['datadirs']['lists'] + "/{sample}.sentinel",
         samplelist = config['datadirs']['lists'] + "/{sample}.list"
     log:
         config['datadirs']['log'] + "/{sample}.target_list.log"
@@ -377,7 +421,6 @@ rule target_list: # create individual realign target list
         -I {input.bam} \
         -known {params.knownsites} \
         -o {output.samplelist} 2> {log}
-        touch {output.sentinel}
         """
 
 def cmp(a,b):
