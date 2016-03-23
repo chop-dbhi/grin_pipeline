@@ -52,7 +52,7 @@ novosortbam:
   mem: 10G
   reference: http://www.novocraft.com/documentation/novosort-2/
 target_list: 
-  mem: 64G
+  mem: 70G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 extractreads: 
   mem: 48G
@@ -79,7 +79,7 @@ add_readgroup:
   mem: 48G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 make_gvcf: 
-  mem: 48G
+  mem: 70G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 trio_vcfs: 
   mem: 48G

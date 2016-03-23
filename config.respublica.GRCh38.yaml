@@ -41,12 +41,16 @@ tools:
         /mnt/isilon/cbmi/variome/bin/java
     # must be set separately from java because java will be treated as input
     opts:
+        stratospheric:
+            '-Xmx80g -Xms40g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
+        veryhigh:
+            '-Xmx64g -Xms32g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
         high:
             '-Xmx48g -Xms24g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
         med:
             '-Xmx32g -Xms16g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
         low:
-            '-Xmx16g -Xms8g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
+            '-Xmx16g -Xms8g  -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/'
     seq2qc:
         /mnt/isilon/cbmi/variome/bin/fastqc
     samtools:
