@@ -18,6 +18,7 @@ configfile: "configs/config.yaml"
 ENV3 = '{condaenv}/'.format(condaenv=config['python3_environment'])
 ENV2 = '{condaenv}/'.format(condaenv=config['python2_environment'])
 
+
 SLINK = "{{SLINK}}"
 
 DOWNLOADDIR = "kiel"
