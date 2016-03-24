@@ -14,6 +14,9 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
 
+ENV3 = '{condaenv}/'.format(condaenv=config['python3_environment'])
+ENV2 = '{condaenv}/'.format(condaenv=config['python2_environment'])
+
 SLINK = "{{SLINK}}"
 
 DOWNLOADDIR = "kiel"
@@ -119,9 +122,9 @@ rule catchup:
     params:
         picard = config['datadirs']['picard'],
         lists = config['datadirs']['lists'],
-        realigned = picard = config['datadirs']['realigned'],
-        recalibrated = picard = config['datadirs']['recalibrated'],
-        postrecalibrated = picard = config['datadirs']['postrecalibrated'],
+        realigned = config['datadirs']['realigned'],
+        recalibrated = config['datadirs']['recalibrated'],
+        postrecalibrated = config['datadirs']['postrecalibrated'],
         gvcfs = config['datadirs']['gvcfs'],
         vcfs = config['datadirs']['vcfs'],
         analysis = config['datadirs']['analysis']
@@ -136,7 +139,7 @@ rule catchup:
         sleep 2
         touch {params.picard}/*group.bai
         sleep 2
-        touch {params.lists}/lists/*
+        touch {params.lists}/*
         sleep 2
         touch {params.realigned}/*bam
         sleep 2
@@ -277,7 +280,7 @@ rule validateBam:
 ### Extract reads from older BAM files
 rule extractreads:
     input:
-        java = config['tools']['java'],
+        java = ENV3 + config['tools']['java'],
         bam = config['datadirs']['oldbams'] + "/{sample}.bam"
     output:
         pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq",
@@ -307,7 +310,7 @@ rule fastqc:
     input: 
         pair1 = config['datadirs']['fastq'] + "/{sample}1.fastq.gz",
         pair2 = config['datadirs']['fastq'] + "/{sample}2.fastq.gz",
-        seq2qc = config['tools']['seq2qc']
+        seq2qc = ENV3 + config['tools']['seq2qc']
     log: 
         config['datadirs']['log'] + "/{sample}.fastqc.log" 
     output: 
@@ -351,7 +354,7 @@ rule align:
     input:
         pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq.gz",
         pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
-        align = config['tools']['align']
+        align = ENV3 + config['tools']['align']
     output:
         sam = config['datadirs']['sams'] + "/{sample}.sam" # may be set to temp
     threads:
@@ -368,7 +371,7 @@ rule align:
 rule sam_to_bam:
     input:
         sam = config['datadirs']['sams'] + "/{sample}.sam",
-        samtools = config['tools']['samtools']
+        samtools = ENV3 + config['tools']['samtools']
     output:
         bam = config['datadirs']['bams'] + "/{sample,[^.]+}.bam"
     threads:
@@ -382,7 +385,7 @@ rule sam_to_bam:
 rule novosortbam:
     input:
         bam = config['datadirs']['bams'] + "/{sample}.bam",
-        sort = config['tools']['sortbam']
+        sort = ENV3 + config['tools']['sortbam']
     output:
         sorted = config['datadirs']['bams'] + "/{sample}.sorted.bam",
     threads:
@@ -400,7 +403,7 @@ rule target_list: # create individual realign target list
     input:  # deduced bams
         bai = config['datadirs']['picard'] + "/{sample}.group.bai",
         bam = config['datadirs']['picard'] + "/{sample}.group.bam",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         samplelist = config['datadirs']['lists'] + "/{sample}.list"
     log:
@@ -482,7 +485,7 @@ rule realign_target:   # with one combined list file
         #list = INDELS,
         list = config['datadirs']['lists'] + "/{sample}.list",
         dbam = config['datadirs']['picard'] + "/{sample}.group.bai",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         rbam = config['datadirs']['realigned'] + "/{sample}.bam"
     params:
@@ -507,7 +510,7 @@ rule realign_target:   # with one combined list file
 rule generate_recalibration_table:
     input:
         bam = config['datadirs']['realigned'] + "/{sample}.bam",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         table = config['datadirs']['recalibrated'] + "/{sample}.table"
     log:
@@ -533,7 +536,7 @@ rule recalibrate_bam:
     input:
         table = config['datadirs']['recalibrated'] + "/{sample}.table",
         bam = config['datadirs']['realigned'] + "/{sample}.bam",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         bam = config['datadirs']['recalibrated'] + "/{sample}.bam"
     log:
@@ -559,7 +562,7 @@ rule post_recalibrated_table:
     input:
         table = config['datadirs']['recalibrated'] + "/{sample}.table",
         bam = config['datadirs']['realigned'] + "/{sample}.bam",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         table = config['datadirs']['postrecalibrated'] + "/{sample}.table",
     params:
@@ -584,7 +587,7 @@ rule analyze_bqsr:
     input:
         before = config['datadirs']['recalibrated'] + "/{sample}.table",
         after = config['datadirs']['postrecalibrated'] + "/{sample}.table",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         pdf = config['datadirs']['pdfs'] + "/{sample}.pdf"
     params:
@@ -593,8 +596,6 @@ rule analyze_bqsr:
         ref = config['ref']
     shell:
         """
-        source ~/.bashrc
-        module load R/3.2.2
         {input.java} {params.opts} -jar {params.jar} \
         -T AnalyzeCovariates \
         -R {params.ref} \
@@ -610,7 +611,7 @@ def get_all_sorted_bams(samplename):
     return(bams)
 
 rule merge_lanes:
-    input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = config['tools']['samtools']
+    input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = ENV3 + config['tools']['samtools']
     output: "{sample}.sorted.merged.bam"
     threads:
         1
@@ -623,7 +624,7 @@ rule merge_lanes:
 rule depth_of_coverage:
     input:
         bam = config['datadirs']['recalibrated'] + "/{sample}.bam",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         "{sample}.DoC"
     params:
@@ -653,7 +654,7 @@ rule depth_of_coverage:
 rule mark_duplicates:
     input:
         bam = config['datadirs']['bams'] + "/{sample}.sorted.merged.bam",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam"
     log:
@@ -680,7 +681,7 @@ rule mark_duplicates:
 rule make_index:
     input:
         bam = config['datadirs']['picard'] + "/{sampleandext}.bam",
-        samtools = config['tools']['samtools']
+        samtools = ENV3 + config['tools']['samtools']
     output:
         bai = config['datadirs']['picard'] + "/{sampleandext}.bai"
     shell:
@@ -693,7 +694,7 @@ rule add_readgroup:
     input:
         bam = config['datadirs']['picard'] + "/{sample}.rmdup.bam",
         bai = config['datadirs']['picard'] + "/{sample}.rmdup.bai",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         bam = config['datadirs']['picard'] + "/{sample}.group.bam"
     log:
@@ -718,7 +719,7 @@ rule add_readgroup:
 rule make_gvcf:
     input:
         bam = config['datadirs']['recalibrated'] + "/{sample}.bam",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         gvcf = config['datadirs']['gvcfs'] + "/{sample}.gvcf"
     params:
@@ -768,7 +769,7 @@ rule trio_vcfs:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
         family = config['datadirs']['vcfs'] + "/{family}.family.vcf",
         familygvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{family}_{subject}.trio.vcf"
     log:
@@ -787,7 +788,7 @@ rule trio_vcfs:
             shell("cp {input.family} {output.vcf}")
         else:
             shell("""
-            {input.java} {params.opts} -jar {params.jar} \
+                {input.java} {params.opts} -jar {params.jar} \
             -T GenotypeGVCFs \
             --disable_auto_index_creation_and_locking_when_reading_rods \
             --dbsnp {params.db} \
@@ -800,7 +801,7 @@ rule trio_vcfs:
 rule family_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{family}.family.vcf",
         idx = config['datadirs']['vcfs'] + "/{family}.family.vcf.idx"
@@ -903,7 +904,7 @@ rule run_phase_by_transmission:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.trio.vcf",
         ped = config['pedfile'],
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.trio.phased.vcf",
         idx = config['datadirs']['vcfs'] + "/{file}.trio.phased.vcf.idx",
@@ -932,7 +933,7 @@ rule run_phase_by_transmission:
 rule gatk_snps_only:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf",
         idx = config['datadirs']['vcfs'] + "/{file}.snps.vcf.idx"
@@ -955,7 +956,7 @@ rule gatk_snps_only:
 rule gatk_indels_only:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf",
         idx = config['datadirs']['vcfs'] + "/{file}.indels.vcf.idx"
@@ -980,7 +981,7 @@ rule gatk_indels_only:
 rule gatk_hard_filtration_snps:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.snps.vcf",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.snps.hard.vcf",
         idx = config['datadirs']['vcfs'] + "/{file}.snps.hard.vcf.idx"
@@ -991,19 +992,21 @@ rule gatk_hard_filtration_snps:
     log:
         "log/{file}.gatk_hard_filtration.log"
     shell:
-        "{input.java} {params.opts} -jar {params.jar} "
-        "-R {params.ref} "
-        "-T VariantFiltration "
-        "-o {output.vcf} "
-        "--variant {input.vcf} "
-        "--filterExpression \"QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0\" "
-        "--filterName \"GATK3.5-hard-filter\" "
-        "2> {log}"
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -R {params.ref} \
+        -T VariantFiltration \
+        -o {output.vcf} \
+        --variant {input.vcf} \
+        --filterExpression "QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
+        --filterName "GATK3.5-hard-filter" \
+        2> {log}
+        """
 
 rule gatk_hard_filtration_indels:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.indels.vcf",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.indels.hard.vcf",
         idx = config['datadirs']['vcfs'] + "/{file}.indels.hard.vcf.idx"
@@ -1014,19 +1017,21 @@ rule gatk_hard_filtration_indels:
     log:
         "log/{file}.gatk_hard_filtration.log"
     shell:
-        "{input.java} {params.opts} -jar {params.jar} "
-        "-R {params.ref} "
-        "-T VariantFiltration "
-        "-o {output.vcf} "
-        "--variant {input.vcf} "
-        "--filterExpression \"QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0\" "
-        "--filterName \"GATK3.5-hard-filter\" "
-        "2> {log}"
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -R {params.ref} \
+        -T VariantFiltration \
+        -o {output.vcf} \
+        --variant {input.vcf} \
+        --filterExpression "QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0" \
+        --filterName "GATK3.5-hard-filter" \
+        2> {log}
+        """
 
 rule select_passing:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
         idx = config['datadirs']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf"
@@ -1037,13 +1042,15 @@ rule select_passing:
     log:
         "log/{file}.select_passing_variants.log"
     shell:
-        "{input.java} {params.opts} -jar {params.jar} "
-        "-R {params.ref} "
-        " -T SelectVariants "
-        "-o {output.vcf} "
-        "--variant {input.vcf} "
-        "--excludeFiltered "
-        "2> {log}"
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -R {params.ref} \
+         -T SelectVariants \
+        -o {output.vcf} \
+        --variant {input.vcf} \
+        --excludeFiltered \
+        2> {log}
+        """
 
 # """Run GATK CombineVariants to combine variant files.
 #
@@ -1054,7 +1061,7 @@ rule gatk_combine_variants:
     input:
         snps = config['datadirs']['vcfs'] + "/{file}.snps.filtered.vcf",
         indels = config['datadirs']['vcfs'] + "/{file}.indels.filtered.vcf",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.com.filtered.vcf",
         idx = config['datadirs']['vcfs'] + "/{file}.com.filtered.vcf.idx"
@@ -1065,14 +1072,16 @@ rule gatk_combine_variants:
     log:
         "log/{file}.select_passing_variants.log"
     shell:
-        "{input.java} {params.opts} -jar {params.jar} "
-        "-R {params.ref} "
-        "-T CombineVariants "
-        "--variant  {input.snps} "
-        "--variant  {input.indels} "
-        "-o {output.vcf} "
-        "--assumeIdenticalSamples "
-        "2> {log}"
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -R {params.ref} \
+        -T CombineVariants \
+        --variant  {input.snps} \
+        --variant  {input.indels} \
+        -o {output.vcf} \
+        --assumeIdenticalSamples \
+        2> {log}
+        """
 
 #### Annotation ####
 rule ad_vcf:
@@ -1091,7 +1100,7 @@ rule ad_vcf:
 rule decompose_for_gemini:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.ad.vcf",
-        vt = config['tools']['vt']
+        vt = ENV3 + config['tools']['vt']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf"
     shell:
@@ -1102,7 +1111,7 @@ rule decompose_for_gemini:
 rule normalize_for_gemini:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf",
-        vt = config['tools']['vt']
+        vt = ENV3 + config['tools']['vt']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.nm.vcf"
     params:
@@ -1115,7 +1124,7 @@ rule normalize_for_gemini:
 rule vcf_qt:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf",
-        vt = config['tools']['vt']
+        vt = ENV3 + config['tools']['vt']
     output:
         vcf = config['datadirs']['vtpeek'] + "/{file}.vtpeek.txt"
     params:
@@ -1128,7 +1137,7 @@ rule vcf_qt:
 rule vcf_profile:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.ad.de.vcf",
-        vt = config['tools']['vt'],
+        vt = ENV3 + config['tools']['vt'],
         ped = config['pedfile']
     output:
         vcf = config['datadirs']['vtpeek'] + "/{file}.vtmendelprofile.txt"
@@ -1143,7 +1152,7 @@ rule vcf_profile:
 rule run_snpeff:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
-        java = config['tools']['java']
+        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.snpeff.vcf"
     params:
@@ -1167,14 +1176,15 @@ rule run_snpeff:
 
 rule run_multiqc:
     input:
-        GBAMS
+        gbams = GBAMS,
+        multiqc = ENV3 + config['tools']['multiqc']
     output: config['datadirs']['multiqc'] + '/multiqc_report.html'
     params:
         dirs = config['datadirs']['picard'] + ' fastqc',
         outdir = config['datadirs']['multiqc'] 
     shell:
         """
-        multiqc -o {params.outdir} {params.dirs} # will detect input file types?
+        {input.multiqc} -o {params.outdir} {params.dirs} # will detect input file types?
         """
 
 #### run annovar  ####
@@ -1183,7 +1193,7 @@ rule table_annovar:
     input:
         ANNOVARDBS,
         avinput = config['datadirs']['vcfs'] + "/{file}.vcf",
-        annovar = config['tools']['table_annovar']
+        annovar = ENV3 + config['tools']['table_annovar']
     output:
         config['datadirs']['vcfs'] + "/{file}.annovar.vcf"
     params:
@@ -1206,7 +1216,7 @@ rule run_annovar:
     input:
         ANNOVARDBS,
         avinput = config['datadirs']['vcfs'] + "/{file}.avinput",
-        annovar = config['tools']['annotate_variation']
+        annovar = ENV3 + config['tools']['annotate_variation']
     output:
         config['datadirs']['vcfs'] + "/annovar.done"
     params:
@@ -1229,7 +1239,7 @@ rule run_annovar:
 rule vcf2avinput:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
-        cmd = config['tools']['vcf2avinput']
+        cmd = ENV3 + config['tools']['vcf2avinput']
     output:
         config['datadirs']['vcfs'] + "/{file}.avinput",
     shell:
@@ -1237,7 +1247,7 @@ rule vcf2avinput:
 
 rule install_annovar_db:
     input:
-        annovar = config['tools']['annotate_variation']
+        annovar = ENV3 + config['tools']['annotate_variation']
     output:
         config['annovardbdir'] + "/{genome}_{db}.installed"
     params:
@@ -1255,7 +1265,7 @@ rule install_annovar_db:
 rule compress_vcf:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
-        bgzip = config['tools']['bgzip']
+        bgzip = ENV3 + config['tools']['bgzip']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf.bgz",
     shell:
@@ -1266,7 +1276,7 @@ rule compress_vcf:
 rule tabix:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf.bgz",
-        tabix = config['tools']['tabix']
+        tabix = ENV3 + config['tools']['tabix']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf.bgz.tbi",
     shell:
@@ -1279,13 +1289,14 @@ rule gemini_db:
         vcf = config['datadirs']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
         tbi = config['datadirs']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz.tbi",
         ped = config['pedfile'],
-        gemini = config['tools']['gemini']
+        gemini = ENV2 + config['tools']['gemini']
     output:
         config['datadirs']['gemini'] + "/{file}.gemini.db"
     threads:
         3
     shell:
         """
+        {ENV2}
         {input.gemini} load --cores {threads} -t snpEff -v {input.vcf} -p {input.ped} {output}
         """
 

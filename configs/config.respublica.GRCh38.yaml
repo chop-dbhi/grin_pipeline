@@ -36,6 +36,9 @@ datadirs:
     website:          site
     log:              logs
 
+python3_environment: /home/leipzigj/miniconda3/envs/grinenv/bin/
+python2_environment: /home/leipzigj/miniconda3/envs/geminienv/bin/
+
 tools:
     java:
         java
@@ -63,6 +66,8 @@ tools:
         bgzip
     gemini:
         gemini/bin/gemini
+    multiqc:
+        multiqc
 jars:
     picard:
         path:
@@ -76,7 +81,7 @@ jars:
         samtofastq:
             SamToFastq
     gatk:
-        GATK/GenomeAnalysisTK.jar
+        /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
     snpeff:
         path:
             snpEff
