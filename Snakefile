@@ -12,6 +12,7 @@ source activate snakeenv
 snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G" 
 """
 
+
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
 
