@@ -1,0 +1,327 @@
+---
+title: "Summary statistics of fastq files via FastQC"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    fig_caption: yes
+    toc: yes
+---
+
+```{r global_setup, include=FALSE}
+knitr::opts_chunk$set(dpi=300, fig.pos="H", dev=c('png', 'pdf'), echo=FALSE, warning=FALSE, message=FALSE);
+library(devtools)
+install_github("zhezhangsh/GtUtility")
+install_github("zhezhangsh/awsomics")
+library(GtUtility);
+
+#PROJECT_HOME<-"/mnt/isilon/cbmi/variome/zhangs3/projects/data/grin";
+#path.out<-"/mnt/isilon/cbmi/variome/zhangs3/projects/data/grin/fastqc/summary";
+#fn.yaml<-"/mnt/isilon/cbmi/variome/zhangs3/projects/data/grin/summary_fastqc.yaml"; 
+
+# print(path.out)
+
+fn.report.index<-"fastqc.md";
+slink<-FALSE; # replace path prefix with {{SLINK}}. 
+
+if (!file.exists(path.out)) dir.create(path.out, recursive = TRUE);
+path.fig<-paste(path.out, 'figure_', sep='/');
+
+yaml<-yaml::yaml.load_file(fn.yaml);
+paired<-yaml$paired;
+N<-length(yaml$fastqc);
+```
+
+```{r parse_fastqc, eval=TRUE, include=FALSE}
+fns.zip<-yaml$fastqc;
+exdir<-yaml$output;
+if (!file.exists(exdir)) dir.create(exdir);
+if (paired) {
+  stat.all<-lapply(fns.zip, function(fns) {
+    stat<-lapply(fns, function(f) parseFastQC(f, exdir));
+    names(stat)<-c('R1', 'R2');
+    stat;
+  });
+} else {
+  stat.all<-lapply(fns.zip, parseFastQC);
+}
+
+saveRDS(stat.all, paste(path.out, 'stat_all_libraries.rds', sep='/'));
+```
+
+## Introduction
+
+[FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) aims to provide a simple way to do some quality control checks on raw sequence data coming from high throughput sequencing pipelines. It provides a modular set of analyses which you can use to give a quick impression of whether your data has any problems of which you should be aware before doing any further analysis.
+
+The main functions of FastQC are
+
+ - Import of data from BAM, SAM or FastQ files (any variant)
+ - Providing a quick overview to tell you in which areas there may be problems
+ - Summary graphs and tables to quickly assess your data
+ - Export of results to an HTML based permanent report
+ - Offline operation to allow automated generation of reports without running the interactive application
+
+The latest version (v0.11.4) of FastQC was downloaded from the following URL:
+[http://www.bioinformatics.babraham.ac.uk/projects/download.html#fastqc](http://www.bioinformatics.babraham.ac.uk/projects/download.html#fastqc)
+and installed as $isilon/bin/fastqc.
+
+***
+## FastQC report of individual libraries
+
+**[Click](`r fn.report.index`)** to view the index page to individual reports. 
+
+***
+## Summary of multiple libraries
+
+### Agreement between paired reads
+
+`r if (paired) 'Compare the consistency of several key summary statistics between paired sequence reads. Strong agreement between pairs is expected.' else "**Sequence reads are not paired. No results**."`
+
+```{r between_pair, include=paired, fig.width=8, fig.height=8, fig.path=path.fig}
+if (!exists('stat.all')) stat.all<-readRDS(paste(path.out, 'stat_all_libraries.rds', sep='/'));
+
+# Per sequence quality scores
+qual<-t(sapply(stat.all, function(s) sapply(s, function(s) {
+  sc<-s[["Per sequence quality scores"]];
+  sum(sc[,1]*sc[,2]/10^6)/sum(sc[,2]/10^6);
+})));
+
+# Per sequence GC content
+gc<-t(sapply(stat.all, function(s) sapply(s, function(s) {
+  sc<-s[["Per sequence GC content"]];
+  sum(sc[,1]*sc[,2]/10^6)/sum(sc[,2]/10^6);
+})));
+
+# Per base N content
+ns<-t(sapply(stat.all, function(s) sapply(s, function(s) {
+  pct<-s[["Per base N content"]];
+  mean(pct, weighted.mean(c(rep(2, 9), rep(1, length(pct)-9))));
+})));
+
+# Sequence Duplication Levels
+dup<-t(sapply(stat.all, function(s) sapply(s, function(s) {
+  pct<-s[["Sequence Duplication Levels"]];
+  sum(pct[2:nrow(pct), 2]);
+})));
+
+d<-list(qual, gc, ns, dup);
+names(d)<-c("Average score of sequence quality", "Overall percentage of GC bases", "Average percentage of Ns", "Percentage of duplicated reads")
+
+par(mfrow=c(2, 2), mar=c(5, 5, 3, 3));
+fn<-sapply(names(d), function(nm) {
+  plot(d[[nm]], main=nm, cex.main=1.5, pch=19, col='#88888888', cex=max(0.5, min(3, 150/N)), xlab='R1', ylab='R2', cex.lab=2, xlim=c(min(d[[nm]]), max(d[[nm]])), ylim=c(min(d[[nm]]), max(d[[nm]])));
+  abline(0, 1, col='green', lwd=2, lty=2);
+  corr<-round(cor(d[[nm]][, 1], d[[nm]][, 2], use='pair'), 4);
+  text(min(d[[nm]]), max(d[[nm]]), label=paste('R', corr, sep=' = '), cex=1, pos=4, col='blue')
+})
+```
+
+### Quick evaluation
+
+FastQC provides a quick evaluation on each summary statistic whether it is entirely normal (**green**), slightly abnormal (**orange**) or abnormal (**red**). The figure below compiles the evaluation results of all summary statistics from all libraries. 
+
+```{r summary, include=FALSE}
+mp<-c('PASS'=1, 'WARN'=2, 'FAIL'=3);
+if (paired) {
+  code<-lapply(stat.all, function(s) {
+    s<-list(s[[1]][['Summary']], s[[2]][['Summary']]);
+    nm<-unique(unlist(lapply(s, names)));
+    cd<-sapply(s, function(s) mp[s[nm]]);
+    cd[is.na(cd)]<-0;
+    rownames(cd)<-nm;
+    pmax(cd[, 1], cd[, 2]);
+  });
+} else {
+  code<-lapply(stat.all, function(s) s[['Summary']]);
+}
+
+nm<-unique(unlist(lapply(code, names), use.names=FALSE));
+code<-sapply(code, function(code) code[nm]);
+code[code==0 | is.na(code)]<-4;
+
+tbl<-apply(code, 1, function(c) c(names(mp), 'NA')[c]);
+rownames(tbl)<-colnames(code);
+fn.tbl<-awsomics::CreateDatatable(tbl, paste(path.out, 'quick_evaluation.html', sep='/'), rownames = TRUE, caption = "Quick evaluation");
+if (slink) fn.tbl<-sub(PROJECT_HOME, "{{SLINK}}", fn.tbl);
+```
+
+**[Click](`r fn.tbl`)** to view table with quick evaluation results of all libraries.
+
+```{r summary_heatmap, include=TRUE, fig.width=2.5+max(6, 0.5*nrow(code)), fig.height=2.25+max(4, 0.15*ncol(code)), fig.path=path.fig}
+col<-c('#00FF00DD', '#FFA400DD', '#FF0000DD', '#11111111');
+r.order<-hclust(dist(code))$order;
+c.order<-hclust(dist(t(code)))$order;
+code<-code[r.order, c.order];
+
+par(mai=c(0.25, 2.25, 2, 0.25));
+plot(0, type='n', xlim=c(0, nrow(code)), ylim=c(0, ncol(code)), axes=FALSE, xaxs='i', yaxs='i', xlab='', ylab='');
+rect(rep(1:nrow(code), each=ncol(code))-1, rep(1:ncol(code), nrow(code))-1, 
+     rep(1:nrow(code), each=ncol(code)), rep(1:ncol(code), nrow(code)), 
+     col=col[as.vector(t(code))], border=NA);
+
+axis(2, at=1:ncol(code)-0.5, tick=FALSE, las=2, labels=colnames(code),
+     cex.axis=min(2/max(strwidth(colnames(code), units='inch')), 
+                  0.125/max(strheight(colnames(code), units='inch'))));
+axis(3, at=1:nrow(code)-0.5, tick=FALSE, las=2, cex=1.5,
+     labels=sapply(rownames(code), function(rnm) paste(strwrap(rnm, 20), collapse='\n')))
+axis(3, at=0:nrow(code), label=rep('', 1+nrow(code)));
+abline(v=0:nrow(code));
+box();
+```
+
+### Individual summary statistics
+
+Summary statistics were compared across libraries. Inconsistence of a statistics might indicate quality issues of some libraries. 
+
+```{r summary_statistics, include=FALSE}
+# Total reads
+if (paired) {
+  ttl<-sapply(stat.all, function(s) s[[1]][[2]][['Total Sequences']]);
+} else {
+  ttl<-sapply(stat.all, function(s) s[[2]][['Total Sequences']]);
+}
+
+# Average quality
+if (paired) {
+  qual<-colMeans(sapply(stat.all, function(s) sapply(s, function(s) {
+    sc<-s[["Per sequence quality scores"]];
+    sum(sc[,1]*sc[,2]/10^6)/sum(sc[,2]/10^6);
+  })));
+} else {
+  qual<-sapply(stat.all, function(s) {
+    sc<-s[["Per sequence quality scores"]];
+    sum(sc[,1]*sc[,2]/10^6)/sum(sc[,2]/10^6);
+  });
+}
+
+# GC percent
+if (paired) {
+  gc<-colMeans(sapply(stat.all, function(s) sapply(s, function(s) {
+    sc<-s[["Per sequence GC content"]];
+    sum(sc[,1]*sc[,2]/10^6)/sum(sc[,2]/10^6);
+  })));
+} else {
+  gc<-sapply(stat.all, function(s) {
+    sc<-s[["Per sequence GC content"]];
+    sum(sc[,1]*sc[,2]/10^6)/sum(sc[,2]/10^6);
+  }); 
+}
+
+# N percent
+if (paired) {
+  ns<-colMeans(sapply(stat.all, function(s) sapply(s, function(s) {
+    pct<-s[["Per base N content"]];
+    mean(pct, weighted.mean(c(rep(2, 9), rep(1, length(pct)-9))));
+  })));
+} else {
+  ns<-sapply(stat.all, function(s) {
+    pct<-s[["Per base N content"]];
+    mean(pct, weighted.mean(c(rep(2, 9), rep(1, length(pct)-9))));
+  });
+}
+
+# Duplicated percent
+if (paired) {
+  dup<-colMeans(sapply(stat.all, function(s) sapply(s, function(s) {
+    pct<-s[["Sequence Duplication Levels"]];
+    sum(pct[2:nrow(pct), 2]);
+  })));
+} else {
+  dup<-sapply(stat.all, function(s) {
+    pct<-s[["Sequence Duplication Levels"]];
+    sum(pct[2:nrow(pct), 2]);
+  });
+}
+
+stats<-cbind(ttl/10^6, qual, gc, ns, dup);
+stats<-awsomics::FormatNumeric(stats);
+colnames(stats)<-c('Total_reads_in_million', "Average_quality_score", 'GC_percent', 'N_percent', 'Duplicated_reads_percent');
+fn.tbl<-awsomics::CreateDatatable(stats, paste(path.out, 'summary_stats.html', sep='/'), rownames = TRUE, caption = 'Summary statistics');
+if (slink) fn.tbl<-sub(PROJECT_HOME, "{{SLINK}}", fn.tbl);
+```
+
+**[Click](`r fn.tbl`)** to view table of individual summary statistics. 
+
+#### Total number of reads
+
+Total number of reads in each library. One pair of paired reads will be counted as one read.
+
+```{r total_reads, include=TRUE, fig.width=8, fig.height=6, fig.path=path.fig}
+par(mar=c(5,5,3,2));
+hist(ttl/10^6, xlab='Number of reads (in million)', ylab='Number of libraries', cex.lab=2, main='Total reads per library', cex.main=2, col='lightgrey');
+```
+
+#### Average sequence quality score
+
+Each base in each read has a quality score. In the case of Illumina data, the scores range from 0 to 40, corresponding to p values from 1 to 1E-4. 
+
+```{r average_quality, include=TRUE, fig.width=8, fig.height=6, fig.path=path.fig}
+par(mar=c(5,5,3,2));
+hist(qual, xlab='Average score', ylab='Number of libraries', cex.lab=2, main='Average sequence quality score', cex.main=2, col='lightgrey');
+```
+
+#### Overall percentage of GC bases
+
+Average percentage of GC bases in all reads at all positions. 
+
+```{r gc_percent, include=TRUE, fig.width=8, fig.height=6, fig.path=path.fig}
+par(mar=c(5,5,3,2));
+hist(gc, xlab='GC bases (%)', ylab='Number of libraries', cex.lab=2, main='Overall percentage of GC bases', cex.main=2, col='lightgrey');
+```
+
+#### Overall percentage of N bases
+
+Average percentage of N bases in all reads at all positions. 
+
+```{r n_percent, include=TRUE, fig.width=8, fig.height=6, fig.path=path.fig}
+par(mar=c(5,5,3,2));
+hist(ns, xlab='N bases (%)', ylab='Number of libraries', cex.lab=2, main='Overall percentage of N bases', cex.main=2, col='lightgrey');
+```
+
+#### Overall percentage of duplicated reads
+
+Duplicated reads have the exact same sequences. Duplicated reads are usually treated as one read in variant calling, so higher percentage of duplicated reads reduces the total number of usable reads. However, the duplication of paired end reads is evaluated separately by FastQC, so the actual level of duplication might be lower than the number in FastQC report. 
+
+```{r dup_percent, include=TRUE, fig.width=8, fig.height=6, fig.path=path.fig}
+par(mar=c(5,5,3,2));
+hist(dup, xlab='Percentage of duplicated reads', ylab='Number of libraries', cex.lab=2, main='Total Deduplicated Percentage', cex.main=2, col='lightgrey');
+```
+
+#### Per base sequence quality
+
+Base call quality is position-dependent. In general, later positions have lower quality scores. Higher score (**red**) indicates better data quality.
+
+```{r perbase_quality, include=FALSE}
+if (paired) {
+  sc<-sapply(stat.all, function(s) rowMeans(sapply(s, function(s) s[["Per base sequence quality"]][, 1])));
+} else {
+  sc<-sapply(stat.all, function(s) s[["Per base sequence quality"]][, 1]);
+}
+fn.tbl<-awsomics::CreateDatatable(awsomics::FormatNumeric(t(sc)), paste(path.out, 'perbase_quality.html', sep='/'), rownames = TRUE, caption = "Per base sequence quality");
+if (slink) fn.tbl<-sub(PROJECT_HOME, "{{SLINK}}", fn.tbl);
+```
+
+**[Click](`r fn.tbl`)** to view table with position-specific quality score of each library.
+
+```{r perbase_quality_heatmap, include=TRUE, fig.width=2.5+min(6, 0.1*nrow(sc)), fig.height=1.5+max(4, 0.15*ncol(sc)), fig.path=path.fig}
+#col<-c('#00FF00DD', '#FFA400DD', '#FF0000DD', '#11111111');
+c.order<-hclust(dist(t(sc)))$order;
+sc<-sc[, c.order];
+col<-c("#0000FF", "#2020FF", "#4040FF", "#7070FF", "#8888FF", "#A9A9FF", "#D5D5FF", "#EEE5EE", "#FFAADA", "#FF9DB0", "#FF7080", "#FF5A5A", "#FF4040", "#FF0D1D", "#FF0000");
+col<-apply(round(14*(sc-min(sc))/(max(sc)-min(sc)))+1, 2, function(x) col[x]);
+
+par(mai=c(0.75, 2.25, 0.75, 0.25));
+plot(0, type='n', xlim=c(0, nrow(sc)), ylim=c(0, ncol(sc)), axes=FALSE, xaxs='i', yaxs='i', xlab='', ylab='', main='Per base sequence quality', cex.main=1.5);
+rect(rep(1:nrow(sc), each=ncol(sc))-1, rep(1:ncol(sc), nrow(sc))-1, 
+     rep(1:nrow(sc), each=ncol(sc)), rep(1:ncol(sc), nrow(sc)), 
+     col=t(col), border=NA);
+
+axis(2, at=1:ncol(code)-0.5, tick=FALSE, las=2, labels=colnames(code),
+     cex.axis=min(2/max(strwidth(colnames(code), units='inch')), 
+                  0.125/max(strheight(colnames(code), units='inch'))));
+axis(1, at=1:nrow(sc)-0.5, tick=FALSE, las=2, cex.axis=.75, labels=rownames(sc));
+box();
+```
+
+
+***
+_END OF DOCUMENT_
