@@ -2,6 +2,7 @@ import glob
 import re
 import pandas
 import yaml
+import subprocess
 import configparser
 from snakemake.utils import R
 from functools import cmp_to_key
@@ -198,6 +199,9 @@ rule mkdirs:
 rule dummy:    # just to test the python codes above
     input:  workflow.basedir + "/Snakefile"
 
+    run:
+        check_gvcfs(GVCFS)
+
 rule target_lists:
     input: LISTS
 
@@ -215,6 +219,9 @@ rule make_bams:
 
 rule make_sams:
     input: SAMS
+
+rule make_merged:
+    input: MBAMS
 
 rule pdfs:
     input: PDFS
@@ -724,7 +731,7 @@ rule make_gvcf:
         gvcf = config['datadirs']['gvcfs'] + "/{sample}.gvcf"
     params:
         jar = config['jars']['gatk'],
-        opts = config['tools']['opts']['med'],
+        opts = config['tools']['opts']['high'],
         ref = config['ref']
     shell:
         """
@@ -740,6 +747,24 @@ rule make_gvcf:
         -stand_call_conf 30 \
         -o {output.gvcf}
         """
+
+# sanity check on gvcf files
+
+def check_gvcfs(gvcfs):
+    for file in gvcfs:
+        cmd = "tail -1 " + file
+        # print(cmd)
+        (output, error) = call_command(cmd)
+        line = output.decode()
+        if not re.search("^chrEBV.*\n", line):
+            print(file + ' is incomplete')
+            quit()
+    
+def call_command(command):
+    process = subprocess.Popen(command.split(' '),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    return process.communicate()
 
 # if supplid a subject return either only one trio for that subject
 # if supplied 'family' as the subject, then all members, including siblings are returned
@@ -783,6 +808,8 @@ rule trio_vcfs:
     threads: 8
     run:
         assert(len(input.gvcfs)==3)
+        check_gvcfs(input.gvcfs) 
+        check_gvcfs(input.familygvcfs)
         # use the family count to determine course of action
         if len(input.familygvcfs)==3:
             shell("cp {input.family} {output.vcf}")
@@ -814,8 +841,9 @@ rule family_vcfs:
         opts = config['tools']['opts']['med'],
         db = config['dbsnp']
     threads: 8
-    shell:
-        """
+    run:
+        check_gvcfs(input.gvcfs) 
+        shell("""
         {input.java} {params.opts} -jar {params.jar} \
         -T GenotypeGVCFs \
         --disable_auto_index_creation_and_locking_when_reading_rods \
@@ -824,7 +852,7 @@ rule family_vcfs:
         -R {params.ref} \
         {params.gvcfslist} \
         -o {output.vcf} 2> {log}
-        """
+        """)
 
 def samples_in_family(family):
     rows = sample_table.loc[sample_table['FamilyID'] ==  family]
@@ -1172,6 +1200,23 @@ rule run_snpeff:
          {input.vcf} > {output.vcf}
         """
 
+#### run VEP  ####
+
+rule run_vep:
+    input: "{file}.vcf.gz"
+    output: "{file}.vep.vcf.gz"
+    run:
+        shell("""
+          perl ./vep/ensembl-tools-release-78/scripts/variant_effect_predictor/variant_effect_predictor.pl \
+              --everything --vcf --allele_number --no_stats --cache --offline \
+              --dir ./vep_cache/ --force_overwrite --cache_version 78 \
+              --fasta ./vep_cache/homo_sapiens/78_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa \
+              --assembly GRCh37 --tabix \
+              --plugin LoF,human_ancestor_fa:./loftee_data/human_ancestor.fa.gz,filter_position:0.05,min_intron_size:15 \
+              --plugin dbNSFP,./reference_data/dbNSFP/dbNSFPv2.9.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
+              -i {wildcards.file}.vcf.gz -o {wildcards.file}.vep.vcf.gz
+        """)
+
 #### run multiqc  ####
 
 rule run_multiqc:
@@ -1499,8 +1544,9 @@ and installed as &lt;isilon&gt;/bin/fastqc.
                idx += 1
 
 rule siteindex:
-    input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
-    output: config['datadirs']['website'] + "/index.md"
+    #input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
+    output:
+        config['datadirs']['website'] + "/index.md"
     run:
         with open(output[0], 'w') as outfile:
             outfile.write("""
@@ -1514,9 +1560,13 @@ rule siteindex:
             for s in ANALYSISREADY:
                 outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
 
-            outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
+            # this link won't be treated as a child page
+            #outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
+            # must add a child index to the mybic project admin page to treat this link as a child page
+            outfile.write('<a href="summary_fastqc.html">fastqc summary</a>' + "\n")
             outfile.write("<p>\n")
-            outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
+            #outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
+            outfile.write('<a href="multiqc_report.html">multiqc report</a>' + "\n")
 
 
 #### Internal
