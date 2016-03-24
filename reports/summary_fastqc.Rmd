@@ -11,6 +11,7 @@ output:
 knitr::opts_chunk$set(dpi=300, fig.pos="H", dev=c('png', 'pdf'), echo=FALSE, warning=FALSE, message=FALSE);
 library(devtools)
 install_github("zhezhangsh/GtUtility")
+install_github("zhezhangsh/awsomics")
 library(GtUtility);
 
 #PROJECT_HOME<-"/mnt/isilon/cbmi/variome/zhangs3/projects/data/grin";

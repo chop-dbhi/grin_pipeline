@@ -818,13 +818,13 @@ rule trio_vcfs:
         else:
             shell("""
                 {input.java} {params.opts} -jar {params.jar} \
-            -T GenotypeGVCFs \
-            --disable_auto_index_creation_and_locking_when_reading_rods \
-            --dbsnp {params.db} \
-            -nt {threads} \
-            -R {params.ref} \
-            {params.gvcfslist} \
-            -o {output.vcf} 2> {log}
+                -T GenotypeGVCFs \
+                --disable_auto_index_creation_and_locking_when_reading_rods \
+                --dbsnp {params.db} \
+                -nt {threads} \
+                -R {params.ref} \
+                {params.gvcfslist} \
+                -o {output.vcf} 2> {log}
             """)
 
 rule family_vcfs:
