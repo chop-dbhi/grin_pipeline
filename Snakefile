@@ -733,7 +733,7 @@ rule make_gvcf:
         gvcf = config['datadirs']['gvcfs'] + "/{sample}.gvcf"
     params:
         jar = config['jars']['gatk'],
-        opts = config['tools']['opts']['high'],
+        opts = config['tools']['opts']['med'],
         ref = config['ref']
     shell:
         """
@@ -1182,7 +1182,6 @@ rule vcf_profile:
 rule run_snpeff:
     input:
         vcf = config['datadirs']['vcfs'] + "/{file}.vcf",
-        java = ENV3 + config['tools']['java']
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.snpeff.vcf"
     params:
@@ -1194,7 +1193,7 @@ rule run_snpeff:
         format = config['jars']['snpeff']['format']
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {params.jar} \
         -c {params.conf} \
         -t {params.database} \
         -ud {params.updown} \

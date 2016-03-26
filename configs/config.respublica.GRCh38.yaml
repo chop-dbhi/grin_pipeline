@@ -57,19 +57,19 @@ tools:
     seq2qc:
         fastqc
     samtools:
-        samtools-1.3/samtools
+        samtools
     sortbam:
         novosort
     align:
         novoalign
     vt:
-        vt/vt
+        vt
     tabix:
         tabix
     bgzip:
         bgzip
     gemini:
-        gemini/bin/gemini
+        gemini
     multiqc:
         multiqc
 jars:
