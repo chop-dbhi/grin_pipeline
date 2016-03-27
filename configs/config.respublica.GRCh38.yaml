@@ -39,6 +39,8 @@ datadirs:
 python3_environment: /home/leipzigj/miniconda3/envs/grinenv/bin/
 python2_environment: /home/leipzigj/miniconda3/envs/geminienv/bin/
 
+load_python3_environment: source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv
+
 tools:
     java:
         java
@@ -90,9 +92,9 @@ jars:
         path:
             snpEff
         cnf:
-            configs/snpEff.GRCh38.config
+            configs/snpEff.GRCh38.4.2.config
         db:
-            GRCh38.76
+            GRCh38.82
         ud:
             '10'
         format:

@@ -1185,7 +1185,7 @@ rule run_snpeff:
     output:
         vcf = config['datadirs']['vcfs'] + "/{file}.snpeff.vcf"
     params:
-        jar  = config['jars']['snpeff']['path'],
+        snpeff  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],
         opts = config['tools']['opts']['med'],
         database = config['jars']['snpeff']['db'],
@@ -1193,11 +1193,13 @@ rule run_snpeff:
         format = config['jars']['snpeff']['format']
     shell:
         """
-        {params.jar} \
+        source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv 
+        {params.snpeff} \
+        {params.opts} \
         -c {params.conf} \
-        -t {params.database} \
         -ud {params.updown} \
         {params.format} \
+        {params.database} \
          {input.vcf} > {output.vcf}
         """
 
