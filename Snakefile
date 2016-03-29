@@ -66,8 +66,8 @@ INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrow
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
 ANALYSISREADY = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
-RDATA         = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.denovo.RData" for trio in COMPLETETRIOSFAMIDS]
-ANALYSES      = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.denovo.html" for trio in COMPLETETRIOSFAMIDS]
+RDATA         = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
+ANALYSES      = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.models.html" for trio in COMPLETETRIOSFAMIDS]
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -119,6 +119,25 @@ rule analysisready:
 
 rule analyses:
     input: ANALYSES
+
+rule Rdeps:
+    run:
+        R("""
+        library(devtools)
+        install_github("VariantFiltering", "rcastelo")
+        source("http://bioconductor.org/biocLite.R")
+        biocLite(c("BSgenome.Hsapiens.UCSC.hg38",
+        "TxDb.Hsapiens.UCSC.hg38.knownGene",
+        "SNPlocs.Hsapiens.dbSNP.20120608",
+        "MafDb.ALL.wgs.phase1.release.v3.20101123",
+        "MafDb.ESP6500SI.V2.SSA137",
+        "MafDb.ExAC.r0.3.sites",
+        "phastCons100way.UCSC.hg19",
+        "PolyPhen.Hsapiens.dbSNP131",
+        "SNPlocs.Hsapiens.dbSNP144.GRCh38",
+        "SIFT.Hsapiens.dbSNP137",
+        "org.Hs.eg.db"))
+        """)
 
 # this is a utility to put things in the correct order in case something upstream gets touched
 rule catchup:
@@ -1350,17 +1369,27 @@ rule gemini_db:
 
 rule testR:
     run:
-        R("""
-        rnorm(100)
-        """)
+        #import rpy2.robjects as robjects
+        #print(robjects.r)
+        (output, error) = call_command("which R")
+        print("{0} {1}".format(output,error))
+        try:
+            import rpy2
+            print("rpy2 version is", rpy2.__version__)
+        except Exception as e:
+            print("no rpy2", e)
+        #print("")
+        #R("""
+        #rnorm(100)
+        #""")
 
 rule describeR:
     run:
         R("""
-        library(dplyr)
-        library(VariantFiltering)
-        cat(.libPaths())
-        print(sessionInfo())
+        #library(dplyr)
+        #library(VariantFiltering)
+        #print(sessionInfo())
+        cat("WTF\n")
         """)
 
 #trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz
@@ -1398,12 +1427,12 @@ rule variantAnalysisSetupUind:
         save(uind,file="{output.uind}")
         """)
 
-rule variantAnalysisSetupDeNovo:
+rule variantAnalysisSetupModel:
     input:
         vcf = config['datadirs']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
         ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile"
     output:
-        denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData"
+        result = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
     params:
         rlibrary = config['analysis']['rlibrary'],
         bsgenome = config['analysis']['bsgenome'],
@@ -1414,10 +1443,12 @@ rule variantAnalysisSetupDeNovo:
         sift     = config['analysis']['sift'],
         phylo    = config['analysis']['phylo']
     run:
+        model_lut = {"denovo":"deNovo","arhomo":"autosomalRecessiveHomozygous","cmpdhet":"autosomalRecessiveHeterozygous","xlinked":"xLinked"}
+        modelname=model_lut[wildcards.model]
         R("""
         library(dplyr)
         library(VariantFiltering)
-        denovo_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
+        var_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
                                        pedFilename="{input.ped}", bsgenome="{params.bsgenome}", 
                                        txdb="{params.txdb}",   
                                        snpdb="{params.snpdb}",
@@ -1427,48 +1458,38 @@ rule variantAnalysisSetupDeNovo:
                                                           "{params.phylo}"
                                                          )
         )
-        cat("loading denovo\n")
-        denovo<-deNovo(denovo_param)
-        save(denovo,file="{output.denovo}")
+        cat("loading {modelname}\n")
+        varresult<-{modelname}(var_param)
+        save(varresult,file="{output.result}")
         """)
 
-rule variantAnalysisAll:
+rule variantAnalysisModels:
     input:
-        uind = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.uind.RData",
         denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
+        arhomo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
+        cmpdhet = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
+        xlinked = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.xlinked.RData",
         ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile",
-        source = "reports/grin_epilepsy.Rmd"
+        source = "reports/grin_epilepsy_models.Rmd"
     output:
-        html = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.all.html"
+        html = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
     params:
-        rlibrary = config['analysis']['rlibrary']
+        rlibrary = config['analysis']['rlibrary'],
+        dirpath = config['datadirs']['analysis'],
+        outfile = "/{family}_{pro,\w+}.{ext}.denovo.html"
     run:
         R("""
         library(rmarkdown)
-        uind<- get(load('{input.uind}'))
-        mytrio<-"{wildcards.trio} ({wildcards.pro})"
+        denovo<-get(load('{input.denovo}'))
+        arhomo<-get(load('{input.arhomo}'))
+        cmpdhet<-get(load('{input.cmpdhet}'))
+        
+        mytrio<-"{wildcards.family} ({wildcards.pro})"
         ped <-read.table("{input.ped}",header=TRUE)
-        rmarkdown::render("{input.source}",output_file="{output.html}")
+        rmarkdown::render("{input.source}",output_file="{params.outfile}",output_dir="{params.dirpath}")
         """)
 
-rule variantAnalysisDeNovo:
-    input:
-        denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
-        ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile",
-        source = "reports/grin_epilepsy_denovo.Rmd"
-    output:
-        html = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.html"
-    params:
-        rlibrary = config['analysis']['rlibrary']
-    run:
-        R("""
-        .libPaths( c( .libPaths(), "{params.rlibrary}") )
-        library(rmarkdown)
-        denovo<- get(load('{input.denovo}'))
-        mytrio<-"{wildcards.trio} ({wildcards.pro})"
-        ped <-read.table("{input.ped}",header=TRUE)
-        rmarkdown::render("{input.source}",output_file="{output.html}")
-        """)
+        
         
 #### Report ####
 # create YAML file used in meta-FastQC report

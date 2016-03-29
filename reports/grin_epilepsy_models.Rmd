@@ -6,6 +6,8 @@ output: html_document
 ---
 ```{r preload, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
 if(!exists("denovo"))  denovo <- get(load('GRCh38/analysis/NLES19_731473.trio.phased.com.filtered.ad.de.nm.snpeff.denovo.RData'))
+if(!exists("arhomo"))  denovo <- get(load('GRCh38/analysis/NLES19_731473.trio.phased.com.filtered.ad.de.nm.snpeff.arhomo.RData'))
+    
 if(!exists("ped")) ped <-read.table("GRCh38/analysis/NLES19_731473.pedfile",header=TRUE)
 if(!exists("mytrio")) mytrio<-"NLES19_731473"
 ```
@@ -26,7 +28,7 @@ thisnotinthat <- function(x.1,x.2,...){
  }
 ```
 
-## De novo analysis
+# De novo analysis
 
 ## Variant summary for de novo variants
 This represents a brief summary of the de novo variants.
@@ -34,17 +36,19 @@ This represents a brief summary of the de novo variants.
 ```{r denovo_summary, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 if(length(allVariants(denovo))==0){
   print("0 de novo variants found<br/>")
-  knitr::knit_exit()
+  showChunk<-FALSE
 }else{
+    showChunk<-TRUE
 datatable(data.frame(VariantFiltering::summary(denovo)) %>% dplyr::rename(Variants = Nr..Variants, Perc = X..Variants),rownames=FALSE)
+modelVariants<-denovo
 }
 ```
 
 ## De novo variants of interest
 The de novo filter of VariantFiltering looks for present genotypes in all members of the trio. The parents are always "0/0".
 
-```{r denovo_variants, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-vrl<- filteredVariants(denovo)
+```{r filtered_variants, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+vrl<- filteredVariants(modelVariants)
 
 #if(ped[1,"Subject"] != names(vrl)[1]) stop("name of proband does not match first genotype")
 
@@ -62,7 +66,7 @@ vrl.df.g<-cbind(vrl.df,genotypes)
 There are `r nrow(vrl.df.g)` de novo variants.
 
 
-```{r varfiltsetup, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r varfiltsetup, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 
 #short list of recurrent genes
 recurrent_genes<-read.table("../annotations/recurrentgenes.txt")$V1
@@ -75,7 +79,7 @@ vrl.df.g %>% left_join(rvis,by="GENE")  %>% dplyr::select(seqnames,dbSNP,start,r
 
 #### Triage 1: De novo variants in recurrent genes
 These are variants found in the `r length(recurrent_genes)` genes associated with recurrent mutations in epilepsy.
-```{r recurrent, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r recurrent, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 disp_df %>% filter(gene %in% recurrent_genes) -> in_recurrent
 if (nrow(in_recurrent) == 0){print("No variants found in recurrent genes<br/>")}else{datatable(in_recurrent)}
 ```
@@ -83,14 +87,14 @@ if (nrow(in_recurrent) == 0){print("No variants found in recurrent genes<br/>")}
 #### Triage 2: De novo variants in literature genes with low tolerance
 These are the remaining variants cited in the `r length(literature_genes)` genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
 
-```{r literature, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r literature, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 disp_df %>% filter(gene %in% literature_genes) %>% filter(RVIS <= 0) %>% thisnotinthat(in_recurrent) -> litlotol
 if (nrow(litlotol) == 0){print("No remaining variants found in literature genes<br/>")}else{datatable(litlotol)}
 ```
 
 #### Triage 3: De novo coding variants not in the above
 These are remaining variants that are located in the coding sequence of at least one transcript.
-```{r coding, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r coding, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 disp_df %>% filter(location == 'coding') %>% thisnotinthat(litlotol)-> codingonly
 if (nrow(codingonly) == 0){print("No remaining variants found in coding genes<br/>")}else{datatable(codingonly)}
 ```
@@ -102,7 +106,54 @@ disp_df %>%  thisnotinthat(codingonly) -> others
 datatable(others)
 ```
 
+# Autosomal recessive homozygous
+The Autosomal recessive homozygous filter of VariantFiltering selects homozygous variants that are present in the affected probands and occur in heterozygosity in unaffected parents.
+
+## Variant summary for autosomal recessive homozygous variants
+This represents a brief summary of the autosomal recessive homozygous variants.
+
+```{r arhomo_summary, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+if(length(allVariants(arhomo))==0){
+  print("0 autosomal recessive homozygous variants found<br/>")
+  showChunk<-FALSE
+}else{
+    showChunk<-TRUE
+datatable(data.frame(VariantFiltering::summary(arhomo)) %>% dplyr::rename(Variants = Nr..Variants, Perc = X..Variants),rownames=FALSE)
+modelVariants<-homo
+}
+```
+
+```{r filtered_variants_arhomo, eval=showChunk, ref.label='filtered_variants', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+There are `r nrow(vrl.df.g)` autosomal recessive homozygous variants.
+
+
+```{r varfiltsetup_arhomo, eval=showChunk, ref.label='varfiltsetup', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
+#### Triage 1: Autosomal recessive homozygous variants in recurrent genes
+These are variants found in the `r length(recurrent_genes)` genes associated with recurrent mutations in epilepsy.
+```{r recurrent_arhomo, eval=showChunk, ref.label='recurrent', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
+#### Triage 2: Autosomal recessive homozygous variants in literature genes with low tolerance
+These are the remaining variants cited in the `r length(literature_genes)` genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
+
+```{r literature_arhomo, eval=showChunk, ref.label='literature', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
+#### Triage 3: Autosomal recessive homozygous variants not in the above
+These are remaining variants that are located in the coding sequence of at least one transcript.
+```{r coding_arhomo, eval=showChunk, ref.label='coding', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
+#### Other autosomal recessive homozygous variants
+These are the remaining de novo variants
+```{r others_arhomo, echo=FALSE, ref.label='others', message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```
+
 ## Session Info
 ```{r}
-args(denovo) 
+args(denovo)
+args(arhomo) 
 ```
