@@ -5,11 +5,12 @@ date: "1/16/2016"
 output: html_document
 ---
 ```{r preload, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
-if(!exists("denovo"))  denovo <- get(load('GRCh38/analysis/NLES19_731473.trio.phased.com.filtered.ad.de.nm.snpeff.denovo.RData'))
-if(!exists("arhomo"))  denovo <- get(load('GRCh38/analysis/NLES19_731473.trio.phased.com.filtered.ad.de.nm.snpeff.arhomo.RData'))
+#Kiel_DFG_2015_Trio_3_E01181.trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html
+if(!exists("denovo"))  denovo <- get(load('../../GRCh38/analysis/Kiel_DFG_2015_Trio_3_E01181.trio.phased.com.filtered.ad.de.nm.snpeff.noask.denovo.RData'))
+if(!exists("arhomo"))  arhomo <- get(load('../../GRCh38/analysis/Kiel_DFG_2015_Trio_3_E01181.trio.phased.com.filtered.ad.de.nm.snpeff.noask.arhomo.RData'))
     
-if(!exists("ped")) ped <-read.table("GRCh38/analysis/NLES19_731473.pedfile",header=TRUE)
-if(!exists("mytrio")) mytrio<-"NLES19_731473"
+if(!exists("ped")) ped <-read.table("../../GRCh38/analysis/Kiel_DFG_2015_Trio_3_E01181.pedfile",header=TRUE)
+if(!exists("mytrio")) mytrio<-"Kiel_DFG_2015_Trio_3_E01181"
 ```
 
 ```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
@@ -28,12 +29,20 @@ thisnotinthat <- function(x.1,x.2,...){
  }
 ```
 
+```{r annosetup, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+#short list of recurrent genes
+recurrent_genes<-read.table("../annotations/recurrentgenes.txt")$V1
+#longer list
+literature_genes<-read.table("../annotations/literaturegenes.txt")$V1
+```
+
 # De novo analysis
 
 ## Variant summary for de novo variants
 This represents a brief summary of the de novo variants.
 
 ```{r denovo_summary, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+varcount<-0
 if(length(allVariants(denovo))==0){
   print("0 de novo variants found<br/>")
   showChunk<-FALSE
@@ -61,17 +70,13 @@ names(genotypes) <- paste("GT_",names(vrl),sep="")
 
 
 vrl.df.g<-cbind(vrl.df,genotypes)
-
+varcount<-nrow(vrl.df.g)
 ```
-There are `r nrow(vrl.df.g)` de novo variants.
+There are `r varcount` de novo variants.
 
 
 ```{r varfiltsetup, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 
-#short list of recurrent genes
-recurrent_genes<-read.table("../annotations/recurrentgenes.txt")$V1
-#longer list
-literature_genes<-read.table("../annotations/literaturegenes.txt")$V1
 
 rvis<-get(load("../annotations/rvis.RData"))
 vrl.df.g %>% left_join(rvis,by="GENE")  %>% dplyr::select(seqnames,dbSNP,start,ref,alt,refDepth,altDepth,TYPE,LOCATION,GENE,HGVSc,AAchange,RVIS,starts_with("GT")) %>% dplyr::rename(chr = seqnames, pos = start, type = TYPE, location = LOCATION, gene = GENE) %>% arrange(chr,pos,location) %>% distinct(chr, pos, ref, alt) -> disp_df
@@ -101,7 +106,7 @@ if (nrow(codingonly) == 0){print("No remaining variants found in coding genes<br
 
 #### Other de novo variants
 These are the remaining de novo variants
-```{r others, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r others, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 disp_df %>%  thisnotinthat(codingonly) -> others
 datatable(others)
 ```
@@ -113,19 +118,20 @@ The Autosomal recessive homozygous filter of VariantFiltering selects homozygous
 This represents a brief summary of the autosomal recessive homozygous variants.
 
 ```{r arhomo_summary, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+varcount<-0
 if(length(allVariants(arhomo))==0){
   print("0 autosomal recessive homozygous variants found<br/>")
   showChunk<-FALSE
 }else{
     showChunk<-TRUE
 datatable(data.frame(VariantFiltering::summary(arhomo)) %>% dplyr::rename(Variants = Nr..Variants, Perc = X..Variants),rownames=FALSE)
-modelVariants<-homo
+modelVariants<-arhomo
 }
 ```
 
 ```{r filtered_variants_arhomo, eval=showChunk, ref.label='filtered_variants', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 ```
-There are `r nrow(vrl.df.g)` autosomal recessive homozygous variants.
+There are `r varcount` autosomal recessive homozygous variants.
 
 
 ```{r varfiltsetup_arhomo, eval=showChunk, ref.label='varfiltsetup', echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
@@ -149,7 +155,7 @@ These are remaining variants that are located in the coding sequence of at least
 
 #### Other autosomal recessive homozygous variants
 These are the remaining de novo variants
-```{r others_arhomo, echo=FALSE, ref.label='others', message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r others_arhomo, eval=showChunk, echo=FALSE, ref.label='others', message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 ```
 
 ## Session Info

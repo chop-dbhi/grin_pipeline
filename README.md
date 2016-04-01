@@ -15,14 +15,10 @@ conda create --name grinenv --file requirements.txt
 source activate grinenv
 ```
 
-In R. (We use the latest VariantFiltering)
+### Fetch dependencies
 ```
-source("http://bioconductor.org/biocLite.R")
-library(BiocInstaller)
-install.packages("devtools")
-library(devtools)
-install_github("VariantFiltering", "rcastelo")
-```
+snakemake Rdeps
+````
 
 ### To run a trio
 ```

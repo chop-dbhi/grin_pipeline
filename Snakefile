@@ -65,9 +65,9 @@ FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio i
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
-ANALYSISREADY = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
-RDATA         = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
-ANALYSES      = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.models.html" for trio in COMPLETETRIOSFAMIDS]
+ANALYSISREADY = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
+RDATA         = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
+ANALYSES      = [config['datadirs']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html" for trio in COMPLETETRIOSFAMIDS]
 
 SAMS = [config['datadirs']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['datadirs']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -124,6 +124,8 @@ rule Rdeps:
     run:
         R("""
         library(devtools)
+        install_github("zhezhangsh/GtUtility")
+        install_github("zhezhangsh/awsomics")
         install_github("VariantFiltering", "rcastelo")
         source("http://bioconductor.org/biocLite.R")
         biocLite(c("BSgenome.Hsapiens.UCSC.hg38",
@@ -1392,6 +1394,19 @@ rule describeR:
         cat("WTF\n")
         """)
 
+# alter records that have a '*' in the ALT field - these are causing problems in VariantAnnotation
+# https://github.com/Bioconductor-mirror/VariantAnnotation/commit/837f1f0c9fdcdc9de7677a9a067963413dfe26e7
+rule noasterisk:
+    input:
+        vcf = "{file}.vcf"
+    output:
+        vcf = "{file}.noask.vcf"
+    shell:
+        """
+        awk '{{gsub(/\*/,'N',$5); print}}' < {input} > {output}
+        """
+
+
 #trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz
 #### Analysis ####
 rule variantAnalysisSetupUind:
@@ -1445,6 +1460,9 @@ rule variantAnalysisSetupModel:
     run:
         model_lut = {"denovo":"deNovo","arhomo":"autosomalRecessiveHomozygous","cmpdhet":"autosomalRecessiveHeterozygous","xlinked":"xLinked"}
         modelname=model_lut[wildcards.model]
+        if wildcards.model == 'xlinked' and getGender(wildcards.pro) == 'F':
+            print(wildcards.pro + ' is female. Why are you asking for x-linked variants?')
+            quit()
         R("""
         library(dplyr)
         library(VariantFiltering)
@@ -1463,12 +1481,24 @@ rule variantAnalysisSetupModel:
         save(varresult,file="{output.result}")
         """)
 
+def getGender(proband):
+    res = sample_table.loc[sample_table['Subject'] ==  proband,"Sex"]
+    sex = str(res.values[0])
+    return sex
+
+# boys only
+def xlinked(wildcards):
+    if getGender(wildcards.pro)=='M':
+        return config['datadirs']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
+    else:
+        return []
+
 rule variantAnalysisModels:
     input:
         denovo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
         arhomo = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
         cmpdhet = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
-        xlinked = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.xlinked.RData",
+        xlinked = xlinked,
         ped = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.pedfile",
         source = "reports/grin_epilepsy_models.Rmd"
     output:
@@ -1483,7 +1513,9 @@ rule variantAnalysisModels:
         denovo<-get(load('{input.denovo}'))
         arhomo<-get(load('{input.arhomo}'))
         cmpdhet<-get(load('{input.cmpdhet}'))
-        
+        if('{input.xlinked}' != ''){{
+            xlinked<-get(load('{input.xlinked}'))
+        }}
         mytrio<-"{wildcards.family} ({wildcards.pro})"
         ped <-read.table("{input.ped}",header=TRUE)
         rmarkdown::render("{input.source}",output_file="{params.outfile}",output_dir="{params.dirpath}")
