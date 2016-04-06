@@ -79,7 +79,7 @@ tools:
     gemini:
         /mnt/isilon/cbmi/variome/bin/gemini/bin/gemini
     vep:
-        /mnt/isilon/cbmi/variome/devkotab/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
+        /mnt/isilon/cbmi/variome/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
     multiqc:
         multiqc
 jars:
