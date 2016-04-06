@@ -56,6 +56,7 @@ TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for tri
 # quads are one family
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
+VEPVCFS = [re.sub("\.family.vcf$", ".family.vep.vcf.gz", name) for name in FAMILYVCFS]
 
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
@@ -106,6 +107,9 @@ rule extract:
 rule rdata:
     input: RDATA
 
+rule vepvcfs:
+    input: VEPVCFS
+
 rule triovcfs:
     input: TRIOVCFS
 
@@ -152,7 +156,11 @@ rule dummy:    # just to test the python codes above
     input:  workflow.basedir + "/Snakefile"
 
     run:
-        check_gvcfs(GVCFS)
+        for file in VEPVCFS:
+             print(file)
+        for file in FAMILYVCFS:
+             print(file)
+        #check_gvcfs(GVCFS)
 
 rule target_lists:
     input: LISTS
@@ -1151,18 +1159,25 @@ rule run_snpeff:
 #### run VEP  ####
 
 rule run_vep:
-    input: "{file}.vcf.gz"
-    output: "{file}.vep.vcf.gz"
+    input:
+         vcf = config['datadirs']['vcfs'] + "/{family}.family.vcf",
+         vep = config['tools']['vep']
+    output: config['datadirs']['vcfs'] + "/{family}.family.vep.vcf.gz"
+    params:
+        xbrowse = config['xbrowse'],
+        vepdir = config['vepdir'],
+        vepgen = config['vepgenomes']['hg38']
     run:
         shell("""
-          perl ./vep/ensembl-tools-release-78/scripts/variant_effect_predictor/variant_effect_predictor.pl \
-              --everything --vcf --allele_number --no_stats --cache --offline \
-              --dir ./vep_cache/ --force_overwrite --cache_version 78 \
-              --fasta ./vep_cache/homo_sapiens/78_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa \
-              --assembly GRCh37 --tabix \
-              --plugin LoF,human_ancestor_fa:./loftee_data/human_ancestor.fa.gz,filter_position:0.05,min_intron_size:15 \
-              --plugin dbNSFP,./reference_data/dbNSFP/dbNSFPv2.9.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
-              -i {wildcards.file}.vcf.gz -o {wildcards.file}.vep.vcf.gz
+          perl {input.vep} \
+          --everything --vcf --allele_number --no_stats --cache --offline \
+          --force_overwrite --cache_version 84 \
+          --dir {params.vepdir} \
+          --fasta {params.vepgen} \
+          --assembly GRCh38 --tabix \
+          --plugin LoF,human_ancestor_fa:{params.xbrowse}/data/reference_data/human_ancestor.fa.gz,filter_position:0.05... \
+          --plugin dbNSFP,{params.xbrowse}/data/reference_data/dbNSFP.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
+              -i {input.vcf} -o {output}
         """)
 
 #### run multiqc  ####

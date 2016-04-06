@@ -12,6 +12,14 @@ pedfile: samples.ped
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN/
 summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc
+xbrowse: /mnt/isilon/cbmi/variome/bin/xbrowse
+vepdir: /mnt/isilon/cbmi/variome/vep
+
+vepgenomes:
+    hg37:
+        /mnt/isilon/cbmi/variome/vep/homo_sapiens/84_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
+    hg38:
+        /mnt/isilon/cbmi/variome/vep/homo_sapiens/84_GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.fa
 
 # subdirectories relative to projdir
 datadirs:
@@ -63,6 +71,8 @@ tools:
         /mnt/isilon/cbmi/variome/bin/bgzip
     gemini:
         /mnt/isilon/cbmi/variome/bin/gemini/bin/gemini
+    vep:
+        /mnt/isilon/cbmi/variome/devkotab/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
 jars:
     picard:
         path:
