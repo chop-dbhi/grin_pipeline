@@ -1,0 +1,79 @@
+isilon: /mnt/isilon/cbmi/variome
+
+ped: ped.ped  # a PED pedigree file for PhaseByTransmission
+sample_table: sample_table.txt
+pedfile: samples.ped
+tmpdir: /mnt/lustre/users/leipzigj
+
+annovardbdir: /mnt/isilon/cbmi/variome/annovar/humandb
+#annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
+annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a'] # removed 'genomicSuperDups',
+# specify operations for table_annovar.pl, correspoinding to above databases
+operations: "g,r,f,f,f,f,f,f,f,f,f,f" # g: gene-based
+                                        # r: region-based
+                                        # f: filter-based
+
+annovaropts:
+    hg19:
+        refGene: -downdb -webfrom annovar
+        esp6500siv2_all: -downdb -webfrom annovar
+        esp6500siv2_ea: -downdb -webfrom annovar
+        esp6500siv2_aa: -downdb -webfrom annovar
+        exac03: -downdb -webfrom annovar
+        kaviar_20150923: -downdb -webfrom annovar
+        exac03nontcga: -downdb -webfrom annovar
+        exac03nonpsych: -downdb -webfrom annovar
+        hrcr1: -downdb -webfrom annovar
+        dbnsfp30a: -downdb -webfrom annovar
+        1000g2014oct: -downdb -webfrom annovar
+        snp138: -downdb -webfrom annovar
+        cytoBand: -downdb
+        genomicSuperDups: -downdb
+    hg38:
+        refGene: -downdb -webfrom annovar
+        esp6500siv2_all: -downdb -webfrom annovar
+        esp6500siv2_ea: -downdb -webfrom annovar
+        esp6500siv2_aa: -downdb -webfrom annovar
+        exac03: -downdb -webfrom annovar
+        kaviar_20150923: -downdb -webfrom annovar
+        exac03nontcga: -downdb -webfrom annovar
+        exac03nonpsych: -downdb -webfrom annovar
+        hrcr1: -downdb -webfrom annovar
+        dbnsfp30a: -downdb -webfrom annovar
+        cytoBand: -downdb
+        genomicSuperDups: -downdb
+        1000g2014oct: -downdb
+        snp138: -downdb
+
+projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN
+
+# !!python/object/apply:os.path.join
+
+tools:
+    java:
+        /mnt/isilon/cbmi/variome/bin/java
+    # must be set separately from java because java will be treated as input
+    javaopts: -Xmx32g -Xms16g -Djava.io.tmpdir=/mnt/lustre/users/leipzigj/
+    seq2qc:
+        /mnt/isilon/cbmi/variome/bin/fastqc
+    samtools:
+        /mnt/isilon/cbmi/variome/bin/samtools-1.3/samtools
+    sortbam:
+        /mnt/isilon/cbmi/variome/bin/novosort
+    align:
+        /mnt/isilon/cbmi/variome/bin/novoalign
+    vt:
+        /mnt/isilon/cbmi/variome/bin/vt/vt
+    tabix:
+        /mnt/isilon/cbmi/variome/bin/tabix
+    bgzip:
+        /mnt/isilon/cbmi/variome/bin/bgzip
+    gemini:
+        /mnt/isilon/cbmi/variome/bin/gemini/bin/gemini
+    annotate_variation: 
+        /mnt/isilon/cbmi/variome/bin/annotate_variation.pl
+    table_annovar: 
+        /mnt/isilon/cbmi/variome/bin/table_annovar.pl
+    vcf2avinput: 
+        /mnt/isilon/cbmi/variome/bin/convert2annovar.pl
+
