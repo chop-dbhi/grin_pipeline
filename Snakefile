@@ -123,11 +123,11 @@ rule analyses:
 rule Rdeps:
     run:
         R("""
+        update.packages(ask=FALSE,repos=c("http://cran.rstudio.com"))
+        source("http://bioconductor.org/biocLite.R")
         library(devtools)
         install_github("zhezhangsh/GtUtility")
         install_github("zhezhangsh/awsomics")
-        install_github("VariantFiltering", "rcastelo")
-        source("http://bioconductor.org/biocLite.R")
         biocLite(c("BSgenome.Hsapiens.UCSC.hg38",
         "TxDb.Hsapiens.UCSC.hg38.knownGene",
         "SNPlocs.Hsapiens.dbSNP.20120608",
@@ -138,7 +138,8 @@ rule Rdeps:
         "PolyPhen.Hsapiens.dbSNP131",
         "SNPlocs.Hsapiens.dbSNP144.GRCh38",
         "SIFT.Hsapiens.dbSNP137",
-        "org.Hs.eg.db"))
+        "org.Hs.eg.db"),suppressUpdates=TRUE)
+        install_github("rcastelo/VariantFiltering")
         """)
 
 # this is a utility to put things in the correct order in case something upstream gets touched
