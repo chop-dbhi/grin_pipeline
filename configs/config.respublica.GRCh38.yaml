@@ -29,7 +29,7 @@ datadirs:
     postrecalibrated: lustre/GRCh38/postrecalibrated
     pdfs:             lustre/GRCh38/pdfs
     gvcfs:            lustre/GRCh38/gvcfs
-    vcfs:             lustre/GRCh38/vcfs
+    vcfs:             GRCh38/vcfs
     vtpeek:           lustre/GRCh38/qc/vcf
     gemini:           lustre/GRCh38/gemini
     analysis:         GRCh38/analysis
@@ -38,6 +38,8 @@ datadirs:
 
 python3_environment: /home/leipzigj/miniconda3/envs/grinenv/bin/
 python2_environment: /home/leipzigj/miniconda3/envs/geminienv/bin/
+
+load_python3_environment: source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv
 
 tools:
     java:
@@ -90,9 +92,9 @@ jars:
         path:
             snpEff
         cnf:
-            configs/snpEff.GRCh38.config
+            configs/snpEff.GRCh38.4.2.config
         db:
-            GRCh38.76
+            GRCh38.82
         ud:
             '10'
         format:
