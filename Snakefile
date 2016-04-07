@@ -1522,7 +1522,23 @@ rule variantAnalysisModels:
         """)
 
         
-        
+    
+rule run_denovogear:
+    input:
+        vcf = config['datadirs']['vcfs'] + "/{file}.trio.vcf",
+        ped = config['pedfile']
+    output:
+        dnm_auto = config['datadirs']['vcfs'] + "/{file}.dnm_auto.txt"
+    log: 
+        config['datadirs']['log'] + "/{file}.dnm_auto.log.log" 
+    shell:
+        """
+        echo "SNP_INDEL CHILD_ID chr pos ref alt maxlike_null pp_null tgt_null(child/mom/dad) snpcode code maxlike_dnm pp_dnm tgt_dnm lookup flag child_rd dad_rd mom_rd child_mq dad_mq mom_mq"
+        dnm auto --vcf {input.vcf} --ped {input.ped} | \
+        sed 's/CHILD_ID: //g;s/chr: //g;s/pos: //g;s/ref: //g;s/alt: //g;s/maxlike_null: //g;s/pp_null: //g;s/tgt: //g;s/tgt_null(child\/mom\/dad): //g;s/snpcode: //g;s/code: //g;s/maxlike_dnm: //g;s/pp_dnm: //g;s/tgt_dnm(child\/mom\/dad): //g;s/lookup: //g;s/flag: //g;s/READ_DEPTH child: //g;s/dad: //g;s/mom: //g;s/MAPPING_QUALITY child: //g;s/dad: //g;s/mom: //g' | \
+        >> {output.dnm_auto}
+        """
+
 #### Report ####
 # create YAML file used in meta-FastQC report
 rule makeyaml:
