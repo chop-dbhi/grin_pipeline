@@ -1389,10 +1389,9 @@ rule testR:
 rule describeR:
     run:
         R("""
-        #library(dplyr)
-        #library(VariantFiltering)
-        #print(sessionInfo())
-        cat("WTF\n")
+        library(dplyr)
+        library(VariantFiltering)
+        print(sessionInfo())
         """)
 
 # alter records that have a '*' in the ALT field - these are causing problems in VariantAnnotation
