@@ -59,7 +59,8 @@ TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for tri
 # quads are one family
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
-VEPVCFS = [re.sub("\.family.vcf$", ".family.vep.vcf.gz", name) for name in FAMILYVCFS]
+#VEPVCFS = [re.sub("\.family.vcf$", ".family.vep.vcf.gz", name) for name in FAMILYVCFS]
+VEPVCFS = [config['datadirs']['vep'] + "/" + trio + ".family.vep.vcf.gz" for trio in COMPLETEFAMILYFAMIDS]
 
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
@@ -109,6 +110,9 @@ rule extract:
 
 rule rdata:
     input: RDATA
+
+rule xbrowse:
+    input: config['datadirs']['vep'] + "/project.yaml", config['datadirs']['vep'] + "/samples.txt", config['datadirs']['vep'] + "/samples.ped"
 
 rule vepvcfs:
     input: VEPVCFS
@@ -204,11 +208,15 @@ rule dummy:    # just to test the python codes above
     input:  workflow.basedir + "/Snakefile"
 
     run:
+        #check_gvcfs(GVCFS)
         for file in VEPVCFS:
              print(file)
         for file in FAMILYVCFS:
              print(file)
-        #check_gvcfs(GVCFS)
+        for file in SAMPLELANES:
+             print(file)
+        for file in EXISTINGSAMPLES:
+             print(file)
 
 rule target_lists:
     input: LISTS
@@ -1209,15 +1217,52 @@ rule run_snpeff:
 
 #### run VEP  ####
 
+rule for_xbrowse:
+    input: VEPVCFS
+    output:
+         yaml = config['datadirs']['vep'] + "/project.yaml",
+         list = config['datadirs']['vep'] + "/samples.txt",
+         ped = config['datadirs']['vep'] + "/samples.ped"
+    params:
+         pedfile = config['pedfile']
+    run:
+        with open(output.yaml, "w") as out:
+            out.write("---\n\n") 
+            out.write("project_id: '%s'\n" % (config['project_id']))
+            out.write("project_name: '%s'\n" % (config['project_name']))
+            out.write("sample_id_list: 'samples.txt'\n")
+            out.write("ped_files:\n")
+            out.write("  - 'samples.ped'\n")
+            out.write("vcf_files:\n")
+            for name in VEPVCFS:
+                out.write("  - '%s'\n" % (re.sub('.*\/', '', name)))
+
+        with open(output.list, "w") as out:
+            for name in EXISTINGSAMPLES:
+                out.write(name + "\n")
+
+        with open(output.ped, "w") as out:
+            fin = open(params.pedfile, "r")
+            for line in fin.readlines():
+                fields = line.split()
+                # print(fields)
+                if fields[1] in EXISTINGSAMPLES:
+                    out.write(line)
+
 rule run_vep:
     input:
          vcf = config['datadirs']['vcfs'] + "/{family}.family.vcf",
          vep = config['tools']['vep']
-    output: config['datadirs']['vcfs'] + "/{family}.family.vep.vcf.gz"
+    output:
+         vep = config['datadirs']['vep'] + "/{family}.family.vep.vcf.gz"
     params:
-        xbrowse = config['xbrowse'],
-        vepdir = config['vepdir'],
-        vepgen = config['vepgenomes']['hg38']
+         xbrowse = config['xbrowse'],
+         vepdir = config['vepdir'],
+         vepgen = config['vepgenomes']['hg38'],
+         yaml = config['datadirs']['vep'] + "/project.yaml",
+         list = config['datadirs']['vep'] + "/samples.txt",
+         ped = config['datadirs']['vep'] + "/samples.ped",
+         pedfile = config['pedfile']
     run:
         shell("""
           perl {input.vep} \
@@ -1228,8 +1273,9 @@ rule run_vep:
           --assembly GRCh38 --tabix \
           --plugin LoF,human_ancestor_fa:{params.xbrowse}/data/reference_data/human_ancestor.fa.gz,filter_position:0.05... \
           --plugin dbNSFP,{params.xbrowse}/data/reference_data/dbNSFP.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
-              -i {input.vcf} -o {output}
+              -i {input.vcf} -o {output.vep}
         """)
+
 
 #### run multiqc  ####
 

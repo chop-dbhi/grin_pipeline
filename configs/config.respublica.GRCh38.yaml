@@ -14,6 +14,8 @@ projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN/
 summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc
 xbrowse: /mnt/isilon/cbmi/variome/bin/xbrowse
 vepdir: /mnt/isilon/cbmi/variome/vep
+project_id: grin
+project_name: GRIN
 
 vepgenomes:
     hg37:
@@ -38,6 +40,7 @@ datadirs:
     pdfs:             lustre/GRCh38/pdfs
     gvcfs:            lustre/GRCh38/gvcfs
     vcfs:             lustre/GRCh38/vcfs
+    vep:              lustre/GRCh38/vep
     vtpeek:           lustre/GRCh38/qc/vcf
     gemini:           lustre/GRCh38/gemini
     analysis:         GRCh38/analysis
