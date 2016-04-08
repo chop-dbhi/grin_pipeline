@@ -39,7 +39,7 @@ datadirs:
     postrecalibrated: lustre/GRCh38/postrecalibrated
     pdfs:             lustre/GRCh38/pdfs
     gvcfs:            lustre/GRCh38/gvcfs
-    vcfs:             lustre/GRCh38/vcfs
+    vcfs:             GRCh38/vcfs
     vep:              lustre/GRCh38/vep
     vtpeek:           lustre/GRCh38/qc/vcf
     gemini:           lustre/GRCh38/gemini
