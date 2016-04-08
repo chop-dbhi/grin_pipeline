@@ -1462,7 +1462,7 @@ rule noasterisk:
         vcf = "{file}.noask.vcf"
     shell:
         """
-        awk '{{gsub(/\*/,'N',$5); print}}' < {input} > {output}
+        cat {input} | sed -e 's/\*/N/g' > {output}
         """
 
 
