@@ -100,8 +100,6 @@ jars:
         format:
             -classic
 analysis:
-    rlibrary:
-        /mnt/isilon/cbmi/variome/leipzig/R/x86_64-redhat-linux-gnu-library/3.2
     bsgenome:
         BSgenome.Hsapiens.UCSC.hg38
     txdb:
