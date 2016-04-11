@@ -1474,7 +1474,6 @@ rule variantAnalysisSetupUind:
     output:
         uind = config['datadirs']['analysis'] + "/{familypro}.uind.RData",
     params:
-        rlibrary = config['analysis']['rlibrary'],
         bsgenome = config['analysis']['bsgenome'],
         txdb     = config['analysis']['txdb'],
         snpdb    = config['analysis']['snpdb'],
@@ -1508,7 +1507,6 @@ rule variantAnalysisSetupModel:
     output:
         result = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
     params:
-        rlibrary = config['analysis']['rlibrary'],
         bsgenome = config['analysis']['bsgenome'],
         txdb     = config['analysis']['txdb'],
         snpdb    = config['analysis']['snpdb'],
@@ -1563,7 +1561,6 @@ rule variantAnalysisModels:
     output:
         html = config['datadirs']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
     params:
-        rlibrary = config['analysis']['rlibrary'],
         dirpath = config['datadirs']['analysis'],
         outfile = "/{family}_{pro,\w+}.{ext}.denovo.html"
     run:
