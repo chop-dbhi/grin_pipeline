@@ -14,7 +14,6 @@ snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G"
 
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
-configfile: "test.yaml"
 
 ENV3 = '{condaenv}/'.format(condaenv=config['python3_environment'])
 ENV2 = '{condaenv}/'.format(condaenv=config['python2_environment'])
@@ -61,7 +60,7 @@ TRIOVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".trio.phased.vcf" for tri
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 FAMILYVCFS = [config['datadirs']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
 #VEPVCFS = [re.sub("\.family.vcf$", ".family.vep.vcf.gz", name) for name in FAMILYVCFS]
-VEPVCFS = [config['datadirs']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf.gz" for trio in COMPLETEFAMILYFAMIDS]
+VEPVCFS = [config['datadirs']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
 
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
 TRIOGEMS = [config['datadirs']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
@@ -1276,10 +1275,10 @@ rule for_xbrowse:
 
 rule run_vep:
     input:
-        vcf = config['datadirs']['vcfs'] + "/{family}.com.filtered.vcf",
+        vcf = config['datadirs']['vcfs'] + "/{family}.vcf",
         vep = config['tools']['vep']
     output:
-        vep = config['datadirs']['vep'] + "/{family}.com.filtered.vep.vcf.gz"
+        vep = config['datadirs']['vep'] + "/{family}.vep.vcf"
     params:
         xbrowse = config['xbrowse'],
         vepdir = config['vepdir'],
@@ -1295,7 +1294,7 @@ rule run_vep:
           --force_overwrite --cache_version 84 \
           --dir {params.vepdir} \
           --fasta {params.vepgen} \
-          --assembly GRCh38 --tabix \
+          --assembly GRCh38 \
           --plugin LoF,human_ancestor_fa:{params.xbrowse}/data/reference_data/human_ancestor.fa.gz,filter_position:0.05... \
           --plugin dbNSFP,{params.xbrowse}/data/reference_data/dbNSFP.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
               -i {input.vcf} -o {output.vep}
