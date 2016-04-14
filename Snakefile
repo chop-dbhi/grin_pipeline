@@ -1283,10 +1283,6 @@ rule run_vep:
         xbrowse = config['xbrowse'],
         vepdir = config['vepdir'],
         vepgen = config['vepgenomes']['hg38'],
-        yaml = config['datadirs']['vep'] + "/project.yaml",
-        list = config['datadirs']['vep'] + "/samples.txt",
-        ped = config['datadirs']['vep'] + "/samples.ped",
-        pedfile = config['pedfile']
     run:
         shell("""
           perl {input.vep} \
