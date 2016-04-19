@@ -12,6 +12,8 @@ source activate snakeenv
 snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G" 
 """
 
+shell.prefix("source ~/.bash_profile") 
+
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
 
@@ -44,6 +46,7 @@ ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQ
 PAIRNAMESINSAMPLETABLE = [name for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
 SAMPLESONDISK = [sample for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
 MISSINGSAMPLES = [sample for sample in MANIFESTSAMPLES if sample not in SAMPLESONDISK]
+MANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name in PAIRNAMESINSAMPLETABLE]
 UNMANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name not in PAIRNAMESINSAMPLETABLE]
 
 # pair up
@@ -195,20 +198,23 @@ rule catchup:
 
 rule sample_concordance:
     output:
-        ms="missingsamples.txt", ump="unmanifestedpairs.txt", ic="incompletefamilies.txt"
+        ok="samplesondisk.txt", ms="missingsamples.txt", ump="unmanifestedpairs.txt", ic="incompletefamilies.txt"
     run:
         assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
         print("Received Pairs (on disk): {0}".format(len(ALLPAIRNAMES)))
         print("Unmanifested Pairs (on disk, not in sample table): {0}".format(len(UNMANIFESTEDPAIRS)))
         f = open(output.ump, 'w')
-        for pair in UNMANIFESTEDPAIRS:
+        for pair in sorted(UNMANIFESTEDPAIRS):
             f.write("{0}\n".format(pair))
         print("Existing Samples (on disk, in sample table): {0}".format(len(EXISTINGSAMPLES)))
         print("Missing Samples (in sample table, not on disk): {0}".format(len(MISSINGSAMPLES)))
         f = open(output.ms, 'w')
-        for sample in MISSINGSAMPLES:
+        for sample in sorted(MISSINGSAMPLES):
             f.write("{0}\n".format(sample))
         print("Manifested Pairs (in sample table): {0}".format(len(PAIRNAMESINSAMPLETABLE)))
+        f = open(output.ok, 'w')
+        for sample in sorted(MANIFESTEDPAIRS):
+            f.write("{0}\n".format(sample))
         print("Fastqs: {0} Lanes in sample table {1}".format(len(FASTQS), len(PAIRNAMESINSAMPLETABLE)))
         print("Complete Families (trios or quads): {0}".format(len(COMPLETEFAMILYFAMIDS)))
         print("Incomplete Families (files missing): {0}".format(len(INCOMPLETEFAMILIES)))
@@ -389,10 +395,29 @@ rule copy_to_cavatica:
         touch {output}
         """
 
-rule mirror:
+rule mirror_cavatica:
     input:
         expand("aws/{filename}_{pair}.fastq.gz.sent",filename=SAMPLELANES,pair=['R1','R2'])
 #        S3.remote(expand("cbttc.seq.data/Ingo_project/{filename}.fastq.gz",filename=SAMPLELANES))
+
+rule copy_to_risaws:
+     input:
+        config['datadirs']['fastq'] + "/{filename}"
+     output:
+        "risaws/{filename}.sent"
+     threads: 1
+     shell:
+        """
+        /home/leipzigj/miniconda3/envs/grinenv/bin/aws s3 cp s3://wuxi-demo-trios.s3.amazonaws.com/{wildcards.filename}
+        touch {output}
+        """
+
+RISAWSNAMES = ['E01621','E01623','E01622']
+RISAWSFASTQ =[s for s in SAMPLELANES for r in RISAWSNAMES if r in s]
+
+rule mirror_risaws:
+     input:
+        expand("risaws/{filename}_{pair}.fastq.gz.sent",filename=RISAWSFASTQ,pair=['R1','R2'])
 
 #### Alignment ####
 rule align:
