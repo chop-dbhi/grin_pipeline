@@ -23,3 +23,6 @@ for f in  DRA32  DRA4  DRA5  DRA6  DRA7  DRA8  DRA9 ; do for g in `ls NEWSEQS2-A
 for f in `find NEWSEQS2-ATC | grep 'bam$' | grep -v 'solid'`; do `ln -s ".."$f oldbams/`echo $f | sed -e 's/_hg19//;s/neuro_exome_//;s/.final//;s/.recal//;s/reads.//;s/.*\///'`; done
 
 conda create -n gempuzzleenv --file requirements/conda.txt python=2.7
+
+#novoalign license must be next to executable
+cp novoalign.lic* ~/miniconda3/envs/grinenv/bin/
