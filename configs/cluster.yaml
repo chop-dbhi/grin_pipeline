@@ -3,9 +3,9 @@ __default__:
 fastqc: 
   mem: 10G
 align: 
-  mem: 30G
+  mem: 3G
 sam_to_bam: 
-  mem: 30G
+  mem: 3G
 merge_lanes: 
   mem: 30G
 make_index: 
@@ -43,71 +43,79 @@ variantAnalysisAll:
 variantAnalysisDeNovo: 
   mem: 30G
 compress_vcf: 
-  mem: 4G
+  mem: 10G
   reference: http://www.real-world-systems.com/docs/gzip.1.html
 gzip: 
-  mem: 4G
+  mem: 10G
   reference: http://www.real-world-systems.com/docs/gzip.1.html
 novosortbam: 
-  mem: 10G
+  mem: 1G
   reference: http://www.novocraft.com/documentation/novosort-2/
 target_list: 
-  mem: 70G
+  mem: 3G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 extractreads: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 realign_target: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 generate_recalibration_table: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 recalibrate_bam: 
-  mem: 48G
+  mem: 7G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 post_recalibrated_table: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 analyze_bqsr: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 mark_duplicates: 
   mem: 60G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 add_readgroup: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 make_gvcf: 
   mem: 70G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 trio_vcfs: 
-  mem: 48G
+  mem: 7G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 family_vcfs: 
-  mem: 48G
+  mem: 7G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 run_phase_by_transmission: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_combine_variants: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 run_snpeff: 
-  mem: 48G
+  mem: 55G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_snps_only: 
-  mem: 24G
+  mem: 30G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_indels_only: 
-  mem: 24G
+  mem: 30G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_hard_filtration_snps: 
-  mem: 24G
+  mem: 30G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_hard_filtration_indels: 
-  mem: 24G
+  mem: 30G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 select_passing: 
-  mem: 24G
+  mem: 30G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
+testR:
+  mem: 10G
+variantAnalysisDeNovo:
+  mem: 10G
+variantAnalysisModels:
+  mem: 20G
+variantAnalysisSetupModel:
+  mem: 20G
