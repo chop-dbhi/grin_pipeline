@@ -8,8 +8,8 @@ from snakemake.utils import R
 from functools import cmp_to_key
 """
 run on respublica
-source activate snakeenv
-snakemake -j -c "qsub -l h_vmem=40G -l mem_free=40G" 
+source activate grinenv
+snakemake -j 300 --cluster-config cluster.yaml -c "qsub -V -l h_vmem={cluster.g_vmem} -l mem_free={cluster.mem_free} -l mem_free_l={cluster.m_mem_free} -pe smp {threads}"
 """
 
 shell.prefix("source ~/.bash_profile") 
