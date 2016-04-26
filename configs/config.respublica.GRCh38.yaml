@@ -1,12 +1,13 @@
 admins: leipzig@gmail.com
 #zhangs3@email.chop.edu
+#
+#
+buildve: hg38
+
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-ref:    /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
-refidx: /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
 known:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 #tabixed this:
 dbsnp: /mnt/isilon/cbmi/variome/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
-buildve: hg38
 sample_table: metadata/sample_table.txt
 pedfile: metadata/samples.ped
 
@@ -16,6 +17,18 @@ xbrowse: /mnt/isilon/cbmi/variome/bin/xbrowse
 vepdir: /mnt/isilon/cbmi/variome/vep
 project_id: grin
 project_name: GRIN
+
+ref:
+    hg37:
+        /mnt/isilon/cbmi/variome/reference/human/GRCh37/genome.fa
+    hg38:
+        /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
+
+refidx:
+    hg37:
+        /mnt/isilon/cbmi/variome/reference/human/GRCh37/genome.idx
+    hg38:
+        /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
 
 vepgenomes:
     hg37:
@@ -39,11 +52,11 @@ datadirs:
     postrecalibrated: lustre/GRCh38/postrecalibrated
     pdfs:             lustre/GRCh38/pdfs
     gvcfs:            lustre/GRCh38/gvcfs
-    vcfs:             GRCh38/vcfs
     vep:              lustre/GRCh38/vep
     vtpeek:           lustre/GRCh38/qc/vcf
     gemini:           lustre/GRCh38/gemini
-    analysis:         GRCh38/analysis
+    vcfs:             lustre/GRCh38/vcfs
+    analysis:         lustre/GRCh38/analysis
     website:          site
     log:              logs
 
