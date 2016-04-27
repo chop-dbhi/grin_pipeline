@@ -26,7 +26,7 @@ rule make_merged # get sorted merged bam file (invoke rule merge_lanes)
 rule family_vcfs # make family.vcfs
 rule triovcfs    # make trio.phased (invoke rule run_phase_by_transmission)
 rule vepvcfs     # run vep
-rule xbrowse    # get files for xbrowse
+rule xbrowse     # get files for xbrowse
 """
 
 shell.prefix("source ~/.bash_profile;") 
