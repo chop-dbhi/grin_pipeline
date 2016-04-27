@@ -29,7 +29,7 @@ rule vepvcfs     # run vep
 rule xbrowse    # get files for xbrowse
 """
 
-shell.prefix("source ~/.bash_profile") 
+shell.prefix("source ~/.bash_profile;") 
 
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
