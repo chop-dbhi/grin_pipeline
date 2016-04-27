@@ -1,113 +1,219 @@
 __default__: 
-  mem: 4G
+  h_vmem: 4G
+  mem_free: 3G
+  m_mem_free: 2G
 fastqc: 
-  mem: 10G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
 align: 
-  mem: 30G
+  h_vmem: 3G
+  mem_free: 2G
+  m_mem_free: 2G
 sam_to_bam: 
-  mem: 30G
+  h_vmem: 3G
+  mem_free: 2G
+  m_mem_free: 2G
 merge_lanes: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 make_index: 
-  mem: 10G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
 ad_vcf: 
-  mem: 10G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
 decompose_for_gemini: 
-  mem: 10G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
 normalize_for_gemini: 
-  mem: 10G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
 vcf_qt: 
-  mem: 10G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
 vcf_profile: 
-  mem: 10G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
 run_multiqc: 
-  mem: 20G
+  h_vmem: 20G
+  mem_free: 16G
+  m_mem_free: 14G
 table_annovar: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 run_annovar: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 vcf2avinput: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 install_annovar_db: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 tabix: 
-  mem: 20G
+  h_vmem: 20G
+  mem_free: 16G
+  m_mem_free: 14G
 gemini_db: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 variantAnalysisSetupUind: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 variantAnalysisSetupDeNovo: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 variantAnalysisAll: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 variantAnalysisDeNovo: 
-  mem: 30G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
 compress_vcf: 
-  mem: 4G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
   reference: http://www.real-world-systems.com/docs/gzip.1.html
 gzip: 
-  mem: 4G
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
   reference: http://www.real-world-systems.com/docs/gzip.1.html
 novosortbam: 
-  mem: 10G
+  h_vmem: 1G
+  mem_free: 0G
+  m_mem_free: 0G
   reference: http://www.novocraft.com/documentation/novosort-2/
 target_list: 
-  mem: 70G
+  h_vmem: 3G
+  mem_free: 2G
+  m_mem_free: 2G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 extractreads: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 realign_target: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 generate_recalibration_table: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 recalibrate_bam: 
-  mem: 48G
+  h_vmem: 7G
+  mem_free: 5G
+  m_mem_free: 4G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 post_recalibrated_table: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 analyze_bqsr: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 mark_duplicates: 
-  mem: 60G
+  h_vmem: 60G
+  mem_free: 48G
+  m_mem_free: 42G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 add_readgroup: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 make_gvcf: 
-  mem: 70G
+  h_vmem: 70G
+  mem_free: 56G
+  m_mem_free: 49G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 trio_vcfs: 
-  mem: 48G
+  h_vmem: 7G
+  mem_free: 5G
+  m_mem_free: 4G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 family_vcfs: 
-  mem: 48G
+  h_vmem: 7G
+  mem_free: 5G
+  m_mem_free: 4G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 run_phase_by_transmission: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_combine_variants: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 run_snpeff: 
-  mem: 48G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_snps_only: 
-  mem: 24G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_indels_only: 
-  mem: 24G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_hard_filtration_snps: 
-  mem: 24G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 gatk_hard_filtration_indels: 
-  mem: 24G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 select_passing: 
-  mem: 24G
+  h_vmem: 30G
+  mem_free: 24G
+  m_mem_free: 21G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
+testR:
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
+variantAnalysisDeNovo:
+  h_vmem: 10G
+  mem_free: 8G
+  m_mem_free: 7G
+variantAnalysisModels:
+  h_vmem: 20G
+  mem_free: 16G
+  m_mem_free: 14G
+variantAnalysisSetupModel:
+  h_vmem: 20G
+  mem_free: 16G
+  m_mem_free: 14G
