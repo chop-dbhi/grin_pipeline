@@ -33,7 +33,6 @@ shell.prefix("source ~/.bash_profile;")
 
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
-configfile: "test.yaml"
 
 ENV3 = '{condaenv}/'.format(condaenv=config['python3_environment'])
 ENV2 = '{condaenv}/'.format(condaenv=config['python2_environment'])
