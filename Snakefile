@@ -9,7 +9,7 @@ from functools import cmp_to_key
 """
 run on respublica
 source activate grinenv
-snakemake -j 300 --cluster-config cluster.yaml -c "qsub -V -l h_vmem={cluster.g_vmem} -l mem_free={cluster.mem_free} -l mem_free_l={cluster.m_mem_free} -pe smp {threads}"
+snakemake -j 300 --cluster-config cluster.yaml -c "qsub -V -l h_vmem={cluster.g_vmem} -l mem_free={cluster.mem_free} -l m_mem_free={cluster.m_mem_free} -pe smp {threads}"
 """
 
 shell.prefix("source ~/.bash_profile") 
