@@ -1,11 +1,15 @@
 admins: leipzig@gmail.com
 #zhangs3@email.chop.edu
 #
-#
-buildve: hg38
+ 
+buildve: hg37  # should just change this paramter for different genome reference
+
+python3_environment: /home/leipzigj/miniconda3/envs/grinenv/bin
+python2_environment: /home/leipzigj/miniconda3/envs/geminienv/bin
+load_python3_environment: source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv
+tmpdir: /mnt/lustre/users/leipzigj
 
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-known:       /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 #tabixed this:
 dbsnp: /mnt/isilon/cbmi/variome/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
 sample_table: metadata/sample_table.txt
@@ -15,18 +19,30 @@ projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN/
 summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc
 xbrowse: /mnt/isilon/cbmi/variome/bin/xbrowse
 vepdir: /mnt/isilon/cbmi/variome/vep
-project_id: grin
-project_name: GRIN
+
+xbrowse:      # for xbrowse project.yaml
+    id: grin
+    name: GRIN
+
+vep:
+    hg37: GRCh37
+    hg38: GRCh38
+
+known:
+    hg37:
+        /mnt/isilon/cbmi/variome/reference/human/Mills_and_1000G_gold_standard.indels.b37.sites.vcf
+    hg38:
+        /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 
 ref:
     hg37:
-        /mnt/isilon/cbmi/variome/reference/human/GRCh37/genome.fa
+        /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta
     hg38:
         /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
 
 refidx:
-    hg37:
-        /mnt/isilon/cbmi/variome/reference/human/GRCh37/genome.idx
+    hg37:   # created with novoindex -k 14 -s 1 human_g1k_v37.fasta.idx human_g1k_v37.fasta
+        /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta.idx
     hg38:
         /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
 
@@ -42,28 +58,30 @@ datadirs:
     oldbams:          oldbams
     fastq:            fastq
     samples:          samples
-    fastqc:           qc/fastqc
-    sams:             lustre/GRCh38/sams
-    bams:             lustre/GRCh38/bams
-    picard:           lustre/GRCh38/picard
-    realigned:        lustre/GRCh38/realigned
-    lists:            lustre/GRCh38/lists
-    recalibrated:     lustre/GRCh38/recalibrated
-    postrecalibrated: lustre/GRCh38/postrecalibrated
-    pdfs:             lustre/GRCh38/pdfs
-    gvcfs:            lustre/GRCh38/gvcfs
-    vep:              lustre/GRCh38/vep
-    vtpeek:           lustre/GRCh38/qc/vcf
-    gemini:           lustre/GRCh38/gemini
-    vcfs:             lustre/GRCh38/vcfs
-    analysis:         lustre/GRCh38/analysis
+    fastqc:           fastqc
     website:          site
     log:              logs
 
-python3_environment: /home/leipzigj/miniconda3/envs/grinenv/bin/
-python2_environment: /home/leipzigj/miniconda3/envs/geminienv/bin/
+types:
+    hg37:             lustre/GRCh37/
+    hg38:             lustre/GRCh38/
 
-load_python3_environment: source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv
+results:
+    sams:             sams
+    bams:             bams
+    picard:           picard
+    realigned:        realigned
+    lists:            lists
+    recalibrated:     recalibrated
+    postrecalibrated: postrecalibrated
+    pdfs:             pdfs
+    gvcfs:            gvcfs
+    vep:              vep
+    vtpeek:           vcf
+    gemini:           gemini
+    vcfs:             vcfs
+    analysis:         analysis
+
 
 tools:
     java:
@@ -100,10 +118,17 @@ tools:
         /mnt/isilon/cbmi/variome/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
     multiqc:
         multiqc
+    annotate_variation:
+        annotate_variation.pl
+    table_annovar:
+        table_annovar.pl
+    vcf2avinput:
+        convert2annovar.pl
+
 jars:
     picard:
         path:
-            picard
+            /mnt/isilon/cbmi/variome/bin/picard-tools-2.0.1/picard.jar
         markdups:
             MarkDuplicates
         index:
@@ -127,16 +152,24 @@ jars:
             -classic
 analysis:
     bsgenome:
-        BSgenome.Hsapiens.UCSC.hg38
+        hg37: BSgenome.Hsapiens.UCSC.hg19
+        hg38: BSgenome.Hsapiens.UCSC.hg38
     txdb:
-        TxDb.Hsapiens.UCSC.hg38.knownGene
+        hg37: TxDb.Hsapiens.UCSC.hg19.knownGene
+        hg38: TxDb.Hsapiens.UCSC.hg38.knownGene
     snpdb:
-        SNPlocs.Hsapiens.dbSNP144.GRCh38
+        hg37: SNPlocs.Hsapiens.dbSNP144.GRCh37
+        hg38: SNPlocs.Hsapiens.dbSNP144.GRCh38
     esp:
-        MafDb.ESP6500SI.V2.SSA137
+        hg37: MafDb.ESP6500SI.V2.SSA137
+        hg38: MafDb.ESP6500SI.V2.SSA137
     exac:
-        MafDb.ExAC.r0.3.sites
+        hg37: MafDb.ExAC.r0.3.sites
+        hg38: MafDb.ExAC.r0.3.sites
     sift:
-        SIFT.Hsapiens.dbSNP137
+        hg37: SIFT.Hsapiens.dbSNP137
+        hg38: SIFT.Hsapiens.dbSNP137
     phylo:
-        humanGenesPhylostrata
+        hg37: humanGenesPhylostrata
+        hg38: humanGenesPhylostrata
+
