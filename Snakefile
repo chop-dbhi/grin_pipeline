@@ -33,6 +33,7 @@ shell.prefix("source ~/.bash_profile;")
 
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
+configfile: "test.yaml"
 
 genome = config['buildve']
 
@@ -283,8 +284,8 @@ rule mkdirs:
         for adir in config['datadirs']:
             makedir(config['datadirs'][adir])
 
-        for adir in config['types'][genome] + config['results'][genome]:
-            makedir(adir)
+        for adir in config['results']:
+            makedir(config['types'][genome] + config['results'][adir])
 
 rule dummy:    # just to test the python codes above
     input:  workflow.basedir + "/Snakefile"
