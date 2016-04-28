@@ -17,10 +17,10 @@ pedfile: metadata/samples.ped
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN/
 summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc
-xbrowse: /mnt/isilon/cbmi/variome/bin/xbrowse
+xbrowse: /mnt/isilon/cbmi/variome/bin/xbrowse  # directory, not binary
 vepdir: /mnt/isilon/cbmi/variome/vep
 
-xbrowse:      # for xbrowse project.yaml
+xbrowse_project:      # for xbrowse project.yaml
     id: grin
     name: GRIN
 
@@ -63,7 +63,7 @@ datadirs:
     log:              logs
 
 types:
-    hg37:             lustre/GRCh37/
+    hg37:             lustre/GRCh37/   # the traling slash is required
     hg38:             lustre/GRCh38/
 
 results:

@@ -33,11 +33,37 @@ shell.prefix("source ~/.bash_profile;")
 
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
+configfile: "test.yaml"
+
+genome = config['buildve']
+
+# make sure the parameters for genome are all set
+# can run "snakemake dummy" to check them first
+for para in [
+            "config['analysis']['bsgenome'][genome]",
+            "config['analysis']['esp'][genome]",
+            "config['analysis']['exac'][genome]",
+            "config['analysis']['phylo'][genome]",
+            "config['analysis']['sift'][genome]",
+            "config['analysis']['snpdb'][genome]",
+            "config['analysis']['txdb'][genome]",
+            "config['known'][genome]",
+            "config['ref'][genome]",
+            "config['refidx'][genome]",
+            "config['types'][genome]",
+            "config['vep'][genome]",
+            "config['vepgenomes'][genome]",
+    ]:
+    # print(para)
+    try:
+        eval(para)
+    except:
+        print("%s not set for buildve %s.\n" % (para, genome))
+        quit()
+
 
 ENV3 = '{condaenv}/'.format(condaenv=config['python3_environment'])
 ENV2 = '{condaenv}/'.format(condaenv=config['python2_environment'])
-
-genome = config['buildve']
 
 SLINK = "{{SLINK}}"
 
@@ -259,7 +285,7 @@ rule mkdirs:
             makedir(config['datadirs'][adir])
 
         for adir in config['types'][genome] + config['results'][genome]:
-            makedir(config['datadirs'][genome][adir])
+            makedir(adir)
 
 rule dummy:    # just to test the python codes above
     input:  workflow.basedir + "/Snakefile"
@@ -1318,8 +1344,8 @@ rule for_xbrowse:
     run:
         with open(output.yaml, "w") as out:
             out.write("---\n\n") 
-            out.write("project_id: '%s'\n" % (config['xbrowse']['id']))
-            out.write("project_name: '%s'\n" % (config['xbrowse']['name']))
+            out.write("project_id: '%s'\n" % (config['xbrowse_project']['id']))
+            out.write("project_name: '%s'\n" % (config['xbrowse_project']['name']))
             out.write("sample_id_list: 'samples.txt'\n")
             out.write("ped_files:\n")
             out.write("  - 'samples.ped'\n")
@@ -1359,7 +1385,7 @@ rule run_vep:
           --assembly " + params.assgen + " \
           --plugin LoF,human_ancestor_fa:" + params.xbrowse + "/data/reference_data/human_ancestor.fa.gz,filter_position:0.05... \
           --plugin dbNSFP," + params.xbrowse + "/data/reference_data/dbNSFP.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
-              -i " + input.vcf + " -o " + output.vep
+          -i " + input.vcf + " -o " + output.vep
         shell(cmd)
 
 #### run multiqc  ####
