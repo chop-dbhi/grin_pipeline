@@ -33,7 +33,6 @@ shell.prefix("source ~/.bash_profile;")
 
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
-configfile: "test.yaml"
 
 genome = config['buildve']
 
