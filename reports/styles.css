@@ -1,0 +1,15 @@
+.wd20 {
+    width:20px;
+}
+.wd100 {
+    width:100px;
+}
+.iffyTip {
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+}
+.tooltip-inner {
+    max-width: none;
+    white-space: nowrap;
+}
