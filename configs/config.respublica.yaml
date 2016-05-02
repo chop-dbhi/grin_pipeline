@@ -2,11 +2,11 @@ admins: leipzig@gmail.com
 #zhangs3@email.chop.edu
 #
  
-buildve: hg37  # should just change this paramter for different genome reference
+buildve: hg38  # should just change this parameter for different genome reference
 
-python3_environment: /home/leipzigj/miniconda3/envs/grinenv/bin
-python2_environment: /home/leipzigj/miniconda3/envs/geminienv/bin
-load_python3_environment: source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv
+python3_environment: grinenv
+python2_environment: geminienv
+load_python3_environment: source activate grinenv
 tmpdir: /mnt/lustre/users/leipzigj
 
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission

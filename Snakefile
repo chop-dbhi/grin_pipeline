@@ -4,6 +4,7 @@ import pandas
 import yaml
 import subprocess
 import configparser
+import shutil
 from snakemake.utils import R
 from functools import cmp_to_key
 """
@@ -34,8 +35,15 @@ shell.prefix("source ~/.bash_profile;")
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
 
-ENV3 = '{condaenv}/'.format(condaenv=config['python3_environment'])
-ENV2 = '{condaenv}/'.format(condaenv=config['python2_environment'])
+def updir(d, n):
+  """Given path d, go up n dirs from d and return that path"""
+  ret_val = d
+  for _ in range(n):
+    ret_val = os.path.dirname(ret_val)
+  return ret_val
+
+ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'])
+ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'])
 
 genome = config['buildve']
 
