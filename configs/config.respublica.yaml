@@ -24,7 +24,7 @@ xbrowse:      # for xbrowse project.yaml
     id: grin
     name: GRIN
 
-vep:
+grc_name:
     hg37: GRCh37
     hg38: GRCh38
 
