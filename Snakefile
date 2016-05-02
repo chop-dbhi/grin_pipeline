@@ -45,6 +45,9 @@ def updir(d, n):
 ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'])
 ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'])
 
+#hg37/hg38
+freeze = config['buildve']
+#GRCh37/GRCh38
 genome = config['grc_name'][config['buildve']]
 
 SLINK = "{{SLINK}}"
@@ -84,14 +87,14 @@ EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
 # a quad produces two trios
 COMPLETETRIOSFAMIDS = sorted(list(set([row['FamilyID']+'_'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])))
-TRIOVCFS = [config['types'][genome] + config['results']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
+TRIOVCFS = [config['process_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
 
 # quads are one family
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
-FAMILYVCFS = [config['types'][genome] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
-VEPVCFS = [config['types'][genome] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
+FAMILYVCFS = [config['process_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
+VEPVCFS = [config['process_dir'][freeze] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
 
-# VEPVCFS = glob.glob(config['types'][genome] + config['results']['vcfs'] + "/*.vcf")
+# VEPVCFS = glob.glob(config['process_dir'][freeze] + config['results']['vcfs'] + "/*.vcf")
 # VEPVCFS = [re.sub("/vcfs/", "/vep/", name) for name in VEPVCFS]
 # VEPVCFS = [re.sub("vcf$", "com.filtered.vep.vcf", name) for name in VEPVCFS]
 
@@ -100,35 +103,35 @@ VEPVCFS = [config['types'][genome] + config['results']['vep'] + "/" + trio + ".f
 #quit()
 
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
-TRIOGEMS = [config['types'][genome] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
+TRIOGEMS = [config['process_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
-ANALYSISREADY = [config['types'][genome] + config['results']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
-RDATA         = [config['types'][genome] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
-ANALYSES      = [config['types'][genome] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html" for trio in COMPLETETRIOSFAMIDS]
+ANALYSISREADY = [config['process_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
+RDATA         = [config['process_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
+ANALYSES      = [config['process_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html" for trio in COMPLETETRIOSFAMIDS]
 
-SAMS = [config['types'][genome] + config['results']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
-BAMS = [config['types'][genome] + config['results']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
-SBAMS = [config['types'][genome] + config['results']['bams'] + "/" + name + ".sorted.bam" for name in SAMPLELANES]
-MBAMS = [config['types'][genome] + config['results']['bams'] + "/" + name + ".sorted.merged.bam" for name in EXISTINGSAMPLES]
-DBAIS = [config['types'][genome] + config['results']['picard'] + "/" + name + ".rmdup.bai" for name in EXISTINGSAMPLES]
-DBAMS = [config['types'][genome] + config['results']['picard'] + "/" + name + ".rmdup.bam" for name in EXISTINGSAMPLES]
-GBAIS = [config['types'][genome] + config['results']['picard'] + "/" + name + ".group.bai" for name in EXISTINGSAMPLES]
-GBAMS = [config['types'][genome] + config['results']['picard'] + "/" + name + ".group.bam" for name in EXISTINGSAMPLES]
-RBAMS = [config['types'][genome] + config['results']['realigned'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
-LISTS = [config['types'][genome] + config['results']['lists'] + "/" + name + ".list" for name in EXISTINGSAMPLES]
-TABLES = [config['types'][genome] + config['results']['recalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
-RECBAMS = [config['types'][genome] + config['results']['recalibrated'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
-POSTTABLES = [config['types'][genome] + config['results']['postrecalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
-PDFS = [config['types'][genome] + config['results']['pdfs'] + "/" + name + ".pdf" for name in EXISTINGSAMPLES]
-GVCFS = [config['types'][genome] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]
-GVCFSLIST = ' '.join(["--variant " + config['types'][genome] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES])
+SAMS = [config['process_dir'][freeze] + config['results']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
+BAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
+SBAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.bam" for name in SAMPLELANES]
+MBAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.merged.bam" for name in EXISTINGSAMPLES]
+DBAIS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".rmdup.bai" for name in EXISTINGSAMPLES]
+DBAMS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".rmdup.bam" for name in EXISTINGSAMPLES]
+GBAIS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bai" for name in EXISTINGSAMPLES]
+GBAMS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bam" for name in EXISTINGSAMPLES]
+RBAMS = [config['process_dir'][freeze] + config['results']['realigned'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
+LISTS = [config['process_dir'][freeze] + config['results']['lists'] + "/" + name + ".list" for name in EXISTINGSAMPLES]
+TABLES = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
+RECBAMS = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
+POSTTABLES = [config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
+PDFS = [config['process_dir'][freeze] + config['results']['pdfs'] + "/" + name + ".pdf" for name in EXISTINGSAMPLES]
+GVCFS = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]
+GVCFSLIST = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES])
 
 ANNOVARDBS = [config['annovardbdir'] + "/" + genome + "_" + db + ".installed" for db in config['annovardbs']]
 
 ANNOVAR_PROTOCOLS = ','.join(config['annovardbs'])
 
 
-INDELS = config['types'][genome] + config['results']['realigned'] + "/indels.list"
+INDELS = config['process_dir'][freeze] + config['results']['realigned'] + "/indels.list"
 
 dlocs = dict()
 
@@ -138,7 +141,7 @@ rule all:
     input: 
         trios = TRIOVCFS,
         analysis = ANALYSES,
-        phased = config['types'][genome] + config['results']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        phased = config['process_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 #include TRIOGEMS for gemini (GRCh37 only)
 
 #this is useful for extracting sequences from bams
@@ -149,7 +152,7 @@ rule rdata:
     input: RDATA
 
 rule xbrowse:
-    input: config['types'][genome] + config['results']['vep'] + "/project.yaml", config['types'][genome] + config['results']['vep'] + "/samples.txt", config['types'][genome] + config['results']['vep'] + "/samples.ped"
+    input: config['process_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['process_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['process_dir'][freeze] + config['results']['vep'] + "/samples.ped"
 
 rule vepvcfs:
     input: VEPVCFS
@@ -188,14 +191,14 @@ rule Rdeps:
 # this is a utility to put things in the correct order in case something upstream gets touched
 rule catchup:
     params:
-        picard = config['types'][genome] + config['results']['picard'],
-        lists = config['types'][genome] + config['results']['lists'],
-        realigned = config['types'][genome] + config['results']['realigned'],
-        recalibrated = config['types'][genome] + config['results']['recalibrated'],
-        postrecalibrated = config['types'][genome] + config['results']['postrecalibrated'],
-        gvcfs = config['types'][genome] + config['results']['gvcfs'],
-        vcfs = config['types'][genome] + config['results']['vcfs'],
-        analysis = config['types'][genome] + config['results']['analysis']
+        picard = config['process_dir'][freeze] + config['results']['picard'],
+        lists = config['process_dir'][freeze] + config['results']['lists'],
+        realigned = config['process_dir'][freeze] + config['results']['realigned'],
+        recalibrated = config['process_dir'][freeze] + config['results']['recalibrated'],
+        postrecalibrated = config['process_dir'][freeze] + config['results']['postrecalibrated'],
+        gvcfs = config['process_dir'][freeze] + config['results']['gvcfs'],
+        vcfs = config['process_dir'][freeze] + config['results']['vcfs'],
+        analysis = config['process_dir'][freeze] + config['results']['analysis']
     shell:
         """
         touch {params.picard}/*rmdup.bam
@@ -266,7 +269,7 @@ rule mkdirs:
         for adir in config['datadirs']:
             makedir(config['datadirs'][adir])
 
-        for adir in config['types'][genome] + config['results'][genome]:
+        for adir in config['process_dir'][freeze] + config['results'][genome]:
             makedir(config['datadirs'][genome][adir])
 
 rule dummy:    # just to test the python codes above
@@ -292,7 +295,7 @@ rule print_reads:
     input: RECBAMS
 
 rule join_gvcfs:
-    input: config['types'][genome] + config['results']['vcfs'] + "/joint.vcf"
+    input: config['process_dir'][freeze] + config['results']['vcfs'] + "/joint.vcf"
 
 rule make_gvcfs:
     input: GVCFS
@@ -387,7 +390,7 @@ rule extractreads:
         picard = config['jars']['picard']['path'],
         md = config['jars']['picard']['samtofastq'],
         opts = config['tools']['opts']['med'],
-        metrics = config['types'][genome] + config['results']['picard']
+        metrics = config['process_dir'][freeze] + config['results']['picard']
     shell:
         """
         {input.java} {params.opts} -jar {params.picard} \
@@ -470,7 +473,7 @@ rule align:
         pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
         align = ENV3 + config['tools']['align']
     output:
-        sam = config['types'][genome] + config['results']['sams'] + "/{sample}.sam" # may be set to temp
+        sam = config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam" # may be set to temp
     threads:
         12
     log: 
@@ -484,10 +487,10 @@ rule align:
 
 rule sam_to_bam:
     input:
-        sam = config['types'][genome] + config['results']['sams'] + "/{sample}.sam",
+        sam = config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam",
         samtools = ENV3 + config['tools']['samtools']
     output:
-        bam = config['types'][genome] + config['results']['bams'] + "/{sample,[^.]+}.bam"
+        bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample,[^.]+}.bam"
     threads:
         12   # also depends on -j
     shell:
@@ -498,10 +501,10 @@ rule sam_to_bam:
 # novosort creates index
 rule novosortbam:
     input:
-        bam = config['types'][genome] + config['results']['bams'] + "/{sample}.bam",
+        bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.bam",
         sort = ENV3 + config['tools']['sortbam']
     output:
-        sorted = config['types'][genome] + config['results']['bams'] + "/{sample}.sorted.bam",
+        sorted = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.bam",
     threads:
         12
     shell:
@@ -515,11 +518,11 @@ rule novosortbam:
 
 rule target_list: # create individual realign target list
     input:  # deduced bams
-        bai = config['types'][genome] + config['results']['picard'] + "/{sample}.group.bai",
-        bam = config['types'][genome] + config['results']['picard'] + "/{sample}.group.bam",
+        bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai",
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam",
         java = ENV3 + config['tools']['java']
     output:
-        samplelist = config['types'][genome] + config['results']['lists'] + "/{sample}.list"
+        samplelist = config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list"
     log:
         config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
@@ -601,17 +604,17 @@ rule combine_lists:
 rule realign_target:   # with one combined list file
     input:  # deduced bams
         #list = INDELS,
-        list = config['types'][genome] + config['results']['lists'] + "/{sample}.list",
-        dbam = config['types'][genome] + config['results']['picard'] + "/{sample}.group.bai",
+        list = config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list",
+        dbam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai",
         java = ENV3 + config['tools']['java']
     output:
-        rbam = config['types'][genome] + config['results']['realigned'] + "/{sample}.bam"
+        rbam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam"
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
         ref = config['ref'][genome],
         known = config['known'][genome],
-        result = config['types'][genome] + config['results']['picard']
+        result = config['process_dir'][freeze] + config['results']['picard']
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -628,10 +631,10 @@ rule realign_target:   # with one combined list file
 # https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_bqsr_BaseRecalibrator.php
 rule generate_recalibration_table:
     input:
-        bam = config['types'][genome] + config['results']['realigned'] + "/{sample}.bam",
+        bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
-        table = config['types'][genome] + config['results']['recalibrated'] + "/{sample}.table"
+        table = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table"
     log:
         config['datadirs']['log'] + "/{sample}.generate_recalibration_table.log"
     params:
@@ -653,11 +656,11 @@ rule generate_recalibration_table:
 # Note that when PrintReads is used as part of the Base Quality Score Recalibration workflow
 rule recalibrate_bam:
     input:
-        table = config['types'][genome] + config['results']['recalibrated'] + "/{sample}.table",
-        bam = config['types'][genome] + config['results']['realigned'] + "/{sample}.bam",
+        table = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
+        bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
-        bam = config['types'][genome] + config['results']['recalibrated'] + "/{sample}.bam"
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam"
     log:
         config['datadirs']['log'] + "/{sample}.recalibrate_bam.log"
     params:
@@ -679,11 +682,11 @@ rule recalibrate_bam:
 
 rule post_recalibrated_table:
     input:
-        table = config['types'][genome] + config['results']['recalibrated'] + "/{sample}.table",
-        bam = config['types'][genome] + config['results']['realigned'] + "/{sample}.bam",
+        table = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
+        bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
-        table = config['types'][genome] + config['results']['postrecalibrated'] + "/{sample}.table",
+        table = config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table",
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
@@ -704,11 +707,11 @@ rule post_recalibrated_table:
 # generates plots for visualizing the quality of a recalibration run
 rule analyze_bqsr:
     input:
-        before = config['types'][genome] + config['results']['recalibrated'] + "/{sample}.table",
-        after = config['types'][genome] + config['results']['postrecalibrated'] + "/{sample}.table",
+        before = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
+        after = config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table",
         java = ENV3 + config['tools']['java']
     output:
-        pdf = config['types'][genome] + config['results']['pdfs'] + "/{sample}.pdf"
+        pdf = config['process_dir'][freeze] + config['results']['pdfs'] + "/{sample}.pdf"
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
@@ -742,7 +745,7 @@ rule merge_lanes:
 
 rule depth_of_coverage:
     input:
-        bam = config['types'][genome] + config['results']['recalibrated'] + "/{sample}.bam",
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
         "{sample}.DoC"
@@ -772,17 +775,17 @@ rule depth_of_coverage:
 
 rule mark_duplicates:
     input:
-        bam = config['types'][genome] + config['results']['bams'] + "/{sample}.sorted.merged.bam",
+        bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.merged.bam",
         java = ENV3 + config['tools']['java']
     output:
-        bam = config['types'][genome] + config['results']['picard'] + "/{sample}.rmdup.bam"
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam"
     log:
         config['datadirs']['log'] + "/{sample}.markdups.log"
     params:
         picard = config['jars']['picard']['path'],
         md = config['jars']['picard']['markdups'],
         opts = config['tools']['opts']['med'],
-        metrics = config['types'][genome] + config['results']['picard']
+        metrics = config['process_dir'][freeze] + config['results']['picard']
     shell:
         # will (and need the permision to) create a tmp directory
         # with the name of login under specified tmp directory
@@ -799,10 +802,10 @@ rule mark_duplicates:
 # in terms of returning an exit code
 rule make_index:
     input:
-        bam = config['types'][genome] + config['results']['picard'] + "/{sampleandext}.bam",
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bam",
         samtools = ENV3 + config['tools']['samtools']
     output:
-        bai = config['types'][genome] + config['results']['picard'] + "/{sampleandext}.bai"
+        bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bai"
     shell:
         """
         {input.samtools} index {input.bam} {output.bai}
@@ -811,11 +814,11 @@ rule make_index:
 
 rule add_readgroup:
     input:
-        bam = config['types'][genome] + config['results']['picard'] + "/{sample}.rmdup.bam",
-        bai = config['types'][genome] + config['results']['picard'] + "/{sample}.rmdup.bai",
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam",
+        bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bai",
         java = ENV3 + config['tools']['java']
     output:
-        bam = config['types'][genome] + config['results']['picard'] + "/{sample}.group.bam"
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam"
     log:
         config['datadirs']['log'] + "/{sample}.add_readgroup.log"
     params:
@@ -837,10 +840,10 @@ rule add_readgroup:
 #### Variant Calling ####
 rule make_gvcf:
     input:
-        bam = config['types'][genome] + config['results']['recalibrated'] + "/{sample}.bam",
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
-        gvcf = config['types'][genome] + config['results']['gvcfs'] + "/{sample}.gvcf"
+        gvcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf"
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
@@ -894,8 +897,8 @@ def gvcf_samples_in_family(family,subject):
         assert(len(samples)>0)
         if subject != 'family':
             assert(len(samples)==3)
-        gvcfs = [config['types'][genome] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
-        gvcfslist = ' '.join(["--variant " + config['types'][genome] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
+        gvcfs = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
+        gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
         return [gvcfs, gvcfslist]
 
 # make sure the family is done first
@@ -904,11 +907,11 @@ def gvcf_samples_in_family(family,subject):
 rule trio_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
-        family = config['types'][genome] + config['results']['vcfs'] + "/{family}.family.vcf",
+        family = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
         familygvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf"
     log:
         config['datadirs']['log'] + "/{family}_{subject}.trio.vcf.log"
     params:
@@ -942,8 +945,8 @@ rule family_vcfs:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{family}.family.vcf",
-        idx = config['types'][genome] + config['results']['vcfs'] + "/{family}.family.vcf.idx"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
+        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf.idx"
     log:
         config['datadirs']['log'] + "/{family}.family.vcf.log"
     params:
@@ -1025,7 +1028,7 @@ rule analysis_pedfile:
     input:
         config['pedfile']
     output:
-        config['types'][genome] + config['results']['analysis'] + "/{family}_{subject}.pedfile"
+        config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pedfile"
     run:
         globalpedfile = pandas.read_table("{0}".format(input))
         
@@ -1042,13 +1045,13 @@ rule analysis_pedfile:
         
 rule run_phase_by_transmission:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.trio.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
         ped = config['pedfile'],
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.trio.phased.vcf",
-        idx = config['types'][genome] + config['results']['vcfs'] + "/{file}.trio.phased.vcf.idx",
-        mvf = config['types'][genome] + config['results']['vcfs'] + "/{file}.mendelian_violations.txt"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf",
+        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf.idx",
+        mvf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'][genome],
@@ -1072,11 +1075,11 @@ rule run_phase_by_transmission:
 
 rule gatk_snps_only:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.snps.vcf",
-        idx = config['types'][genome] + config['results']['vcfs'] + "/{file}.snps.vcf.idx"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
+        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'][genome],
@@ -1095,11 +1098,11 @@ rule gatk_snps_only:
 
 rule gatk_indels_only:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.indels.vcf",
-        idx = config['types'][genome] + config['results']['vcfs'] + "/{file}.indels.vcf.idx"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
+        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'][genome],
@@ -1120,11 +1123,11 @@ rule gatk_indels_only:
 # this "filters out, not filters for" filterExpression
 rule gatk_hard_filtration_snps:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.snps.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.snps.hard.vcf",
-        idx = config['types'][genome] + config['results']['vcfs'] + "/{file}.snps.hard.vcf.idx"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf",
+        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'][genome],
@@ -1145,11 +1148,11 @@ rule gatk_hard_filtration_snps:
 
 rule gatk_hard_filtration_indels:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.indels.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.indels.hard.vcf",
-        idx = config['types'][genome] + config['results']['vcfs'] + "/{file}.indels.hard.vcf.idx"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf",
+        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'][genome],
@@ -1170,11 +1173,11 @@ rule gatk_hard_filtration_indels:
 
 rule select_passing:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
-        idx = config['types'][genome] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
+        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'][genome],
@@ -1199,12 +1202,12 @@ rule select_passing:
 # """
 rule gatk_combine_variants:
     input:
-        snps = config['types'][genome] + config['results']['vcfs'] + "/{file}.snps.filtered.vcf",
-        indels = config['types'][genome] + config['results']['vcfs'] + "/{file}.indels.filtered.vcf",
+        snps = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.filtered.vcf",
+        indels = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.filtered.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.com.filtered.vcf",
-        idx = config['types'][genome] + config['results']['vcfs'] + "/{file}.com.filtered.vcf.idx"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf",
+        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
         ref = config['ref'][genome],
@@ -1226,9 +1229,9 @@ rule gatk_combine_variants:
 #### Annotation ####
 rule ad_vcf:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.ad.vcf"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf"
     params:
         ref = config['ref'][genome]
     shell:
@@ -1239,10 +1242,10 @@ rule ad_vcf:
 # decomposes multiallelic variants into biallelic in a VCF file.
 rule decompose_for_gemini:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.ad.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf",
         vt = ENV3 + config['tools']['vt']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.ad.de.vcf"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf"
     shell:
         """
         {input.vt} decompose -s -o {output} {input.vcf}
@@ -1250,10 +1253,10 @@ rule decompose_for_gemini:
 
 rule normalize_for_gemini:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
         vt = ENV3 + config['tools']['vt']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.ad.de.nm.vcf"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.vcf"
     params:
         ref = config['ref'][genome]
     shell:
@@ -1263,10 +1266,10 @@ rule normalize_for_gemini:
 
 rule vcf_qt:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
         vt = ENV3 + config['tools']['vt']
     output:
-        vcf = config['types'][genome] + config['results']['vtpeek'] + "/{file}.vtpeek.txt"
+        vcf = config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtpeek.txt"
     params:
         ref = config['ref'][genome]
     shell:
@@ -1276,11 +1279,11 @@ rule vcf_qt:
 
 rule vcf_profile:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
         vt = ENV3 + config['tools']['vt'],
         ped = config['pedfile']
     output:
-        vcf = config['types'][genome] + config['results']['vtpeek'] + "/{file}.vtmendelprofile.txt"
+        vcf = config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtmendelprofile.txt"
     params:
         ref = config['ref'][genome]
     shell:
@@ -1291,9 +1294,9 @@ rule vcf_profile:
 # ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.snpeff.vcf"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snpeff.vcf"
     params:
         snpeff  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],
@@ -1318,9 +1321,9 @@ rule run_snpeff:
 rule for_xbrowse:
     input: VEPVCFS
     output:
-         yaml = config['types'][genome] + config['results']['vep'] + "/project.yaml",
-         list = config['types'][genome] + config['results']['vep'] + "/samples.txt",
-         ped = config['types'][genome] + config['results']['vep'] + "/samples.ped"
+         yaml = config['process_dir'][freeze] + config['results']['vep'] + "/project.yaml",
+         list = config['process_dir'][freeze] + config['results']['vep'] + "/samples.txt",
+         ped = config['process_dir'][freeze] + config['results']['vep'] + "/samples.ped"
     params:
          pedfile = config['pedfile']
     run:
@@ -1349,10 +1352,10 @@ rule for_xbrowse:
 
 rule run_vep:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{family}.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}.vcf",
         vep = config['tools']['vep']
     output:
-        vep = config['types'][genome] + config['results']['vep'] + "/{family}.vep.vcf"
+        vep = config['process_dir'][freeze] + config['results']['vep'] + "/{family}.vep.vcf"
     params:
         xbrowse = config['xbrowse'],
         vepdir = config['vepdir'],
@@ -1378,7 +1381,7 @@ rule run_multiqc:
         multiqc = ENV3 + config['tools']['multiqc']
     output: config['datadirs']['multiqc'] + '/multiqc_report.html'
     params:
-        dirs = config['types'][genome] + config['results']['picard'] + ' fastqc',
+        dirs = config['process_dir'][freeze] + config['results']['picard'] + ' fastqc',
         outdir = config['datadirs']['multiqc'] 
     shell:
         """
@@ -1390,10 +1393,10 @@ rule run_multiqc:
 rule table_annovar:
     input:
         ANNOVARDBS,
-        avinput = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf",
+        avinput = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         annovar = ENV3 + config['tools']['table_annovar']
     output:
-        config['types'][genome] + config['results']['vcfs'] + "/{file}.annovar.vcf"
+        config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.annovar.vcf"
     params:
         opts = "-buildver "+genome
                 +" -protocol "+ANNOVAR_PROTOCOLS
@@ -1413,10 +1416,10 @@ rule table_annovar:
 rule run_annovar:
     input:
         ANNOVARDBS,
-        avinput = config['types'][genome] + config['results']['vcfs'] + "/{file}.avinput",
+        avinput = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.avinput",
         annovar = ENV3 + config['tools']['annotate_variation']
     output:
-        config['types'][genome] + config['results']['vcfs'] + "/annovar.done"
+        config['process_dir'][freeze] + config['results']['vcfs'] + "/annovar.done"
     params:
         opts = "-buildver {genome}",
         dbdir = config['annovardbdir']
@@ -1436,10 +1439,10 @@ rule run_annovar:
 
 rule vcf2avinput:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         cmd = ENV3 + config['tools']['vcf2avinput']
     output:
-        config['types'][genome] + config['results']['vcfs'] + "/{file}.avinput",
+        config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.avinput",
     shell:
         "{input.cmd} -format vcf2old {input.vcf} -outfile {output}"
 
@@ -1462,10 +1465,10 @@ rule install_annovar_db:
 
 rule compress_vcf:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         bgzip = ENV3 + config['tools']['bgzip']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf.bgz",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
     shell:
         """
         {input.bgzip} -c {input.vcf} > {output}
@@ -1473,10 +1476,10 @@ rule compress_vcf:
 
 rule tabix:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf.bgz",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
         tabix = ENV3 + config['tools']['tabix']
     output:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi",
     shell:
         """
         {input.tabix} -p vcf {input.vcf}
@@ -1484,12 +1487,12 @@ rule tabix:
 
 rule gemini_db:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
-        tbi = config['types'][genome] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz.tbi",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
+        tbi = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz.tbi",
         ped = config['pedfile'],
         gemini = ENV2 + config['tools']['gemini']
     output:
-        config['types'][genome] + config['results']['gemini'] + "/{file}.gemini.db"
+        config['process_dir'][freeze] + config['results']['gemini'] + "/{file}.gemini.db"
     threads:
         3
     shell:
@@ -1539,9 +1542,9 @@ rule noasterisk:
 #### Analysis ####
 rule variantAnalysisSetupUind:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{familypro}.vcf.bgz",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{familypro}.vcf.bgz",
     output:
-        uind = config['types'][genome] + config['results']['analysis'] + "/{familypro}.uind.RData",
+        uind = config['process_dir'][freeze] + config['results']['analysis'] + "/{familypro}.uind.RData",
     params:
         bsgenome = config['analysis']['bsgenome'][genome],
         txdb     = config['analysis']['txdb'][genome],
@@ -1571,10 +1574,10 @@ rule variantAnalysisSetupUind:
 
 rule variantAnalysisSetupModel:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
-        ped = config['types'][genome] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile"
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
+        ped = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile"
     output:
-        result = config['types'][genome] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
+        result = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
     params:
         bsgenome = config['analysis']['bsgenome'][genome],
         txdb     = config['analysis']['txdb'][genome],
@@ -1615,22 +1618,22 @@ def getGender(proband):
 # boys only
 def xlinked(wildcards):
     if getGender(wildcards.pro)=='M':
-        return config['types'][genome] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
+        return config['process_dir'][freeze] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
     else:
         return []
 
 rule variantAnalysisModels:
     input:
-        denovo = config['types'][genome] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
-        arhomo = config['types'][genome] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
-        cmpdhet = config['types'][genome] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
+        denovo = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
+        arhomo = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
+        cmpdhet = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
         xlinked = xlinked,
-        ped = config['types'][genome] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile",
+        ped = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile",
         source = "reports/grin_epilepsy_models.Rmd"
     output:
-        html = config['types'][genome] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
+        html = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
     params:
-        dirpath = config['types'][genome] + config['results']['analysis'],
+        dirpath = config['process_dir'][freeze] + config['results']['analysis'],
         outfile = "/{family}_{pro,\w+}.{ext}.denovo.html"
     run:
         R("""
@@ -1650,10 +1653,10 @@ rule variantAnalysisModels:
     
 rule run_denovogear:
     input:
-        vcf = config['types'][genome] + config['results']['vcfs'] + "/{file}.trio.vcf",
+        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
         ped = config['pedfile']
     output:
-        dnm_auto = config['types'][genome] + config['results']['analysis'] + "/{file}.dnm_auto.txt"
+        dnm_auto = config['process_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt"
     log: 
         config['datadirs']['log'] + "/{file}.dnm_auto.log.log" 
     shell:

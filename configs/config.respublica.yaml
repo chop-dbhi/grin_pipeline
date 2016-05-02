@@ -62,7 +62,7 @@ datadirs:
     website:          site
     log:              logs
 
-types:
+process_dir:
     hg37:             lustre/GRCh37/
     hg38:             lustre/GRCh38/
 
