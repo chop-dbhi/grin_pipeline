@@ -2,7 +2,11 @@ admins: leipzig@gmail.com
 #zhangs3@email.chop.edu
 #
  
-buildve: hg38  # should just change this parameter for different genome reference
+freeze: hg38  # should just change this parameter for different genome reference
+
+grc_name:
+    hg37: GRCh37
+    hg38: GRCh38
 
 python3_environment: grinenv
 python2_environment: geminienv
@@ -23,10 +27,6 @@ vepdir: /mnt/isilon/cbmi/variome/vep
 xbrowse:      # for xbrowse project.yaml
     id: grin
     name: GRIN
-
-grc_name:
-    hg37: GRCh37
-    hg38: GRCh38
 
 known:
     hg37:
@@ -65,6 +65,10 @@ datadirs:
 process_dir:
     hg37:             lustre/GRCh37/
     hg38:             lustre/GRCh38/
+
+landing_dir:
+    hg37:             GRCh37/
+    hg38:             GRCh38/
 
 results:
     sams:             sams
@@ -150,7 +154,7 @@ jars:
             '10'
         format:
             -classic
-analysis:
+bioc_sets:
     bsgenome:
         hg37: BSgenome.Hsapiens.UCSC.hg19
         hg38: BSgenome.Hsapiens.UCSC.hg38

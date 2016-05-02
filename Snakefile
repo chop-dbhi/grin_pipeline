@@ -46,9 +46,9 @@ ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment']
 ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'])
 
 #hg37/hg38
-freeze = config['buildve']
+freeze = config['freeze']
 #GRCh37/GRCh38
-genome = config['grc_name'][config['buildve']]
+genome = config['grc_name'][config['freeze']]
 
 SLINK = "{{SLINK}}"
 
@@ -87,14 +87,14 @@ EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
 # a quad produces two trios
 COMPLETETRIOSFAMIDS = sorted(list(set([row['FamilyID']+'_'+row['Subject'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])))
-TRIOVCFS = [config['process_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
+TRIOVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
 
 # quads are one family
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
-FAMILYVCFS = [config['process_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
+FAMILYVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
 VEPVCFS = [config['process_dir'][freeze] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
 
-# VEPVCFS = glob.glob(config['process_dir'][freeze] + config['results']['vcfs'] + "/*.vcf")
+# VEPVCFS = glob.glob(config['landing_dir'][freeze] + config['results']['vcfs'] + "/*.vcf")
 # VEPVCFS = [re.sub("/vcfs/", "/vep/", name) for name in VEPVCFS]
 # VEPVCFS = [re.sub("vcf$", "com.filtered.vep.vcf", name) for name in VEPVCFS]
 
@@ -105,9 +105,9 @@ VEPVCFS = [config['process_dir'][freeze] + config['results']['vep'] + "/" + trio
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
 TRIOGEMS = [config['process_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
-ANALYSISREADY = [config['process_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
-RDATA         = [config['process_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
-ANALYSES      = [config['process_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html" for trio in COMPLETETRIOSFAMIDS]
+ANALYSISREADY = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
+RDATA         = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
+ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html" for trio in COMPLETETRIOSFAMIDS]
 
 SAMS = [config['process_dir'][freeze] + config['results']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 BAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
@@ -141,7 +141,7 @@ rule all:
     input: 
         trios = TRIOVCFS,
         analysis = ANALYSES,
-        phased = config['process_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
+        phased = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf" # must run after all gvcf files created; will create joint.vcf if not already
 #include TRIOGEMS for gemini (GRCh37 only)
 
 #this is useful for extracting sequences from bams
@@ -197,8 +197,8 @@ rule catchup:
         recalibrated = config['process_dir'][freeze] + config['results']['recalibrated'],
         postrecalibrated = config['process_dir'][freeze] + config['results']['postrecalibrated'],
         gvcfs = config['process_dir'][freeze] + config['results']['gvcfs'],
-        vcfs = config['process_dir'][freeze] + config['results']['vcfs'],
-        analysis = config['process_dir'][freeze] + config['results']['analysis']
+        vcfs = config['landing_dir'][freeze] + config['results']['vcfs'],
+        analysis = config['landing_dir'][freeze] + config['results']['analysis']
     shell:
         """
         touch {params.picard}/*rmdup.bam
@@ -295,7 +295,7 @@ rule print_reads:
     input: RECBAMS
 
 rule join_gvcfs:
-    input: config['process_dir'][freeze] + config['results']['vcfs'] + "/joint.vcf"
+    input: config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.vcf"
 
 rule make_gvcfs:
     input: GVCFS
@@ -479,7 +479,7 @@ rule align:
     log: 
         config['datadirs']['log'] + "/{sample}.novoalign.log"
     params:
-        refidx = config['refidx'][genome]
+        refidx = config['refidx'][freeze]
     shell:
         """
         {input.align} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} 1> {output.sam} 2> {log}
@@ -528,8 +528,8 @@ rule target_list: # create individual realign target list
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['high'],
-        ref = config['ref'][genome],
-        knownsites = config['known'][genome]
+        ref = config['ref'][freeze],
+        knownsites = config['known'][freeze]
     #threads:
     #    24
     shell:
@@ -612,8 +612,8 @@ rule realign_target:   # with one combined list file
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
-        ref = config['ref'][genome],
-        known = config['known'][genome],
+        ref = config['ref'][freeze],
+        known = config['known'][freeze],
         result = config['process_dir'][freeze] + config['results']['picard']
     shell:
         """
@@ -640,8 +640,8 @@ rule generate_recalibration_table:
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
-        ref = config['ref'][genome],
-        known = config['known'][genome]
+        ref = config['ref'][freeze],
+        known = config['known'][freeze]
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -666,7 +666,7 @@ rule recalibrate_bam:
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
-        ref = config['ref'][genome]
+        ref = config['ref'][freeze]
     threads:
         8
     shell:
@@ -690,8 +690,8 @@ rule post_recalibrated_table:
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
-        ref = config['ref'][genome],
-        known = config['known'][genome]
+        ref = config['ref'][freeze],
+        known = config['known'][freeze]
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -715,7 +715,7 @@ rule analyze_bqsr:
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
-        ref = config['ref'][genome]
+        ref = config['ref'][freeze]
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -752,7 +752,7 @@ rule depth_of_coverage:
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
-        ref = config['ref'][genome]
+        ref = config['ref'][freeze]
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -847,7 +847,7 @@ rule make_gvcf:
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
-        ref = config['ref'][genome]
+        ref = config['ref'][freeze]
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -907,16 +907,16 @@ def gvcf_samples_in_family(family,subject):
 rule trio_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
-        family = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
+        family = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
         familygvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf"
     log:
         config['datadirs']['log'] + "/{family}_{subject}.trio.vcf.log"
     params:
         jar = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[1],
         opts = config['tools']['opts']['med'],
         db = config['dbsnp']
@@ -945,13 +945,13 @@ rule family_vcfs:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
-        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf.idx"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf.idx"
     log:
         config['datadirs']['log'] + "/{family}.family.vcf.log"
     params:
         jar = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[1],
         opts = config['tools']['opts']['med'],
         db = config['dbsnp']
@@ -1028,7 +1028,7 @@ rule analysis_pedfile:
     input:
         config['pedfile']
     output:
-        config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pedfile"
+        config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pedfile"
     run:
         globalpedfile = pandas.read_table("{0}".format(input))
         
@@ -1045,16 +1045,16 @@ rule analysis_pedfile:
         
 rule run_phase_by_transmission:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
         ped = config['pedfile'],
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf",
-        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf.idx",
-        mvf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.mendelian_violations.txt"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf.idx",
+        mvf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.mendelian_violations.txt"
     params:
         jar  = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         opts = config['tools']['opts']['med']
     log: 
         config['datadirs']['log'] + "/{file}.phase_by_transmission.log" 
@@ -1075,14 +1075,14 @@ rule run_phase_by_transmission:
 
 rule gatk_snps_only:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
-        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf.idx"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         opts = config['tools']['opts']['low']
     log:
         config['datadirs']['log'] + "/{file}.gatk_snps_only.log"
@@ -1098,14 +1098,14 @@ rule gatk_snps_only:
 
 rule gatk_indels_only:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
-        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf.idx"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         opts = config['tools']['opts']['low']
     log:
         config['datadirs']['log'] + "/{file}.gatk_indels_only.log"
@@ -1123,14 +1123,14 @@ rule gatk_indels_only:
 # this "filters out, not filters for" filterExpression
 rule gatk_hard_filtration_snps:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf",
-        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf.idx"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         opts = config['tools']['opts']['low']
     log:
         "log/{file}.gatk_hard_filtration.log"
@@ -1148,14 +1148,14 @@ rule gatk_hard_filtration_snps:
 
 rule gatk_hard_filtration_indels:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf",
-        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf.idx"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         opts = config['tools']['opts']['low']
     log:
         "log/{file}.gatk_hard_filtration.log"
@@ -1173,14 +1173,14 @@ rule gatk_hard_filtration_indels:
 
 rule select_passing:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
-        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf"
     params:
         jar  = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         opts = config['tools']['opts']['low']
     log:
         "log/{file}.select_passing_variants.log"
@@ -1202,15 +1202,15 @@ rule select_passing:
 # """
 rule gatk_combine_variants:
     input:
-        snps = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.filtered.vcf",
-        indels = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.filtered.vcf",
+        snps = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.filtered.vcf",
+        indels = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.filtered.vcf",
         java = ENV3 + config['tools']['java']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf",
-        idx = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf.idx"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf.idx"
     params:
         jar  = config['jars']['gatk'],
-        ref = config['ref'][genome],
+        ref = config['ref'][freeze],
         opts = config['tools']['opts']['med']
     log:
         "log/{file}.select_passing_variants.log"
@@ -1229,11 +1229,11 @@ rule gatk_combine_variants:
 #### Annotation ####
 rule ad_vcf:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf"
     params:
-        ref = config['ref'][genome]
+        ref = config['ref'][freeze]
     shell:
         """
         cat {input} | sed 's/ID=AD,Number=./ID=AD,Number=R/' > {output}
@@ -1242,10 +1242,10 @@ rule ad_vcf:
 # decomposes multiallelic variants into biallelic in a VCF file.
 rule decompose_for_gemini:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf",
         vt = ENV3 + config['tools']['vt']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf"
     shell:
         """
         {input.vt} decompose -s -o {output} {input.vcf}
@@ -1253,12 +1253,12 @@ rule decompose_for_gemini:
 
 rule normalize_for_gemini:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
         vt = ENV3 + config['tools']['vt']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.vcf"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.vcf"
     params:
-        ref = config['ref'][genome]
+        ref = config['ref'][freeze]
     shell:
         """
         {input.vt} normalize -r {params.ref} -o {output} {input.vcf}
@@ -1266,12 +1266,12 @@ rule normalize_for_gemini:
 
 rule vcf_qt:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
         vt = ENV3 + config['tools']['vt']
     output:
         vcf = config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtpeek.txt"
     params:
-        ref = config['ref'][genome]
+        ref = config['ref'][freeze]
     shell:
         """
         {input.vt} peek -o {output} {input.vcf}
@@ -1279,13 +1279,13 @@ rule vcf_qt:
 
 rule vcf_profile:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
         vt = ENV3 + config['tools']['vt'],
         ped = config['pedfile']
     output:
         vcf = config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtmendelprofile.txt"
     params:
-        ref = config['ref'][genome]
+        ref = config['ref'][freeze]
     shell:
         """
         {input.vt} profile_mendelian -o {output} -p {input.ped} -x mendel {input.vcf}
@@ -1294,9 +1294,9 @@ rule vcf_profile:
 # ud - upstream downstream interval length (in bases)
 rule run_snpeff:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.snpeff.vcf"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snpeff.vcf"
     params:
         snpeff  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],
@@ -1352,22 +1352,22 @@ rule for_xbrowse:
 
 rule run_vep:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.vcf",
         vep = config['tools']['vep']
     output:
         vep = config['process_dir'][freeze] + config['results']['vep'] + "/{family}.vep.vcf"
     params:
         xbrowse = config['xbrowse'],
         vepdir = config['vepdir'],
-        vepgen = config['vepgenomes'][genome],
-        assgen = config['vep'][genome],
+        vepgen = config['vepgenomes'][freeze],
+        asmgen = config['grc_name'][freeze],
     run:
         cmd = "perl " + input.vep + " \
           --everything --vcf --allele_number --no_stats --cache --offline \
           --force_overwrite --cache_version 84 \
           --dir " + params.vepdir + " \
           --fasta " + params.vepgen + " \
-          --assembly " + params.assgen + " \
+          --assembly " + params.asmgen + " \
           --plugin LoF,human_ancestor_fa:" + params.xbrowse + "/data/reference_data/human_ancestor.fa.gz,filter_position:0.05... \
           --plugin dbNSFP," + params.xbrowse + "/data/reference_data/dbNSFP.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
               -i " + input.vcf + " -o " + output.vep
@@ -1393,10 +1393,10 @@ rule run_multiqc:
 rule table_annovar:
     input:
         ANNOVARDBS,
-        avinput = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        avinput = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         annovar = ENV3 + config['tools']['table_annovar']
     output:
-        config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.annovar.vcf"
+        config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.annovar.vcf"
     params:
         opts = "-buildver "+genome
                 +" -protocol "+ANNOVAR_PROTOCOLS
@@ -1416,10 +1416,10 @@ rule table_annovar:
 rule run_annovar:
     input:
         ANNOVARDBS,
-        avinput = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.avinput",
+        avinput = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.avinput",
         annovar = ENV3 + config['tools']['annotate_variation']
     output:
-        config['process_dir'][freeze] + config['results']['vcfs'] + "/annovar.done"
+        config['landing_dir'][freeze] + config['results']['vcfs'] + "/annovar.done"
     params:
         opts = "-buildver {genome}",
         dbdir = config['annovardbdir']
@@ -1439,10 +1439,10 @@ rule run_annovar:
 
 rule vcf2avinput:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         cmd = ENV3 + config['tools']['vcf2avinput']
     output:
-        config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.avinput",
+        config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.avinput",
     shell:
         "{input.cmd} -format vcf2old {input.vcf} -outfile {output}"
 
@@ -1465,10 +1465,10 @@ rule install_annovar_db:
 
 rule compress_vcf:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
         bgzip = ENV3 + config['tools']['bgzip']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
     shell:
         """
         {input.bgzip} -c {input.vcf} > {output}
@@ -1476,10 +1476,10 @@ rule compress_vcf:
 
 rule tabix:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
         tabix = ENV3 + config['tools']['tabix']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi",
     shell:
         """
         {input.tabix} -p vcf {input.vcf}
@@ -1487,8 +1487,8 @@ rule tabix:
 
 rule gemini_db:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
-        tbi = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz.tbi",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
+        tbi = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz.tbi",
         ped = config['pedfile'],
         gemini = ENV2 + config['tools']['gemini']
     output:
@@ -1542,17 +1542,17 @@ rule noasterisk:
 #### Analysis ####
 rule variantAnalysisSetupUind:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{familypro}.vcf.bgz",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{familypro}.vcf.bgz",
     output:
-        uind = config['process_dir'][freeze] + config['results']['analysis'] + "/{familypro}.uind.RData",
+        uind = config['landing_dir'][freeze] + config['results']['analysis'] + "/{familypro}.uind.RData",
     params:
-        bsgenome = config['analysis']['bsgenome'][genome],
-        txdb     = config['analysis']['txdb'][genome],
-        snpdb    = config['analysis']['snpdb'][genome],
-        esp      = config['analysis']['esp'][genome],
-        exac     = config['analysis']['exac'][genome],
-        sift     = config['analysis']['sift'][genome],
-        phylo    = config['analysis']['phylo'][genome]
+        bsgenome = config['bioc_sets']['bsgenome'][freeze],
+        txdb     = config['bioc_sets']['txdb'][freeze],
+        snpdb    = config['bioc_sets']['snpdb'][freeze],
+        esp      = config['bioc_sets']['esp'][freeze],
+        exac     = config['bioc_sets']['exac'][freeze],
+        sift     = config['bioc_sets']['sift'][freeze],
+        phylo    = config['bioc_sets']['phylo'][freeze]
     run:
         R("""
         library(dplyr)
@@ -1574,18 +1574,18 @@ rule variantAnalysisSetupUind:
 
 rule variantAnalysisSetupModel:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
-        ped = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile"
     output:
-        result = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
+        result = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
     params:
-        bsgenome = config['analysis']['bsgenome'][genome],
-        txdb     = config['analysis']['txdb'][genome],
-        snpdb    = config['analysis']['snpdb'][genome],
-        esp      = config['analysis']['esp'][genome],
-        exac     = config['analysis']['exac'][genome],
-        sift     = config['analysis']['sift'][genome],
-        phylo    = config['analysis']['phylo'][genome]
+        bsgenome = config['bioc_sets']['bsgenome'][freeze],
+        txdb     = config['bioc_sets']['txdb'][freeze],
+        snpdb    = config['bioc_sets']['snpdb'][freeze],
+        esp      = config['bioc_sets']['esp'][freeze],
+        exac     = config['bioc_sets']['exac'][freeze],
+        sift     = config['bioc_sets']['sift'][freeze],
+        phylo    = config['bioc_sets']['phylo'][freeze]
     run:
         model_lut = {"denovo":"deNovo","arhomo":"autosomalRecessiveHomozygous","cmpdhet":"autosomalRecessiveHeterozygous","xlinked":"xLinked"}
         modelname=model_lut[wildcards.model]
@@ -1618,22 +1618,22 @@ def getGender(proband):
 # boys only
 def xlinked(wildcards):
     if getGender(wildcards.pro)=='M':
-        return config['process_dir'][freeze] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
+        return config['landing_dir'][freeze] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
     else:
         return []
 
 rule variantAnalysisModels:
     input:
-        denovo = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
-        arhomo = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
-        cmpdhet = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
+        denovo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
+        arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
+        cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
         xlinked = xlinked,
-        ped = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile",
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile",
         source = "reports/grin_epilepsy_models.Rmd"
     output:
-        html = config['process_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
     params:
-        dirpath = config['process_dir'][freeze] + config['results']['analysis'],
+        dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
         outfile = "/{family}_{pro,\w+}.{ext}.denovo.html"
     run:
         R("""
@@ -1653,10 +1653,10 @@ rule variantAnalysisModels:
     
 rule run_denovogear:
     input:
-        vcf = config['process_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
         ped = config['pedfile']
     output:
-        dnm_auto = config['process_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt"
+        dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt"
     log: 
         config['datadirs']['log'] + "/{file}.dnm_auto.log.log" 
     shell:
