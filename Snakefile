@@ -45,7 +45,7 @@ def updir(d, n):
 ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'])
 ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'])
 
-genome = config['buildve']
+genome = config['grc_name'][config['buildve']]
 
 SLINK = "{{SLINK}}"
 
