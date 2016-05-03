@@ -2,7 +2,7 @@ admins: leipzig@gmail.com
 #zhangs3@email.chop.edu
 #
  
-buildve: hg37  # should just change this paramter for different genome reference
+freeze: hg37  # should just change this paramter for different freeze reference
 
 python3_environment: /home/leipzigj/miniconda3/envs/grinenv/bin
 python2_environment: /home/leipzigj/miniconda3/envs/geminienv/bin
@@ -24,7 +24,7 @@ xbrowse_project:      # for xbrowse project.yaml
     id: grin
     name: GRIN
 
-vep:
+vepassembly:
     hg37: GRCh37
     hg38: GRCh38
 
