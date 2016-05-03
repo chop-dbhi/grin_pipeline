@@ -1028,7 +1028,7 @@ rule analysis_pedfile:
     input:
         config['pedfile']
     output:
-        config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pedfile"
+        config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.{hasheader,(headered|nohead)}.pedfile"
     run:
         globalpedfile = pandas.read_table("{0}".format(input))
         
@@ -1040,9 +1040,11 @@ rule analysis_pedfile:
         
         # hashes in the family names confuse R
         ped = ped.replace('#','',regex=True)
-        ped.to_csv("{0}".format(output), sep='\t',index=False)
-        
-        
+        if wildcards.hasheader == 'headered':
+            ped.to_csv("{0}".format(output),sep='\t',index=False,header=True)
+        else:
+            ped.to_csv("{0}".format(output),sep='\t',index=False,header=False)
+
 rule run_phase_by_transmission:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
@@ -1575,7 +1577,7 @@ rule variantAnalysisSetupUind:
 rule variantAnalysisSetupModel:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
-        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile"
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.nohead.pedfile"
     output:
         result = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
     params:
@@ -1628,7 +1630,7 @@ rule variantAnalysisModels:
         arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
         cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
         xlinked = xlinked,
-        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.pedfile",
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.nohead.pedfile",
         source = "reports/grin_epilepsy_models.Rmd"
     output:
         html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
