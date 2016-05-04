@@ -36,7 +36,6 @@ shell.prefix("source ~/.bash_profile;")
 
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
-configfile: "test.yaml"
 
 freeze = config['freeze']
 
@@ -561,18 +560,18 @@ rule target_list: # create individual realign target list
         opts = config['tools']['opts']['high'],
         ref = config['ref'][freeze],
         knownsites = config['known'][freeze]
-    #threads:
-    #    24
+    threads:
+        24
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
         -T RealignerTargetCreator \
         -R {params.ref} \
         -I {input.bam} \
+        -nt {threads} \
         -known {params.knownsites} \
         -o {output.samplelist} 2> {log}
         """
-        # -nt {threads} \
 
 def makedir(adir):
     if not os.path.exists(adir):
