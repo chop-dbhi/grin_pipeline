@@ -2,11 +2,11 @@ admins: leipzig@gmail.com
 #zhangs3@email.chop.edu
 #
  
-freeze: hg37  # should just change this paramter for different freeze reference
+freeze: hg38  # should just change this parameter for different genome reference
 
-python3_environment: /home/leipzigj/miniconda3/envs/grinenv/bin
-python2_environment: /home/leipzigj/miniconda3/envs/geminienv/bin
-load_python3_environment: source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv
+python3_environment: grinenv
+python2_environment: geminienv
+load_python3_environment: source activate grinenv
 tmpdir: /mnt/lustre/users/leipzigj
 
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
@@ -23,10 +23,6 @@ vepdir: /mnt/isilon/cbmi/variome/vep
 xbrowse_project:      # for xbrowse project.yaml
     id: grin
     name: GRIN
-
-vepassembly:
-    hg37: GRCh37
-    hg38: GRCh38
 
 known:
     hg37:
@@ -46,6 +42,11 @@ refidx:
     hg38:
         /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
 
+# parameter for running vep
+vepassembly:
+    hg37: GRCh37
+    hg38: GRCh38
+
 vepgenomes:
     hg37:
         /mnt/isilon/cbmi/variome/vep/homo_sapiens/84_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
@@ -62,9 +63,15 @@ datadirs:
     website:          site
     log:              logs
 
-types:
-    hg37:             lustre/GRCh37/   # the traling slash is required
+# high-speed disk for processing
+process_dir:
+    hg37:             lustre/GRCh37/    # the traling slash is required
     hg38:             lustre/GRCh38/
+
+# slower disk for end products
+landing_dir:
+    hg37:             GRCh37/           # the traling slash is required
+    hg38:             GRCh38/
 
 results:
     sams:             sams
@@ -150,7 +157,7 @@ jars:
             '10'
         format:
             -classic
-analysis:
+bioc_sets:
     bsgenome:
         hg37: BSgenome.Hsapiens.UCSC.hg19
         hg38: BSgenome.Hsapiens.UCSC.hg38

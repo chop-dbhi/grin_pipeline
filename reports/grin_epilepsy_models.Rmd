@@ -1,16 +1,17 @@
 ---
 title: "GRIN Epilepsy Trio Analysis"
 author: "Jeremy Leipzig"
-date: "1/16/2016"
+date: "5/29/2016"
 output: html_document
+css: styles.css
 ---
 ```{r preload, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
 #Kiel_DFG_2015_Trio_3_E01181.trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html
-if(!exists("denovo"))  denovo <- get(load('../../GRCh38/analysis/Kiel_DFG_2015_Trio_3_E01181.trio.phased.com.filtered.ad.de.nm.snpeff.noask.denovo.RData'))
-if(!exists("arhomo"))  arhomo <- get(load('../../GRCh38/analysis/Kiel_DFG_2015_Trio_3_E01181.trio.phased.com.filtered.ad.de.nm.snpeff.noask.arhomo.RData'))
+if(!exists("denovo"))  denovo <- get(load('/mnt/isilon/cbmi/variome/leipzig/GRIN/GRCh38/analysis/DRA1_553528.trio.phased.com.filtered.ad.de.nm.snpeff.noask.denovo.RData'))
+if(!exists("arhomo"))  arhomo <- get(load('/mnt/isilon/cbmi/variome/leipzig/GRIN/GRCh38/analysis/DRA1_553528.trio.phased.com.filtered.ad.de.nm.snpeff.noask.arhomo.RData'))
     
-if(!exists("ped")) ped <-read.table("../../GRCh38/analysis/Kiel_DFG_2015_Trio_3_E01181.pedfile",header=TRUE)
-if(!exists("mytrio")) mytrio<-"Kiel_DFG_2015_Trio_3_E01181"
+if(!exists("ped")) ped <-read.table("/mnt/isilon/cbmi/variome/leipzig/GRIN/GRCh38/analysis/DRA1_553528.pedfile",header=TRUE)
+if(!exists("mytrio")) mytrio<-"DRA1_553528"
 ```
 
 ```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
@@ -36,7 +37,7 @@ recurrent_genes<-read.table("../annotations/recurrentgenes.txt")$V1
 literature_genes<-read.table("../annotations/literaturegenes.txt")$V1
 ```
 
-# De novo analysis
+# De novo analysis `r mytrio`
 
 ## Variant summary for de novo variants
 This represents a brief summary of the de novo variants.
@@ -79,14 +80,14 @@ There are `r varcount` de novo variants.
 
 
 rvis<-get(load("../annotations/rvis.RData"))
-vrl.df.g %>% left_join(rvis,by="GENE")  %>% dplyr::select(seqnames,dbSNP,start,ref,alt,refDepth,altDepth,TYPE,LOCATION,GENE,HGVSc,AAchange,RVIS,starts_with("GT")) %>% dplyr::rename(chr = seqnames, pos = start, type = TYPE, location = LOCATION, gene = GENE) %>% arrange(chr,pos,location) %>% distinct(chr, pos, ref, alt) -> disp_df
+vrl.df.g %>% left_join(rvis,by="GENE")  %>% dplyr::select(seqnames,dbSNP,start,ref,alt,refDepth,altDepth,TYPE,LOCATION,GENE,HGVSc,AAchange,RVIS,starts_with("GT")) %>% dplyr::rename(chr = seqnames, pos = start, type = TYPE, location = LOCATION, gene = GENE) %>% arrange(chr,pos,location) %>% distinct(chr, pos, ref, alt)  %>% dplyr::mutate(ref = paste('<div class="iffyTip wd100">',ref,'</div>',sep=""),alt = paste('<div class="iffyTip wd100">',alt,'</div>',sep=""))  -> disp_df
 ```
 
 #### Triage 1: De novo variants in recurrent genes
 These are variants found in the `r length(recurrent_genes)` genes associated with recurrent mutations in epilepsy.
 ```{r recurrent, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 disp_df %>% filter(gene %in% recurrent_genes) -> in_recurrent
-if (nrow(in_recurrent) == 0){print("No variants found in recurrent genes<br/>")}else{datatable(in_recurrent)}
+if (nrow(in_recurrent) == 0){print("No variants found in recurrent genes<br/>")}else{datatable(in_recurrent,escape = FALSE)}
 ```
 
 #### Triage 2: De novo variants in literature genes with low tolerance
@@ -94,24 +95,24 @@ These are the remaining variants cited in the `r length(literature_genes)` genes
 
 ```{r literature, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 disp_df %>% filter(gene %in% literature_genes) %>% filter(RVIS <= 0) %>% thisnotinthat(in_recurrent) -> litlotol
-if (nrow(litlotol) == 0){print("No remaining variants found in literature genes<br/>")}else{datatable(litlotol)}
+if (nrow(litlotol) == 0){print("No remaining variants found in literature genes<br/>")}else{datatable(litlotol,escape = FALSE)}
 ```
 
 #### Triage 3: De novo coding variants not in the above
 These are remaining variants that are located in the coding sequence of at least one transcript.
 ```{r coding, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 disp_df %>% filter(location == 'coding') %>% thisnotinthat(litlotol)-> codingonly
-if (nrow(codingonly) == 0){print("No remaining variants found in coding genes<br/>")}else{datatable(codingonly)}
+if (nrow(codingonly) == 0){print("No remaining variants found in coding genes<br/>")}else{datatable(codingonly,escape = FALSE)}
 ```
 
 #### Other de novo variants
 These are the remaining de novo variants
 ```{r others, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 disp_df %>%  thisnotinthat(codingonly) -> others
-datatable(others)
+datatable(others,escape = FALSE)
 ```
 
-# Autosomal recessive homozygous
+# Autosomal recessive homozygous `r mytrio`
 The Autosomal recessive homozygous filter of VariantFiltering selects homozygous variants that are present in the affected probands and occur in heterozygosity in unaffected parents.
 
 ## Variant summary for autosomal recessive homozygous variants
@@ -160,6 +161,19 @@ These are the remaining de novo variants
 
 ## Session Info
 ```{r}
-args(denovo)
-args(arhomo) 
+denovo
+arhomo
 ```
+
+<script>
+ $(document).on('mouseenter', ".iffyTip", function () {
+     var $this = $(this);
+     if (this.offsetWidth < this.scrollWidth && !$this.attr('title')) {
+         $this.tooltip({
+             title: $this.text(),
+             placement: "bottom"
+         });
+         $this.tooltip('show');
+     }
+ });
+ </script>
