@@ -7,6 +7,8 @@ import configparser
 import shutil
 from snakemake.utils import R
 from functools import cmp_to_key
+
+
 """
 run on respublica
 
@@ -35,6 +37,34 @@ shell.prefix("source ~/.bash_profile;")
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
 
+freeze = config['freeze']
+
+# make sure the parameters for freeze are all set
+# can run "snakemake dummy" to check them first
+for para in [
+            "config['bioc_sets']['bsgenome'][freeze]",
+            "config['bioc_sets']['esp'][freeze]",
+            "config['bioc_sets']['exac'][freeze]",
+            "config['bioc_sets']['phylo'][freeze]",
+            "config['bioc_sets']['sift'][freeze]",
+            "config['bioc_sets']['snpdb'][freeze]",
+            "config['bioc_sets']['txdb'][freeze]",
+            "config['known'][freeze]",
+            "config['ref'][freeze]",
+            "config['refidx'][freeze]",
+            "config['process_dir'][freeze]",
+            "config['landing_dir'][freeze]",
+            "config['vepassembly'][freeze]",
+            "config['vepgenomes'][freeze]",
+    ]:
+    # print(para)
+    try:
+        eval(para)
+    except:
+        print("%s not set for freeze %s.\n" % (para, freeze))
+        quit()
+
+
 def updir(d, n):
   """Given path d, go up n dirs from d and return that path"""
   ret_val = d
@@ -42,13 +72,11 @@ def updir(d, n):
     ret_val = os.path.dirname(ret_val)
   return ret_val
 
-ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'])
-ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'])
+ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment']) + '/'
+ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment']) + '/'
 
 #hg37/hg38
 freeze = config['freeze']
-#GRCh37/GRCh38
-genome = config['grc_name'][config['freeze']]
 
 SLINK = "{{SLINK}}"
 
@@ -92,7 +120,7 @@ TRIOVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + tr
 # quads are one family
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 FAMILYVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
-VEPVCFS = [config['process_dir'][freeze] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
+VEPVCFS = [config['landing_dir'][freeze] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
 
 # VEPVCFS = glob.glob(config['landing_dir'][freeze] + config['results']['vcfs'] + "/*.vcf")
 # VEPVCFS = [re.sub("/vcfs/", "/vep/", name) for name in VEPVCFS]
@@ -103,7 +131,7 @@ VEPVCFS = [config['process_dir'][freeze] + config['results']['vep'] + "/" + trio
 #quit()
 
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in sample_table.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
-TRIOGEMS = [config['process_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
+TRIOGEMS = [config['landing_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
 ANALYSISREADY = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
 RDATA         = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
@@ -126,7 +154,7 @@ PDFS = [config['process_dir'][freeze] + config['results']['pdfs'] + "/" + name +
 GVCFS = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]
 GVCFSLIST = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES])
 
-ANNOVARDBS = [config['annovardbdir'] + "/" + genome + "_" + db + ".installed" for db in config['annovardbs']]
+ANNOVARDBS = [config['annovardbdir'] + "/" + freeze + "_" + db + ".installed" for db in config['annovardbs']]
 
 ANNOVAR_PROTOCOLS = ','.join(config['annovardbs'])
 
@@ -152,7 +180,7 @@ rule rdata:
     input: RDATA
 
 rule xbrowse:
-    input: config['process_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['process_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['process_dir'][freeze] + config['results']['vep'] + "/samples.ped"
+    input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
 
 rule vepvcfs:
     input: VEPVCFS
@@ -269,13 +297,15 @@ rule mkdirs:
         for adir in config['datadirs']:
             makedir(config['datadirs'][adir])
 
-        for adir in config['process_dir'][freeze] + config['results'][genome]:
-            makedir(config['datadirs'][genome][adir])
+        # would be created automatically if necessary
+        #for adir in config['results']:
+        #    makedir(config['landing_dir'][freeze] + config['results'][adir])
 
 rule dummy:    # just to test the python codes above
     input:  workflow.basedir + "/Snakefile"
 
     run:
+        print(ENV3)
         for file in FASTQCS:
             print(file)
         #check_gvcfs(GVCFS)
@@ -530,18 +560,18 @@ rule target_list: # create individual realign target list
         opts = config['tools']['opts']['high'],
         ref = config['ref'][freeze],
         knownsites = config['known'][freeze]
-    #threads:
-    #    24
+    threads:
+        24
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
         -T RealignerTargetCreator \
         -R {params.ref} \
         -I {input.bam} \
+        -nt {threads} \
         -known {params.knownsites} \
         -o {output.samplelist} 2> {log}
         """
-        # -nt {threads} \
 
 def makedir(adir):
     if not os.path.exists(adir):
@@ -1323,16 +1353,16 @@ rule run_snpeff:
 rule for_xbrowse:
     input: VEPVCFS
     output:
-         yaml = config['process_dir'][freeze] + config['results']['vep'] + "/project.yaml",
-         list = config['process_dir'][freeze] + config['results']['vep'] + "/samples.txt",
-         ped = config['process_dir'][freeze] + config['results']['vep'] + "/samples.ped"
+         yaml = config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml",
+         list = config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt",
+         ped = config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
     params:
          pedfile = config['pedfile']
     run:
         with open(output.yaml, "w") as out:
             out.write("---\n\n") 
-            out.write("project_id: '%s'\n" % (config['xbrowse']['id']))
-            out.write("project_name: '%s'\n" % (config['xbrowse']['name']))
+            out.write("project_id: '%s'\n" % (config['xbrowse_project']['id']))
+            out.write("project_name: '%s'\n" % (config['xbrowse_project']['name']))
             out.write("sample_id_list: 'samples.txt'\n")
             out.write("ped_files:\n")
             out.write("  - 'samples.ped'\n")
@@ -1357,12 +1387,12 @@ rule run_vep:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.vcf",
         vep = config['tools']['vep']
     output:
-        vep = config['process_dir'][freeze] + config['results']['vep'] + "/{family}.vep.vcf"
+        vep = config['landing_dir'][freeze] + config['results']['vep'] + "/{family}.vep.vcf"
     params:
         xbrowse = config['xbrowse'],
         vepdir = config['vepdir'],
         vepgen = config['vepgenomes'][freeze],
-        asmgen = config['grc_name'][freeze],
+        asmgen = config['vepassembly'][freeze],
     run:
         cmd = "perl " + input.vep + " \
           --everything --vcf --allele_number --no_stats --cache --offline \
@@ -1372,7 +1402,7 @@ rule run_vep:
           --assembly " + params.asmgen + " \
           --plugin LoF,human_ancestor_fa:" + params.xbrowse + "/data/reference_data/human_ancestor.fa.gz,filter_position:0.05... \
           --plugin dbNSFP," + params.xbrowse + "/data/reference_data/dbNSFP.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
-              -i " + input.vcf + " -o " + output.vep
+          -i " + input.vcf + " -o " + output.vep
         shell(cmd)
 
 #### run multiqc  ####
@@ -1400,7 +1430,7 @@ rule table_annovar:
     output:
         config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.annovar.vcf"
     params:
-        opts = "-buildver "+genome
+        opts = "-buildver "+freeze
                 +" -protocol "+ANNOVAR_PROTOCOLS
                 +" -operation "+config['operations']
                 +" -nastring . \
@@ -1423,7 +1453,7 @@ rule run_annovar:
     output:
         config['landing_dir'][freeze] + config['results']['vcfs'] + "/annovar.done"
     params:
-        opts = "-buildver {genome}",
+        opts = "-buildver {freeze}",
         dbdir = config['annovardbdir']
     run:
         # gene based annotation
@@ -1452,16 +1482,16 @@ rule install_annovar_db:
     input:
         annovar = ENV3 + config['tools']['annotate_variation']
     output:
-        config['annovardbdir'] + "/{genome}_{db}.installed"
+        config['annovardbdir'] + "/{freeze}_{db}.installed"
     params:
         dbdir = config['annovardbdir'],
     run:
-        opts = config['annovaropts'][wildcards.genome][wildcards.db]
+        opts = config['annovaropts'][wildcards.freeze][wildcards.db]
         if wildcards.db == 'ALL.sites.2014_10':
-            shell("{input.annovar} -buildver {wildcards.genome} {opts} 1000g2014oct {params.dbdir}")
-            shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.genome}_1000g2014oct.zip {wildcards.genome}_{wildcards.db}.txt")
+            shell("{input.annovar} -buildver {wildcards.freeze} {opts} 1000g2014oct {params.dbdir}")
+            shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.freeze}_1000g2014oct.zip {wildcards.freeze}_{wildcards.db}.txt")
         else:
-            shell("{input.annovar} -buildver {wildcards.genome} {opts} {wildcards.db} {params.dbdir}")
+            shell("{input.annovar} -buildver {wildcards.freeze} {opts} {wildcards.db} {params.dbdir}")
         shell("touch {output}")
 
 

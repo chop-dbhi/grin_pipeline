@@ -105,6 +105,9 @@ target_list:
   h_vmem: 3G
   mem_free: 2G
   m_mem_free: 2G
+  #h_vmem: 55G
+  #mem_free: 44G
+  #m_mem_free: 40G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 extractreads: 
   h_vmem: 55G
