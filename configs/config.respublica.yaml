@@ -135,7 +135,7 @@ tools:
 jars:
     picard:
         path:
-            /mnt/isilon/cbmi/variome/bin/picard-tools-2.0.1/picard.jar
+            picard
         markdups:
             MarkDuplicates
         index:
