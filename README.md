@@ -50,3 +50,6 @@ To update your conda environment with a new requirements file:
 ```
 conda install --name grinenv --file  requirements.txt
 ```
+You might find this will trigger Snakemake to want to remake downstream files, because executables are listed as input (this ensure they actually exist). To remedy this you can postdate any offending executables if you are confident their updates do not affect results.
+```
+touch -d 20160101 `which novoalign`
