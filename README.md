@@ -33,7 +33,7 @@ snakemake
 ```
 
 
-## Setup on Respublica
+### Setup on Respublica
 Set a TMPDIR in your `~/.bash_profile`:
 ```
 export TMPDIR=/mnt/lustre/users/YOURUSERNAME/scratch
@@ -46,7 +46,7 @@ ln -s configs/config.respublica.yaml configs/config.yaml
 
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`
 
-## Run on Respublica
+### Run on Respublica
 ```
 source activate grinenv
 snakemake -j 300 --cluster-config configs/cluster.yaml -c "qsub -V -l h_vmem={cluster.h_vmem} -l mem_free={cluster.mem_free} -l m_mem_free={cluster.m_mem_free} -pe smp {threads}"
@@ -62,6 +62,7 @@ To update your conda environment with a new requirements file:
 ```
 conda install --name grinenv --file  requirements.txt
 ```
-You might find this will trigger Snakemake to want to remake downstream files, because executables are listed as input (this ensure they actually exist). To remedy this you can postdate any offending executables if you are confident their updates do not affect results.
+You might find this will trigger Snakemake to want to remake downstream files, because executables are listed as input (this ensures they actually exist). To remedy this you can postdate any offending executables if you are confident their updates do not affect results.
 ```
 touch -d 20160101 `which novoalign`
+```
