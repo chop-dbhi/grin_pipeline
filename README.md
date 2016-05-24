@@ -34,6 +34,11 @@ snakemake
 
 
 ## To run on Respublica
+Set a TMPDIR in your `~/.bash_profile`:
+```
+export TMPDIR=/mnt/lustre/users/YOURUSERNAME/scratch
+```
+
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`
 ```
 ln -s configs/config.respublica.yaml configs/config.yaml
