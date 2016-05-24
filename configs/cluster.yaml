@@ -97,9 +97,9 @@ gzip:
   m_mem_free: 7G
   reference: http://www.real-world-systems.com/docs/gzip.1.html
 novosortbam: 
-  h_vmem: 1G
-  mem_free: 0G
-  m_mem_free: 0G
+  h_vmem: 2G
+  mem_free: 2G
+  m_mem_free: 2G
   reference: http://www.novocraft.com/documentation/novosort-2/
 target_list: 
   h_vmem: 3G

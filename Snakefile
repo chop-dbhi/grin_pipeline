@@ -536,11 +536,15 @@ rule novosortbam:
         sort = ENV3 + config['tools']['sortbam']
     output:
         sorted = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.bam",
+    params:
+        tmpdir = config['tmpdir']
     threads:
         12
+    log:
+        config['datadirs']['log'] + "/{sample}.novosort.log"
     shell:
         """
-        {input.sort} -m 14g -t . --removeduplicates --keeptags -i -o {output.sorted} {input.bam}
+        {input.sort} -m 14g -t {params.tmpdir} --threads {threads} --removeduplicates --keeptags -i -o {output.sorted} {input.bam} 2> {log}
         """
 
 ## here we create individual realign target lists, one from each bam file
