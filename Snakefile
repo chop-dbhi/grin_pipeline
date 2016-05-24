@@ -72,8 +72,8 @@ def updir(d, n):
     ret_val = os.path.dirname(ret_val)
   return ret_val
 
-ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment']) + '/'
-ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment']) + '/'
+ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'],'bin') + '/'
+ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'],'bin') + '/'
 
 #hg37/hg38
 freeze = config['freeze']
@@ -265,7 +265,8 @@ rule sample_concordance:
     output:
         ok="samplesondisk.txt", ms="missingsamples.txt", ump="unmanifestedpairs.txt", ic="incompletefamilies.txt"
     run:
-        assert(len(SAMPLELANES) == len(PAIRNAMESINSAMPLETABLE)/2)
+        if len(SAMPLELANES) != len(PAIRNAMESINSAMPLETABLE)/2:
+            print("I see {0} lanes and {1} pairs\n".format(len(SAMPLELANES),len(PAIRNAMESINSAMPLETABLE)/2))
         print("Received Pairs (on disk): {0}".format(len(ALLPAIRNAMES)))
         print("Unmanifested Pairs (on disk, not in sample table): {0}".format(len(UNMANIFESTEDPAIRS)))
         f = open(output.ump, 'w')
@@ -423,7 +424,7 @@ rule extractreads:
         metrics = config['process_dir'][freeze] + config['results']['picard']
     shell:
         """
-        {input.java} {params.opts} -jar {params.picard} \
+        {params.picard} {params.opts}  \
         {params.md} \
         INPUT={input.bam} \
         FASTQ={output.pair1} \
@@ -825,7 +826,7 @@ rule mark_duplicates:
         # with the name of login under specified tmp directory
         # Exception in thread "main" net.sf.picard.PicardException: Exception creating temporary directory.
         """
-        {input.java} {params.opts} -jar {params.picard} \
+        {params.picard} {params.opts} \
         {params.md} \
         INPUT={input.bam} \
         OUTPUT={output.bam} \
@@ -861,7 +862,7 @@ rule add_readgroup:
         rg = config['jars']['picard']['readgroups']
     shell:
         """
-        {input.java} {params.opts} -jar {params.picard} \
+        {params.picard} {params.opts} \
         {params.rg} \
         I={input.bam} \
         O={output.bam} \
