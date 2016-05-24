@@ -33,7 +33,7 @@ snakemake
 ```
 
 
-## To run on Respublica
+## Setup on Respublica
 Set a TMPDIR in your `~/.bash_profile`:
 ```
 export TMPDIR=/mnt/lustre/users/YOURUSERNAME/scratch
@@ -41,9 +41,13 @@ export TMPDIR=/mnt/lustre/users/YOURUSERNAME/scratch
 
 Use an appropriate config:
 ```
-- `--drmaa` is not allowed on Respublica yet, use `-c qsub`
+ln -s configs/config.respublica.yaml configs/config.yaml
 ```
 
+- `--drmaa` is not allowed on Respublica yet, use `-c qsub`
+
+## Run on Respublica
+```
 source activate grinenv
 snakemake -j 300 --cluster-config configs/cluster.yaml -c "qsub -V -l h_vmem={cluster.h_vmem} -l mem_free={cluster.mem_free} -l m_mem_free={cluster.m_mem_free} -pe smp {threads}"
 ```
