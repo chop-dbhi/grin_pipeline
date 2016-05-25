@@ -36,6 +36,7 @@ shell.prefix("source ~/.bash_profile;")
 
 configfile: "configs/baseconfig.yaml"
 configfile: "configs/config.yaml"
+configfile: "test.yaml"
 
 freeze = config['freeze']
 
@@ -72,8 +73,8 @@ def updir(d, n):
     ret_val = os.path.dirname(ret_val)
   return ret_val
 
-ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'],'bin') + '/'
-ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'],'bin') + '/'
+ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment']) + '/'
+ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment']) + '/'
 
 #hg37/hg38
 freeze = config['freeze']
