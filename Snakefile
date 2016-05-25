@@ -212,8 +212,8 @@ rule Rdeps:
         "PolyPhen.Hsapiens.dbSNP131",
         "SNPlocs.Hsapiens.dbSNP144.GRCh38",
         "SIFT.Hsapiens.dbSNP137",
-        "org.Hs.eg.db"),suppressUpdates=TRUE)
-        install_github("rcastelo/VariantFiltering")
+        "org.Hs.eg.db",
+        "VariantFiltering"),suppressUpdates=TRUE)
         """)
 
 # this is a utility to put things in the correct order in case something upstream gets touched
