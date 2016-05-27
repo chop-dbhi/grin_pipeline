@@ -469,7 +469,7 @@ rule copy_to_cavatica:
     threads: 1
     shell:
         """
-        /home/leipzigj/miniconda3/envs/grinenv/bin/aws s3 cp {input} s3://cbttc.seq.data/Ingo_project/{wildcards.filename}
+        {ENV3}/aws s3 --profile cavatica cp {input} s3://cbttc.seq.data/Ingo_project/{wildcards.filename}
         touch {output}
         """
 
@@ -486,7 +486,7 @@ rule copy_to_risaws:
      threads: 1
      shell:
         """
-        /home/leipzigj/miniconda3/envs/grinenv/bin/aws s3 cp s3://wuxi-demo-trios.s3.amazonaws.com/{wildcards.filename}
+        {ENV3}/aws s3 --profile risaws cp {input} s3://wuxi-demo-trios/{wildcards.filename}
         touch {output}
         """
 
