@@ -23,7 +23,7 @@ snakemake Rdeps
 ### To run a trio
 ```
 source activate grinenv
-snakemake GRCh37/gemini/PRG_MAE_1.gemini.db
+snakemake GRCh38/analysis/1KGCEU.trio.phased.com.filtered.ad.de.nm.snpeff.models.html
 ```
 
 ### To generate a VCF of all trios, separately and combined
