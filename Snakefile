@@ -57,6 +57,7 @@ for para in [
             "config['landing_dir'][freeze]",
             "config['vepassembly'][freeze]",
             "config['vepgenomes'][freeze]",
+            "config['lastctg'][freeze]",
     ]:
     # print(para)
     try:
@@ -65,6 +66,7 @@ for para in [
         print("%s not set for freeze %s.\n" % (para, freeze))
         quit()
 
+lastctg = config['lastctg'][freeze]
 
 def updir(d, n):
   """Given path d, go up n dirs from d and return that path"""
@@ -308,8 +310,10 @@ rule dummy:    # just to test the python codes above
 
     run:
         print(ENV3)
-        for file in FASTQCS:
-            print(file)
+        #for file in FASTQCS:
+        #    print(file)
+        #for file in GVCFS:
+        #    print(file)
         #check_gvcfs(GVCFS)
         #for file in VEPVCFS:
         #    print(file)
@@ -903,13 +907,17 @@ rule make_gvcf:
 
 def check_gvcfs(gvcfs):
     for file in gvcfs:
-        cmd = "tail -1 " + file
-        # print(cmd)
-        (output, error) = call_command(cmd)
-        line = output.decode()
-        if not re.search("^chrEBV.*\n", line):
-            print(file + ' is incomplete')
-            quit()
+        if os.path.exists(file):
+            cmd = "tail -1 " + file
+            # print(cmd)
+            (output, error) = call_command(cmd)
+            line = output.decode()
+            #if re.search(lastctg, line):
+            #    print(lastctg)
+            #    print(line)
+            if not re.search(lastctg, line):
+                print(file + ' is incomplete')
+                quit()
     
 def call_command(command):
     process = subprocess.Popen(command.split(' '),
@@ -1357,13 +1365,13 @@ rule run_snpeff:
 #### run VEP  ####
 
 rule for_xbrowse:
-    input: VEPVCFS
+    input:
+         VEPVCFS,
+         pedfile = config['pedfile']
     output:
          yaml = config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml",
          list = config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt",
          ped = config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
-    params:
-         pedfile = config['pedfile']
     run:
         with open(output.yaml, "w") as out:
             out.write("---\n\n") 
@@ -1381,7 +1389,7 @@ rule for_xbrowse:
                 out.write(name + "\n")
 
         with open(output.ped, "w") as out:
-            fin = open(params.pedfile, "r")
+            fin = open(input.pedfile, "r")
             for line in fin.readlines():
                 fields = line.split()
                 # print(fields)

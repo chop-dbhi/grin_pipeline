@@ -14,6 +14,7 @@ ped: ped.ped  # a PED pedigree file for PhaseByTransmission
 dbsnp: /mnt/isilon/cbmi/variome/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
 sample_table: metadata/sample_table.txt
 pedfile: metadata/samples.ped
+#pedfile: /mnt/isilon/cbmi/variome/leipzig/GRIN/samples.ped
 
 projdir: /mnt/isilon/cbmi/variome/leipzig/GRIN/
 summary_fastqc: /mnt/lustre/users/leipzigj/GRIN/summary_fastqc
@@ -25,18 +26,32 @@ xbrowse_project:      # for xbrowse project.yaml
     name: GRIN
 
 known:
+    hg19:
+        /mnt/isilon/cbmi/variome/reference/human/hg19/dbsnp137.vcf
     hg37:
         /mnt/isilon/cbmi/variome/reference/human/Mills_and_1000G_gold_standard.indels.b37.sites.vcf
     hg38:
         /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 
 ref:
+    hg19:
+        /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta
     hg37:
         /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta
     hg38:
         /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
 
+lastctg:
+    hg19:
+        "^GL000192.1.*\n"    # must include \n to assure complete line
+    hg37:
+        "^GL000192.1.*\n"
+    hg38:
+        "^chrEBV.*\n"
+
 refidx:
+    hg19:
+        /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta.idx
     hg37:   # created with novoindex -k 14 -s 1 human_g1k_v37.fasta.idx human_g1k_v37.fasta
         /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta.idx
     hg38:
@@ -44,10 +59,13 @@ refidx:
 
 # parameter for running vep
 vepassembly:
+    hg19: GRCh37
     hg37: GRCh37
     hg38: GRCh38
 
 vepgenomes:
+    hg19:
+        /mnt/isilon/cbmi/variome/vep/homo_sapiens/84_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
     hg37:
         /mnt/isilon/cbmi/variome/vep/homo_sapiens/84_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
     hg38:
@@ -65,11 +83,13 @@ datadirs:
 
 # high-speed disk for processing
 process_dir:
+    hg19:             lustre/GRCh19/
     hg37:             lustre/GRCh37/    # the traling slash is required
     hg38:             lustre/GRCh38/
 
 # slower disk for end products
 landing_dir:
+    hg19:             GRCh19/
     hg37:             GRCh37/           # the traling slash is required
     hg38:             GRCh38/
 
@@ -159,24 +179,31 @@ jars:
             -classic
 bioc_sets:
     bsgenome:
+        hg19: BSgenome.Hsapiens.UCSC.hg19
         hg37: BSgenome.Hsapiens.UCSC.hg19
         hg38: BSgenome.Hsapiens.UCSC.hg38
     txdb:
+        hg19: TxDb.Hsapiens.UCSC.hg19.knownGene
         hg37: TxDb.Hsapiens.UCSC.hg19.knownGene
         hg38: TxDb.Hsapiens.UCSC.hg38.knownGene
     snpdb:
+        hg19: SNPlocs.Hsapiens.dbSNP144.GRCh37
         hg37: SNPlocs.Hsapiens.dbSNP144.GRCh37
         hg38: SNPlocs.Hsapiens.dbSNP144.GRCh38
     esp:
+        hg19: MafDb.ESP6500SI.V2.SSA137
         hg37: MafDb.ESP6500SI.V2.SSA137
         hg38: MafDb.ESP6500SI.V2.SSA137
     exac:
+        hg19: MafDb.ExAC.r0.3.sites
         hg37: MafDb.ExAC.r0.3.sites
         hg38: MafDb.ExAC.r0.3.sites
     sift:
+        hg19: SIFT.Hsapiens.dbSNP137
         hg37: SIFT.Hsapiens.dbSNP137
         hg38: SIFT.Hsapiens.dbSNP137
     phylo:
+        hg19: humanGenesPhylostrata
         hg37: humanGenesPhylostrata
         hg38: humanGenesPhylostrata
 
