@@ -183,6 +183,14 @@ rule rdata:
     input: RDATA
 
 rule xbrowse:
+    input:  workflow.basedir + "/Snakefile"
+
+    run:
+        #print(ENV3)
+        shell("hostname")
+        shell("pwd")
+
+rule xbrowse1:
     input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
 
 rule vepvcfs:
