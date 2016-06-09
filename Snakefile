@@ -182,7 +182,7 @@ rule extract:
 rule rdata:
     input: RDATA
 
-rule xbrowse:
+rule xbrowse1:
     input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
 
 rule vepvcfs:
