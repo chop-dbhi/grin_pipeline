@@ -181,7 +181,7 @@ rule extract:
 rule rdata:
     input: RDATA
 
-rule xbrowse:
+rule xbrowse2:
     input:  workflow.basedir + "/Snakefile"
 
     run:
