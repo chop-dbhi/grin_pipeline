@@ -8,6 +8,7 @@ import shutil
 from snakemake.utils import R
 from functools import cmp_to_key
 
+
 """
 run on respublica
 
@@ -181,7 +182,7 @@ rule extract:
 rule rdata:
     input: RDATA
 
-rule xbrowse:
+rule xbrowse1:
     input:  workflow.basedir + "/Snakefile"
 
     run:
@@ -189,7 +190,7 @@ rule xbrowse:
         shell("hostname")
         shell("pwd")
 
-rule xbrowse1:
+rule xbrowse:
     input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
 
 rule vepvcfs:
@@ -317,6 +318,8 @@ rule dummy:    # just to test the python codes above
 
     run:
         print(ENV3)
+        #print(CONDA)
+        #print(UPDIR)
         #for file in FASTQCS:
         #    print(file)
         #for file in GVCFS:
