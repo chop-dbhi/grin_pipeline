@@ -519,7 +519,7 @@ rule align:
         pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
         align = ENV3 + config['tools']['align']
     output:
-        sam = config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam" # may be set to temp
+        sam = temp(config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam") # may be set to temp
     threads:
         12
     log: 
@@ -536,7 +536,7 @@ rule sam_to_bam:
         sam = config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam",
         samtools = ENV3 + config['tools']['samtools']
     output:
-        bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample,[^.]+}.bam"
+        bam = temp(config['process_dir'][freeze] + config['results']['bams'] + "/{sample,[^.]+}.bam")
     threads:
         12   # also depends on -j
     shell:
@@ -550,7 +550,7 @@ rule novosortbam:
         bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.bam",
         sort = ENV3 + config['tools']['sortbam']
     output:
-        sorted = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.bam",
+        sorted = temp(config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.bam"),
     params:
         tmpdir = config['tmpdir']
     threads:
@@ -572,7 +572,7 @@ rule target_list: # create individual realign target list
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam",
         java = ENV3 + config['tools']['java']
     output:
-        samplelist = config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list"
+        samplelist = temp(config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list")
     log:
         config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
@@ -658,7 +658,7 @@ rule realign_target:   # with one combined list file
         dbam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai",
         java = ENV3 + config['tools']['java']
     output:
-        rbam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam"
+        rbam = temp(config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam")
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
@@ -684,7 +684,7 @@ rule generate_recalibration_table:
         bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
-        table = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table"
+        table = temp(config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table")
     log:
         config['datadirs']['log'] + "/{sample}.generate_recalibration_table.log"
     params:
@@ -710,7 +710,7 @@ rule recalibrate_bam:
         bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam"
+        bam = temp(config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam")
     log:
         config['datadirs']['log'] + "/{sample}.recalibrate_bam.log"
     params:
@@ -736,7 +736,7 @@ rule post_recalibrated_table:
         bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
-        table = config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table",
+        table = temp(config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table"),
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
@@ -761,7 +761,7 @@ rule analyze_bqsr:
         after = config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table",
         java = ENV3 + config['tools']['java']
     output:
-        pdf = config['process_dir'][freeze] + config['results']['pdfs'] + "/{sample}.pdf"
+        pdf = temp(config['process_dir'][freeze] + config['results']['pdfs'] + "/{sample}.pdf")
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
@@ -828,7 +828,7 @@ rule mark_duplicates:
         bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.merged.bam",
         java = ENV3 + config['tools']['java']
     output:
-        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam"
+        bam = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam")
     log:
         config['datadirs']['log'] + "/{sample}.markdups.log"
     params:
@@ -855,7 +855,7 @@ rule make_index:
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bam",
         samtools = ENV3 + config['tools']['samtools']
     output:
-        bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bai"
+        bai = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bai")
     shell:
         """
         {input.samtools} index {input.bam} {output.bai}
@@ -868,7 +868,7 @@ rule add_readgroup:
         bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bai",
         java = ENV3 + config['tools']['java']
     output:
-        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam"
+        bam = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam")
     log:
         config['datadirs']['log'] + "/{sample}.add_readgroup.log"
     params:
@@ -893,7 +893,7 @@ rule make_gvcf:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         java = ENV3 + config['tools']['java']
     output:
-        gvcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf"
+        gvcf = temp(config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf")
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'],
@@ -1325,7 +1325,7 @@ rule vcf_qt:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
         vt = ENV3 + config['tools']['vt']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtpeek.txt"
+        vcf = temp(config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtpeek.txt")
     params:
         ref = config['ref'][freeze]
     shell:
@@ -1339,7 +1339,7 @@ rule vcf_profile:
         vt = ENV3 + config['tools']['vt'],
         ped = config['pedfile']
     output:
-        vcf = config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtmendelprofile.txt"
+        vcf = temp(config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtmendelprofile.txt")
     params:
         ref = config['ref'][freeze]
     shell:
@@ -1548,7 +1548,7 @@ rule gemini_db:
         ped = config['pedfile'],
         gemini = ENV2 + config['tools']['gemini']
     output:
-        config['process_dir'][freeze] + config['results']['gemini'] + "/{file}.gemini.db"
+        temp(config['process_dir'][freeze] + config['results']['gemini'] + "/{file}.gemini.db")
     threads:
         3
     shell:
