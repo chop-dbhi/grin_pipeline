@@ -73,11 +73,8 @@ def updir(d, n):
     ret_val = os.path.dirname(ret_val)
   return ret_val
 
-#ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment']) + '/'
-#ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment']) + '/'
-
-ENV3 = config['python3_environment']
-ENV2 = config['python2_environment']
+ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'],'bin') + '/'
+ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'],'bin') + '/'
 
 #hg37/hg38
 freeze = config['freeze']
