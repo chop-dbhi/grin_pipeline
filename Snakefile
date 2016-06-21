@@ -225,8 +225,8 @@ rule Rdeps:
         "PolyPhen.Hsapiens.dbSNP131",
         "SNPlocs.Hsapiens.dbSNP144.GRCh38",
         "SIFT.Hsapiens.dbSNP137",
-        "org.Hs.eg.db"),suppressUpdates=TRUE)
-        install_github("rcastelo/VariantFiltering")
+        "org.Hs.eg.db",
+        "VariantFiltering"),suppressUpdates=TRUE)
         """)
 
 # this is a utility to put things in the correct order in case something upstream gets touched
@@ -486,7 +486,7 @@ rule copy_to_cavatica:
     threads: 1
     shell:
         """
-        /home/leipzigj/miniconda3/envs/grinenv/bin/aws s3 cp {input} s3://cbttc.seq.data/Ingo_project/{wildcards.filename}
+        {ENV3}/aws s3 --profile cavatica cp {input} s3://cbttc.seq.data/Ingo_project/{wildcards.filename}
         touch {output}
         """
 
@@ -503,7 +503,7 @@ rule copy_to_risaws:
      threads: 1
      shell:
         """
-        /home/leipzigj/miniconda3/envs/grinenv/bin/aws s3 cp s3://wuxi-demo-trios.s3.amazonaws.com/{wildcards.filename}
+        {ENV3}/aws s3 --profile risaws cp {input} s3://wuxi-demo-trios/{wildcards.filename}
         touch {output}
         """
 
