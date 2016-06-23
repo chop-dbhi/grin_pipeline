@@ -519,8 +519,7 @@ rule align:
         pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
         align = ENV3 + config['tools']['align']
     output:
-        # sam = temp(config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam")
-        sam = config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam"
+        sam = temp(config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam")
     threads:
         12
     log: 
