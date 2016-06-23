@@ -1,0 +1,21 @@
+# customized settings for a project
+ 
+projdir: /mnt/isilon/cbmi/variome/zhangs3/projects/data/grin  # directory for the project
+
+admins: zhangs3@email.chop.edu      # to receive notification of success or fail
+tmpdir: /mnt/lustre/users/zhangs3   # for some tools to create temporary files
+
+freeze: hg38  # must specify the freeze, hg37 or hg38
+
+python3_environment: /home/zhangs3/anaconda3/envs/grinenv
+python2_environment: /home/zhangs3/anaconda3/envs/geminienv
+load_python3_environment: source activate grinenv
+
+summary_fastqc: /mnt/isilon/cbmi/variome/zhangs3/projects/data/grin/summary_fastqc
+
+xbrowse_project:      # for xbrowse project.yaml
+    id: grin
+    name: GRIN
+
+javatmpdir: '-Djava.io.tmpdir=/mnt/lustre/users/zhangs3/'  # for running java
+
