@@ -1,3 +1,6 @@
+import sys
+sys.path.append("configs")
+
 import glob
 import re
 import pandas
@@ -7,6 +10,7 @@ import configparser
 import shutil
 from snakemake.utils import R
 from functools import cmp_to_key
+from varsub import varsub
 
 """
 run on respublica
@@ -34,7 +38,9 @@ rule xbrowse     # get files for xbrowse
 shell.prefix("source ~/.bash_profile;") 
 
 configfile: "configs/baseconfig.yaml"
-configfile: "localconfig.yaml"        # copied and customized from configs/loacalconfig.sample.yaml
+configfile: "localconfig.yaml"     # copied and customized from configs/loacalconfig.sample.yaml
+
+varsub(config)  # substitute $isilon variable
 
 freeze = config['freeze']
 
@@ -519,7 +525,8 @@ rule align:
         pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
         align = ENV3 + config['tools']['align']
     output:
-        sam = temp(config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam")
+        #sam = temp(config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam")
+        sam = config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam"
     threads:
         12
     log: 
