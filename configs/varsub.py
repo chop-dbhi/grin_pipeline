@@ -4,7 +4,11 @@ varsub - variable substitution of parsed yaml objects
 from varsub import varsub
 import yaml
 
-config = yaml.load("conffig.yaml")
+config = yaml.load("config.yaml")
+
+or in snakefile
+
+configfile: "config.yaml"
 
 varsub(config)
 
