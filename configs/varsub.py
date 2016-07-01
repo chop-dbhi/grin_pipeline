@@ -31,49 +31,56 @@ def varsub(ys, v = True):
 
     # definition must be the top level 1
 
-    objs = [ys]
+    hit = 1
+ 
+    while(hit):
+        hit = 0
+        objs = [ys]
 
-    while(len(objs)):
-        obj = objs.pop()
-        t = str(type(obj))
-        if isinstance(obj, dict):
-            keys = obj.keys()
+        while(len(objs)):
+            obj = objs.pop()
+            t = str(type(obj))
+            if isinstance(obj, dict):
+                keys = obj.keys()
 
-            # print(keys)
+                # print(keys)
 
-            for key in keys:
-                # print(key)
-                # print(obj[key])
-                #print(key + ': ' + obj[key])
-                t = str(type(obj[key]))
-                # print(t)
-                if isinstance(obj[key], str):
-                    #print("str")
-                    __scan4vars(ys, obj, key)
-                elif isinstance(obj[key], list):
-                    # print("list")
-                    objs.append(obj[key])
-                elif isinstance(obj[key], dict):
-                    # print("dict")
-                    objs.append(obj[key])
-                #else:  # may be int, float, etc.
-                #    print(t + " unknown")
-        else:  # must be list
-            for idx in range(len(obj)):
-                el = obj[idx]
-                if isinstance(el, str):
-                    __scan4vars(ys, obj, idx)
-                elif isinstance(el, list):
-                    objs.append(el)
-                elif isinstance(el, dict):
-                    objs.append(el)
-                #else:  # may be int, float, etc.
-                #    print(t + " unknown", file=sys.stderr)
+                for key in keys:
+                    # print(key)
+                    # print(obj[key])
+                    #print(key + ': ' + obj[key])
+                    t = str(type(obj[key]))
+                    # print(t)
+                    if isinstance(obj[key], str):
+                        #print("str")
+                        if __scan4vars(ys, obj, key):
+                            hit = 1
+                    elif isinstance(obj[key], list):
+                        # print("list")
+                        objs.append(obj[key])
+                    elif isinstance(obj[key], dict):
+                        # print("dict")
+                        objs.append(obj[key])
+                    #else:  # may be int, float, etc.
+                    #    print(t + " unknown")
+            else:  # must be list
+                for idx in range(len(obj)):
+                    el = obj[idx]
+                    if isinstance(el, str):
+                        if __scan4vars(ys, obj, idx):
+                            hit = 1
+                    elif isinstance(el, list):
+                        objs.append(el)
+                    elif isinstance(el, dict):
+                        objs.append(el)
+                    #else:  # may be int, float, etc.
+                    #    print(t + " unknown", file=sys.stderr)
 
 def __scan4vars(ys, obj, key):
     pat = re.compile('\${?([\w\d]+)}?')
     full = re.compile('\${?([\w\d]+)}?$')
     ps = {}
+    hit = 0
     for m in re.findall(pat, obj[key]):
         ps[m] = 1  # handle dulicated matches
     if ps:
@@ -81,6 +88,7 @@ def __scan4vars(ys, obj, key):
             k = list(ps.keys())[0]
             if k in ys:
                obj[key] = ys[k]
+               hit = 1
             elif verbal:  # warning, quiting?
                 print(k + ' in "%s" not defined' % (obj[key]), file=sys.stderr)
         else:
@@ -90,12 +98,16 @@ def __scan4vars(ys, obj, key):
                     p = '\${?%s}?' % k
                     if isinstance(ys[k], str):
                        obj[key] = re.sub(p, ys[k], obj[key])
+                       hit = 1
                     elif isinstance(ys[k], (int, float)):
                        obj[key] = re.sub(p, str(ys[k]), obj[key])
+                       hit = 1
                     elif version == 2 and isinstance(ys[k], long):
                        obj[key] = re.sub(p, str(ys[k]), obj[key])
+                       hit = 1
                     elif verbal:
                        print(k + ' is not a valid type for substituion in "%s"' % (obj[key]), file=sys.stderr)
                 elif verbal:  # warning, quiting?
                     print(k + ' in "%s" not defined' % (obj[key]), file=sys.stderr)
         #print(obj[key])
+    return(hit)
