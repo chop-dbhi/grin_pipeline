@@ -22,6 +22,7 @@ import re
 
 verbal = True
 version = ''
+warns = {}
 
 def varsub(ys, v = True):
     global verbal
@@ -75,6 +76,9 @@ def varsub(ys, v = True):
                         objs.append(el)
                     #else:  # may be int, float, etc.
                     #    print(t + " unknown", file=sys.stderr)
+    if verbal and warns:
+       for k in warns: 
+           print(warns[k], file=sys.stderr)
 
 def __scan4vars(ys, obj, key):
     pat = re.compile('\${?([\w\d]+)}?')
@@ -90,7 +94,7 @@ def __scan4vars(ys, obj, key):
                obj[key] = ys[k]
                hit = 1
             elif verbal:  # warning, quiting?
-                print(k + ' in "%s" not defined' % (obj[key]), file=sys.stderr)
+                warns[k] = k + ' in "%s" not defined' % (obj[key])
         else:
             for k in ps.keys():
                 if k in ys:
@@ -106,8 +110,8 @@ def __scan4vars(ys, obj, key):
                        obj[key] = re.sub(p, str(ys[k]), obj[key])
                        hit = 1
                     elif verbal:
-                       print(k + ' is not a valid type for substituion in "%s"' % (obj[key]), file=sys.stderr)
+                       warns[k] = k + ' is not a valid type for substituion in "%s"' % (obj[key])
                 elif verbal:  # warning, quiting?
-                    print(k + ' in "%s" not defined' % (obj[key]), file=sys.stderr)
+                    warns[k] = k + ' in "%s" not defined' % (obj[key])
         #print(obj[key])
     return(hit)
