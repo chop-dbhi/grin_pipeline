@@ -6,10 +6,10 @@ ped: ped.ped  # a PED pedigree file for PhaseByTransmission
 sample_table: metadata/sample_table.txt
 pedfile: metadata/samples.ped
 
-xbrowse: /mnt/isilon/cbmi/variome/bin/xbrowse  # directory, not binary
-vepdir: /mnt/isilon/cbmi/variome/vep
+xbrowse: $isilon/bin/xbrowse  # directory, not binary
+vepdir: $isilon/vep
 
-annovardbdir: /mnt/isilon/cbmi/variome/annovar/humandb
+annovardbdir: $isilon/annovar/humandb
 #annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
 annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a'] # removed 'genomicSuperDups',
 # specify operations for table_annovar.pl, correspoinding to above databases
@@ -51,22 +51,22 @@ annovaropts:
 
 dbsnp:
     hg37:
-        /mnt/isilon/cbmi/variome/reference/human/dbsnp137.vcf.gz
+        $isilon/reference/human/dbsnp137.vcf.gz
     hg38:
-        /mnt/isilon/cbmi/variome/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
+        $isilon/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
 
 
 known:
     hg37:
-        /mnt/isilon/cbmi/variome/reference/human/Mills_and_1000G_gold_standard.indels.b37.sites.vcf
+        $isilon/reference/human/Mills_and_1000G_gold_standard.indels.b37.sites.vcf
     hg38:
-        /mnt/isilon/cbmi/variome/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
+        $isilon/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
 
 ref:
     hg37:
-        /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta
+        $isilon/reference/human/g1k_v37/human_g1k_v37.fasta
     hg38:
-        /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.fa
+        $isilon/reference/human/GRCh38/genome.fa
 
 lastctg:
     hg37:
@@ -76,9 +76,9 @@ lastctg:
 
 refidx:
     hg37:   # created with novoindex -k 14 -s 1 human_g1k_v37.fasta.idx human_g1k_v37.fasta
-        /mnt/isilon/cbmi/variome/reference/human/g1k_v37/human_g1k_v37.fasta.idx
+        $isilon/reference/human/g1k_v37/human_g1k_v37.fasta.idx
     hg38:
-        /mnt/isilon/cbmi/variome/reference/human/GRCh38/genome.idx
+        $isilon/reference/human/GRCh38/genome.idx
 
 # parameter for running vep
 
@@ -88,9 +88,9 @@ vepassembly:
 
 vepgenomes:
     hg37:
-        /mnt/isilon/cbmi/variome/vep/homo_sapiens/84_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
+        $isilon/vep/homo_sapiens/84_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
     hg38:
-        /mnt/isilon/cbmi/variome/vep/homo_sapiens/84_GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.fa
+        $isilon/vep/homo_sapiens/84_GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.fa
 
 # subdirectories relative to projdir
 datadirs:
@@ -158,9 +158,9 @@ tools:
     bgzip:
         bgzip
     gemini:
-        /mnt/isilon/cbmi/variome/bin/gemini/bin/gemini
+        $isilon/bin/gemini/bin/gemini
     vep:
-        /mnt/isilon/cbmi/variome/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
+        $isilon/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
     multiqc:
         multiqc
     annotate_variation:
@@ -183,7 +183,7 @@ jars:
         samtofastq:
             SamToFastq
     gatk:
-        /mnt/isilon/cbmi/variome/bin/GATK/GenomeAnalysisTK.jar
+        $isilon/bin/GATK/GenomeAnalysisTK.jar
     snpeff:
         path:
             snpEff

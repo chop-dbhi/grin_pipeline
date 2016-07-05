@@ -1,3 +1,6 @@
+import sys
+sys.path.append("configs")
+
 import glob
 import re
 import pandas
@@ -7,6 +10,7 @@ import configparser
 import shutil
 from snakemake.utils import R
 from functools import cmp_to_key
+from varsub import varsub
 
 """
 run on respublica
@@ -34,7 +38,9 @@ rule xbrowse     # get files for xbrowse
 shell.prefix("source ~/.bash_profile;") 
 
 configfile: "configs/baseconfig.yaml"
-configfile: "localconfig.yaml"        # copied and customized from configs/loacalconfig.sample.yaml
+configfile: "localconfig.yaml"     # copied and customized from configs/loacalconfig.sample.yaml
+
+varsub(config)  # substitute $isilon variable
 
 freeze = config['freeze']
 
