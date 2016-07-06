@@ -128,6 +128,7 @@ TRIOVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + tr
 # quads are one family
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 FAMILYVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
+COMVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.com.filtered.vcf" for trio in COMPLETEFAMILYFAMIDS]
 VEPVCFS = [config['landing_dir'][freeze] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
 
 # VEPVCFS = glob.glob(config['landing_dir'][freeze] + config['results']['vcfs'] + "/*.vcf")
@@ -197,6 +198,9 @@ rule xbrowse1:
 
 rule xbrowse:
     input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
+
+rule comvcfs:
+    input: COMVCFS
 
 rule vepvcfs:
     input: VEPVCFS
