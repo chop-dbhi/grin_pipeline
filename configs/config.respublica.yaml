@@ -115,6 +115,7 @@ landing_dir:
 results:  # subdirectories in process_dir or landing_dir
     sams:             sams
     bams:             bams
+    docs:             docs
     picard:           picard
     realigned:        realigned
     lists:            lists

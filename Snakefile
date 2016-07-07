@@ -816,7 +816,7 @@ rule depth_of_coverage:
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
         java = ENV3 + config['tools']['java']
     output:
-        "{sample}.DoC"
+        config['landing_dir'][freeze] + config['results']['docs'] + "/{sample}.DoC",
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
@@ -912,6 +912,7 @@ rule make_gvcf:
     input:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
+        doc = config['landing_dir'][freeze] + config['results']['docs'] + "/{sample}.DoC",
         java = ENV3 + config['tools']['java']
     output:
         gvcf = temp(config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf"),
