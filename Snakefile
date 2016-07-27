@@ -1847,7 +1847,6 @@ rule siteindex:
             #outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
             outfile.write('<a href="multiqc_report.html">multiqc report</a>' + "\n")
 
-
 #### Internal
 onsuccess:
     print("Workflow finished, no error")
