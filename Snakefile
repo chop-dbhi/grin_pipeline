@@ -546,7 +546,7 @@ rule sam_to_bam:
         sam = config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam",
         samtools = ENV3 + config['tools']['samtools']
     output:
-        bam = temp(config['process_dir'][freeze] + config['results']['bams'] + "/{sample,[^.]+}.bam"),
+        bam = temp(config['process_dir'][freeze] + config['results']['bams'] + "/{sample,[^.]+}.crash"),
     threads:
         12   # also depends on -j
     shell:
