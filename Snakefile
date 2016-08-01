@@ -38,7 +38,7 @@ rule xbrowse     # get files for xbrowse
 shell.prefix("source ~/.bash_profile;") 
 
 configfile: "configs/baseconfig.yaml"
-configfile: "localconfig.yaml"     # copied and customized from configs/loacalconfig.sample.yaml
+configfile: "localconfig.yaml"     # copied and customized from configs/localconfig.sample.yaml
 
 varsub(config)  # substitute $isilon variable
 
