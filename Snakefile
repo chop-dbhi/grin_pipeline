@@ -933,7 +933,7 @@ rule make_gvcf:
         --genotyping_mode DISCOVERY \
         -stand_emit_conf 10 \
         -stand_call_conf 30 \
-        -o {output.gvcf}
+        -o {output.gvcf}_crash
         """
 
 # sanity check on gvcf files
