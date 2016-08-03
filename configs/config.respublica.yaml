@@ -139,6 +139,8 @@ results:  # subdirectories in process_dir or landing_dir
     gemini:           gemini
     vcfs:             vcfs
     analysis:         analysis
+    GATKDoC:          GATKDoC
+    xhmmout:          xhmmOutput
 
 tools:
     java:
