@@ -820,7 +820,7 @@ rule depth_of_coverage:
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
-        ref = config['ref'][freeze]
+        ref = config['ref'][freeze],
         targets=config['exon_interval_lists'][freeze]
     shell:
         """
