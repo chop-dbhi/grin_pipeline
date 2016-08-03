@@ -67,6 +67,18 @@ ref:
         $isilon/reference/human/g1k_v37/human_g1k_v37.fasta
     hg38:
         $isilon/reference/human/GRCh38/genome.fa
+  
+exon_interval_lists:
+    hg37:
+        $isilon/reference/human/g1k_v37/exons.grch37.interval_list
+    hg38:
+        $isilon/reference/human/GRCh38/exons.hg38.interval_list
+
+exon_bed:
+    hg37:
+        $isilon/reference/human/g1k_v37/exons.grch37.bed
+    hg38:
+        $isilon/reference/human/GRCh38/exons.hg38.bed
 
 lastctg:
     hg37:
