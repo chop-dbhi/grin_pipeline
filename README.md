@@ -42,6 +42,7 @@ export TMPDIR=/mnt/lustre/users/YOURUSERNAME/scratch
 Use an appropriate config:
 ```
 ln -s configs/config.respublica.yaml configs/config.yaml
+cp configs/localconfig.sample.yaml localconfig.yaml
 ```
 
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`

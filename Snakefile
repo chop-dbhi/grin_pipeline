@@ -38,7 +38,7 @@ rule xbrowse     # get files for xbrowse
 shell.prefix("source ~/.bash_profile;") 
 
 configfile: "configs/baseconfig.yaml"
-configfile: "localconfig.yaml"     # copied and customized from configs/loacalconfig.sample.yaml
+configfile: "localconfig.yaml"     # copied and customized from configs/localconfig.sample.yaml
 
 varsub(config)  # substitute $isilon variable
 
@@ -128,6 +128,7 @@ TRIOVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + tr
 # quads are one family
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in sample_table.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])])
 FAMILYVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
+COMVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.com.filtered.vcf" for trio in COMPLETEFAMILYFAMIDS]
 VEPVCFS = [config['landing_dir'][freeze] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
 
 # VEPVCFS = glob.glob(config['landing_dir'][freeze] + config['results']['vcfs'] + "/*.vcf")
@@ -197,6 +198,9 @@ rule xbrowse1:
 
 rule xbrowse:
     input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
+
+rule comvcfs:
+    input: COMVCFS
 
 rule vepvcfs:
     input: VEPVCFS
@@ -909,6 +913,7 @@ rule make_gvcf:
     input:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
+        doc = config['landing_dir'][freeze] + config['results']['docs'] + "/{sample}.DoC",
         java = ENV3 + config['tools']['java']
     output:
         gvcf = temp(config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf"),
@@ -1843,7 +1848,6 @@ rule siteindex:
             #outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
             outfile.write('<a href="multiqc_report.html">multiqc report</a>' + "\n")
 
-
 #### Internal
 onsuccess:
     print("Workflow finished, no error")
@@ -1852,5 +1856,4 @@ onsuccess:
 onerror:
     print("An error occurred")
     shell("mail -s 'an error occurred' "+config['admins']+" < {log}")
-
 
