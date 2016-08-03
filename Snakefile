@@ -816,11 +816,12 @@ rule depth_of_coverage:
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
         java = ENV3 + config['tools']['java']
     output:
-        config['landing_dir'][freeze] + config['results']['docs'] + "/{sample}.DoC",
+        doc =  config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC"
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze]
+        targets=config['exon_interval_lists'][freeze]
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -838,7 +839,7 @@ rule depth_of_coverage:
         --stop 5000 \
         --nBins 200 \
         --includeRefNSites \
-        -o {output}
+        -o {output.doc}
         """
 
 rule mark_duplicates:
