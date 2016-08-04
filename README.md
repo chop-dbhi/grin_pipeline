@@ -11,7 +11,7 @@ sh Miniconda3-latest-Linux-x86_64.sh
 conda config --add channels bioconda
 conda config --add channels r
 conda config --add channels asmeurer
-conda create --name grinenv --file requirements.txt
+conda create --name grinenv --file requirements.txt python=3.5
 source activate grinenv
 ```
 
