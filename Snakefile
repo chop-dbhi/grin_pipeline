@@ -913,7 +913,7 @@ rule make_gvcf:
     input:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
-        doc = config['landing_dir'][freeze] + config['results']['docs'] + "/{sample}.DoC",
+        doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC",
         java = ENV3 + config['tools']['java']
     output:
         gvcf = temp(config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf"),
