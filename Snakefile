@@ -833,6 +833,8 @@ rule depth_of_coverage:
         -L {params.targets} \
         -l INFO \
         -dt BY_SAMPLE \
+        -dcov 5000 \
+        --downsample_to_coverage \
         --omitDepthOutputAtEachBase \
         --omitLocusTable \
         --minBaseQuality 0 \
