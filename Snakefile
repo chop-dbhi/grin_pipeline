@@ -816,12 +816,16 @@ rule depth_of_coverage:
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
         java = ENV3 + config['tools']['java']
     output:
-        doc =  config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC"
+        sample_summary = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_summary",
+        sample_interval_summary = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_interval_summary",
+        sample_interval_stats = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_interval_statistics",
+        sample_stats = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics"
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze],
-        targets = config['exon_interval_lists'][freeze]
+        targets = config['exon_interval_lists'][freeze],
+        doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC"
     log:
         config['datadirs']['log'] + "/{sample}.depth_of_coverage.log"
     shell:
@@ -843,7 +847,7 @@ rule depth_of_coverage:
         --stop 5000 \
         --nBins 200 \
         --includeRefNSites \
-        -o {output.doc} 2> {log}
+        -o {params.doc} 2> {log}
         """
 
 rule mark_duplicates:
