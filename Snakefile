@@ -821,7 +821,9 @@ rule depth_of_coverage:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze],
-        targets=config['exon_interval_lists'][freeze]
+        targets = config['exon_interval_lists'][freeze]
+    log:
+        config['datadirs']['log'] + "/{sample}.depth_of_coverage.log"
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -839,7 +841,7 @@ rule depth_of_coverage:
         --stop 5000 \
         --nBins 200 \
         --includeRefNSites \
-        -o {output.doc}
+        -o {output.doc} 2> {log}
         """
 
 rule mark_duplicates:
