@@ -72,7 +72,7 @@ exon_interval_lists:
     hg37:
         $isilon/reference/human/g1k_v37/exons.grch37.interval_list
     hg38:
-        $isilon/reference/human/GRCh38/exons.hg38.interval_list
+        $isilon/reference/human/GRCh38/exons.hg38.chronly.interval_list
 
 exon_bed:
     hg37:
