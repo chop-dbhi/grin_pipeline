@@ -1,0 +1,344 @@
+#### Alignment ####
+rule align:
+    input:
+        pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq.gz",
+        pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
+        align = ENV3 + config['tools']['align']
+    output:
+        sam = temp(config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam")
+    threads:
+        12
+    log: 
+        config['datadirs']['log'] + "/{sample}.novoalign.log"
+    params:
+        refidx = config['refidx'][freeze]
+    shell:
+        """
+        {input.align} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} 1> {output.sam} 2> {log}
+        """
+
+rule sam_to_bam:
+    input:
+        sam = config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam",
+        samtools = ENV3 + config['tools']['samtools']
+    output:
+        bam = temp(config['process_dir'][freeze] + config['results']['bams'] + "/{sample,[^.]+}.bam"),
+    threads:
+        12   # also depends on -j
+    shell:
+        """
+        {input.samtools} view -@ {threads} -bS {input.sam} > {output.bam}
+        """
+
+# novosort creates index
+rule novosortbam:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.bam",
+        sort = ENV3 + config['tools']['sortbam']
+    output:
+        sorted = temp(config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.bam"),
+        sorted_bai = temp(config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.bam.bai"),
+    params:
+        tmpdir = config['tmpdir']
+    threads:
+        12
+    log:
+        config['datadirs']['log'] + "/{sample}.novosort.log"
+    shell:
+        """
+        {input.sort} -m 14g -t {params.tmpdir} --threads {threads} --removeduplicates --keeptags -i -o {output.sorted} {input.bam} 2> {log}
+        """
+
+## here we create individual realign target lists, one from each bam file
+## later, the individual lists will be combined into a single list
+## an alternative ways is to directly create a signle list from the bam files
+
+rule target_list: # create individual realign target list
+    input:  # deduced bams
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam",
+        bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai",
+        java = ENV3 + config['tools']['java']
+    output:
+        samplelist = temp(config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list")
+    log:
+        config['datadirs']['log'] + "/{sample}.target_list.log"
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['high'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze],
+        knownsites = config['known'][freeze]
+    threads:
+        24
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T RealignerTargetCreator \
+        -R {params.ref} \
+        -I {input.bam} \
+        -nt {threads} \
+        -known {params.knownsites} \
+        -o {output.samplelist} 2> {log}
+        """
+
+
+
+# combine indels from individual target alignment lists into a single list
+rule combine_lists:
+    input: LISTS
+    output: INDELS
+    run:
+         combine()
+
+rule realign_target:   # with one combined list file
+    input:  # deduced bams
+        #list = INDELS,
+        list = config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list",
+        dbam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam",
+        dbai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai",
+        java = ENV3 + config['tools']['java']
+    output:
+        rbam = temp(config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam"),
+        rbai = temp(config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai")
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze],
+        known = config['known'][freeze],
+        result = config['process_dir'][freeze] + config['results']['picard']
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T IndelRealigner \
+        -R {params.ref} \
+        -I {params.result}/{wildcards.sample}.group.bam \
+        -targetIntervals {input.list} \
+        -known {params.known} \
+        -o {output.rbam}
+        """
+
+# Base recalibration (not be confused with variant recalibration)
+# http://gatkforums.broadinstitute.org/gatk/discussion/44/base-quality-score-recalibration-bqsr
+# https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_bqsr_BaseRecalibrator.php
+rule generate_recalibration_table:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
+        bai = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai",
+        java = ENV3 + config['tools']['java']
+    output:
+        table = temp(config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table")
+    log:
+        config['datadirs']['log'] + "/{sample}.generate_recalibration_table.log"
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze],
+        known = config['known'][freeze]
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T BaseRecalibrator \
+        -R {params.ref} \
+        -I {input.bam} \
+        -knownSites {params.known} \
+        -o {output.table} 2> {log}
+        """
+
+# https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_readutils_PrintReads.php
+# Note that when PrintReads is used as part of the Base Quality Score Recalibration workflow
+rule recalibrate_bam:
+    input:
+        table = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
+        bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
+        bai = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai",
+        java = ENV3 + config['tools']['java']
+    output:
+        bam = temp(config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam"),
+        bai = temp(config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai")
+    log:
+        config['datadirs']['log'] + "/{sample}.recalibrate_bam.log"
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze]
+    threads:
+        8
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T PrintReads \
+        -nct {threads} \
+        -R {params.ref} \
+        -I {input.bam} \
+        -BQSR {input.table} \
+        -o {output.bam} 2> {log}
+        """
+
+rule post_recalibrated_table:
+    input:
+        table = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
+        bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
+        bai = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai",
+        java = ENV3 + config['tools']['java']
+    output:
+        table = config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table",
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze],
+        known = config['known'][freeze]
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T BaseRecalibrator \
+        -R {params.ref} \
+        -I {input.bam} \
+        -knownSites {params.known} \
+        -BQSR {input.table} \
+        -o {output.table}
+        """
+
+# https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_bqsr_AnalyzeCovariates.php
+# generates plots for visualizing the quality of a recalibration run
+rule analyze_bqsr:
+    input:
+        before = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
+        after = config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table",
+        java = ENV3 + config['tools']['java']
+    output:
+        pdf = config['process_dir'][freeze] + config['results']['pdfs'] + "/{sample}.pdf"
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze]
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T AnalyzeCovariates \
+        -R {params.ref} \
+        -before {input.before} \
+        -after {input.after} \
+        -plots {output.pdf}
+        """
+
+# merge lanes
+# E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
+def get_all_sorted_bams(samplename):
+    bams = [bam for bam in SBAMS if bam.startswith(samplename) and bam.endswith(".sorted.bam")]
+    return(bams)
+
+rule merge_lanes:
+    input: bams = lambda wildcards: get_all_sorted_bams(wildcards.sample), samtools = ENV3 + config['tools']['samtools']
+    output: temp("{sample}.sorted.merged.bam")
+    threads:
+        1
+    run:
+        if len(input.bams)>1:
+            shell("{input.samtools} merge {output} {input.bams}")
+        else:
+            shell("cp {input.bams} {output}")
+
+rule depth_of_coverage:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
+        java = ENV3 + config['tools']['java']
+    output:
+        sample_summary = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_summary",
+        sample_interval_summary = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_interval_summary",
+        sample_interval_stats = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_interval_statistics",
+        sample_stats = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics"
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze],
+        targets = config['exon_interval_lists'][freeze],
+        doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC"
+    log:
+        config['datadirs']['log'] + "/{sample}.depth_of_coverage.log"
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T DepthOfCoverage \
+        -I {input.bam} \
+        -R {params.ref} \
+        -L {params.targets} \
+        -l INFO \
+        -dt BY_SAMPLE \
+        -dcov 5000 \
+        --downsample_to_coverage \
+        --omitDepthOutputAtEachBase \
+        --omitLocusTable \
+        --minBaseQuality 0 \
+        --minMappingQuality 20 \
+        --start 1 \
+        --stop 5000 \
+        --nBins 200 \
+        --includeRefNSites \
+        -o {params.doc} 2> {log}
+        """
+
+rule mark_duplicates:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.merged.bam",
+        java = ENV3 + config['tools']['java']
+    output:
+        bam = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam"),
+        txt = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.txt"),
+    log:
+        config['datadirs']['log'] + "/{sample}.markdups.log"
+    params:
+        picard = config['jars']['picard']['path'],
+        md = config['jars']['picard']['markdups'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        metrics = config['process_dir'][freeze] + config['results']['picard']
+    shell:
+        # will (and need the permision to) create a tmp directory
+        # with the name of login under specified tmp directory
+        # Exception in thread "main" net.sf.picard.PicardException: Exception creating temporary directory.
+        """
+        {params.picard} {params.opts} \
+        {params.md} \
+        INPUT={input.bam} \
+        OUTPUT={output.bam} \
+        METRICS_FILE={params.metrics}/{wildcards.sample}.txt 2> {log}
+        """
+
+# samtools index seems more reliable than picard
+# in terms of returning an exit code
+rule make_index:  # create bai files if needed
+    input:
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bam",
+        samtools = ENV3 + config['tools']['samtools']
+    output:
+        bai = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bai")
+    shell:
+        """
+        {input.samtools} index {input.bam} {output.bai}
+        """
+
+
+rule add_readgroup:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam",
+        bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bai",
+        java = ENV3 + config['tools']['java']
+    output:
+        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam", # needed by run_multiqc
+        #bai = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai")
+    log:
+        config['datadirs']['log'] + "/{sample}.add_readgroup.log"
+    params:
+        picard = config['jars']['picard']['path'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        rg = config['jars']['picard']['readgroups']
+    shell:
+        """
+        {params.picard} {params.opts} \
+        {params.rg} \
+        I={input.bam} \
+        O={output.bam} \
+        PL=illumina \
+        LB={wildcards.sample} \
+        PU={wildcards.sample} \
+        SM={wildcards.sample} 2> {log}
+        """

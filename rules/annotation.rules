@@ -1,0 +1,246 @@
+
+
+#### Annotation ####
+rule ad_vcf:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf"
+    params:
+        ref = config['ref'][freeze]
+    shell:
+        """
+        cat {input} | sed 's/ID=AD,Number=./ID=AD,Number=R/' > {output}
+        """
+
+# decomposes multiallelic variants into biallelic in a VCF file.
+rule decompose_for_gemini:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf",
+        vt = ENV3 + config['tools']['vt']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf"
+    shell:
+        """
+        {input.vt} decompose -s -o {output} {input.vcf}
+        """
+
+rule normalize_for_gemini:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vt = ENV3 + config['tools']['vt']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.vcf"
+    params:
+        ref = config['ref'][freeze]
+    shell:
+        """
+        {input.vt} normalize -r {params.ref} -o {output} {input.vcf}
+        """
+
+rule vcf_qt:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vt = ENV3 + config['tools']['vt']
+    output:
+        vcf = config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtpeek.txt"
+    params:
+        ref = config['ref'][freeze]
+    shell:
+        """
+        {input.vt} peek -o {output} {input.vcf}
+        """
+
+rule vcf_profile:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.vcf",
+        vt = ENV3 + config['tools']['vt'],
+        ped = config['pedfile']
+    output:
+        vcf = config['process_dir'][freeze] + config['results']['vtpeek'] + "/{file}.vtmendelprofile.txt"
+    params:
+        ref = config['ref'][freeze]
+    shell:
+        """
+        {input.vt} profile_mendelian -o {output} -p {input.ped} -x mendel {input.vcf}
+        """
+        
+# ud - upstream downstream interval length (in bases)
+rule run_snpeff:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snpeff.vcf"
+    params:
+        snpeff  = config['jars']['snpeff']['path'],
+        conf = config['jars']['snpeff']['cnf'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        database = config['jars']['snpeff']['db'],
+        updown = config['jars']['snpeff']['ud'],
+        format = config['jars']['snpeff']['format']
+    shell:
+        """
+        source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv 
+        {params.snpeff} \
+        {params.opts} \
+        -c {params.conf} \
+        -ud {params.updown} \
+        {params.format} \
+        {params.database} \
+         {input.vcf} > {output.vcf}
+        """
+
+#### run VEP  ####
+
+rule for_xbrowse:
+    input:
+         VEPVCFS,
+         pedfile = config['pedfile']
+    output:
+         yaml = config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml",
+         list = config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt",
+         ped = config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
+    run:
+        with open(output.yaml, "w") as out:
+            out.write("---\n\n") 
+            out.write("project_id: '%s'\n" % (config['xbrowse_project']['id']))
+            out.write("project_name: '%s'\n" % (config['xbrowse_project']['name']))
+            out.write("sample_id_list: 'samples.txt'\n")
+            out.write("ped_files:\n")
+            out.write("  - 'samples.ped'\n")
+            out.write("vcf_files:\n")
+            for name in VEPVCFS:
+                out.write("  - '%s'\n" % (re.sub('.*\/', '', name)))
+
+        with open(output.list, "w") as out:
+            for name in sorted(EXISTINGSAMPLES):
+                out.write(name + "\n")
+
+        with open(output.ped, "w") as out:
+            fin = open(input.pedfile, "r")
+            for line in fin.readlines():
+                fields = line.split()
+                # print(fields)
+                if fields[1] in EXISTINGSAMPLES:
+                    out.write(line)
+
+rule run_vep:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.vcf",
+        vep = config['tools']['vep']
+    output:
+        vep = config['landing_dir'][freeze] + config['results']['vep'] + "/{family}.vep.vcf"
+    params:
+        xbrowse = config['xbrowse'],
+        vepdir = config['vepdir'],
+        vepgen = config['vepgenomes'][freeze],
+        asmgen = config['vepassembly'][freeze],
+    run:
+        cmd = "perl " + input.vep + " \
+          --everything --vcf --allele_number --no_stats --cache --offline \
+          --force_overwrite --cache_version 84 \
+          --dir " + params.vepdir + " \
+          --fasta " + params.vepgen + " \
+          --assembly " + params.asmgen + " \
+          --plugin LoF,human_ancestor_fa:" + params.xbrowse + "/data/reference_data/human_ancestor.fa.gz,filter_position:0.05... \
+          --plugin dbNSFP," + params.xbrowse + "/data/reference_data/dbNSFP.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
+          -i " + input.vcf + " -o " + output.vep
+        shell(cmd)
+
+
+#### run annovar  ####
+
+rule table_annovar:
+    input:
+        ANNOVARDBS,
+        avinput = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        annovar = ENV3 + config['tools']['table_annovar']
+    output:
+        config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.annovar.vcf"
+    params:
+        opts = "-buildver "+freeze
+                +" -protocol "+ANNOVAR_PROTOCOLS
+                +" -operation "+config['operations']
+                +" -nastring . \
+                -out joint \
+                -tempdir {config['tmpdir']} \
+                -remove \
+                -dot2underline \
+                -vcfinput",
+        dbdir = config['annovardbdir']
+    shell:
+        """
+        {input.annovar} {params.opts} {input.avinput} {params.dbdir}
+        """
+
+rule run_annovar:
+    input:
+        ANNOVARDBS,
+        avinput = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.avinput",
+        annovar = ENV3 + config['tools']['annotate_variation']
+    output:
+        config['landing_dir'][freeze] + config['results']['vcfs'] + "/annovar.done"
+    params:
+        opts = "-buildver {freeze}",
+        dbdir = config['annovardbdir']
+    run:
+        # gene based annotation
+        shell("{input.annovar} -geneanno {params.opts} {input.avinput} {params.dbdir}")
+
+        for db in config['annovardbs']:
+
+            # region based annotation
+            shell("{input.annovar} -regionanno -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
+
+            # filter based annotation
+            shell("{input.annovar} -filter -dbtype {db} {params.opts} {input.avinput} {params.dbdir}")
+
+        shell("touch {output}")
+
+rule vcf2avinput:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        cmd = ENV3 + config['tools']['vcf2avinput']
+    output:
+        config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.avinput",
+    shell:
+        "{input.cmd} -format vcf2old {input.vcf} -outfile {output}"
+
+rule install_annovar_db:
+    input:
+        annovar = ENV3 + config['tools']['annotate_variation']
+    output:
+        config['annovardbdir'] + "/{freeze}_{db}.installed"
+    params:
+        dbdir = config['annovardbdir'],
+    run:
+        opts = config['annovaropts'][wildcards.freeze][wildcards.db]
+        if wildcards.db == 'ALL.sites.2014_10':
+            shell("{input.annovar} -buildver {wildcards.freeze} {opts} 1000g2014oct {params.dbdir}")
+            shell("unzip -d {params.dbdir} {params.dbdir}/{wildcards.freeze}_1000g2014oct.zip {wildcards.freeze}_{wildcards.db}.txt")
+        else:
+            shell("{input.annovar} -buildver {wildcards.freeze} {opts} {wildcards.db} {params.dbdir}")
+        shell("touch {output}")
+
+
+rule compress_vcf:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        bgzip = ENV3 + config['tools']['bgzip']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
+    shell:
+        """
+        {input.bgzip} -c {input.vcf} > {output}
+        """
+
+rule tabix:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
+        tabix = ENV3 + config['tools']['tabix']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi",
+    shell:
+        """
+        {input.tabix} -p vcf {input.vcf}
+        """

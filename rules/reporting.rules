@@ -1,0 +1,111 @@
+rule run_multiqc:
+    input:
+        gbams = GBAMS,
+        multiqc = ENV3 + config['tools']['multiqc']
+    output: config['datadirs']['multiqc'] + '/multiqc_report.html'
+    params:
+        dirs = config['process_dir'][freeze] + config['results']['picard'],
+        outdir = config['datadirs']['multiqc'] 
+    shell:
+        """
+        {input.multiqc} -o {params.outdir} {params.dirs} fastqc # will detect input file types?
+        rm {input.gbams}
+        """
+
+# create YAML file used in meta-FastQC report
+rule makeyaml:
+    output: 
+        yaml = "fastqc.yaml",
+    params:
+        projdir = config['projdir'],
+        fastqc = config['datadirs']['fastqc'],
+        samplelanes = SAMPLELANES
+    run:
+        with open(output.yaml, "w") as out:
+           idx = 1
+           out.write("paired: yes\n") 
+           out.write("output: {0}\n".format(params.projdir)) 
+           out.write("fastqc:\n") 
+           for name in params.samplelanes:
+               out.write("  {0}\n".format(name)) 
+               out.write("  - {0}/{1}_R1_fastqc.zip\n".format(params.fastqc,name))
+               out.write("  - {0}/{1}_R2_fastqc.zip\n".format(params.fastqc,name))
+
+rule fastqc_summary:
+    input: yaml = 'summary_fastqc.yaml'
+    output: html = 'summary_fastqc.html'
+    params: projdir = config['projdir']
+    run: 
+        R("""
+        PROJECT_HOME<-"{params.projdir}";
+        path.out<-"{params.projdir}/fastqc/summary";
+        fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
+        knitr::knit("reports/summary_fastqc.Rmd")
+        rmarkdown::render('summary_fastqc.md', output_format='html_document')
+        """)
+
+
+rule make_yaml:
+    input: FASTQCS
+    output: yaml = 'summary_fastqc.yaml'
+    run:
+        # print(FASTQCS)
+        NAMES = [re.sub("\_R1_fastqc\.zip$", "", os.path.basename(name)) for name in FASTQCS if re.search("_R1_fastqc\.zip$", name)]
+        # print(NAMES)
+        with open(output.yaml, "w") as out:
+            out.write("paired: yes\n")
+            out.write("output: " + config['summary_fastqc'] + "\n");
+            out.write("fastqc:\n");
+            for name in NAMES:
+                out.write('  ' + name + ":\n");
+                out.write('  - ' + config['datadirs']['fastqc'] + '/' + name + "_R1_fastqc.zip\n");
+                out.write('  - ' + config['datadirs']['fastqc'] + '/' + name + "_R2_fastqc.zip\n");
+
+
+# create Markdown index of FastQC report files
+rule makemd:
+    output: 
+        md = config['datadirs']['website'] + "/fastqc.md",
+    run:
+        note = """
+The latest version (v0.11.4) of FastQC was downloaded from the following URL:
+[http://www.bioinformatics.babraham.ac.uk/projects/download.html#fastqc](http://www.bioinformatics.babraham.ac.uk/projects/download.html#fastqc)
+and installed as &lt;isilon&gt;/bin/fastqc.
+
+"""
+        with open(output.md, "w") as out:
+           idx = 1
+           out.write("## FastQC Reports\n") 
+           out.write(note)
+           for name in BASENAMES:
+               out.write(" " + str(idx) + ".") 
+               out.write(" **" + name + "**") 
+               out.write(" [R1]({{SLINK}}/fastqc/{0}_R1_fastqc.html)".format(name))
+               out.write(" [R2]({{SLINK}}/fastqc/{0}_R2_fastqc.html)".format(name))
+               out.write("\n\n")
+               idx += 1
+
+rule siteindex:
+    #input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
+    output:
+        config['datadirs']['website'] + "/index.md"
+    run:
+        with open(output[0], 'w') as outfile:
+            outfile.write("""
+#### De novo analysis reports
+""")
+            for s,p in zip(ANALYSES,COMPLETETRIOSFAMIDS):
+                outfile.write("> [`{0}`]({1}/{2})\n\n".format(p, SLINK, s))
+            outfile.write("""
+#### Annotated trio vcfs
+""")
+            for s in ANALYSISREADY:
+                outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
+
+            # this link won't be treated as a child page
+            #outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
+            # must add a child index to the mybic project admin page to treat this link as a child page
+            outfile.write('<a href="summary_fastqc.html">fastqc summary</a>' + "\n")
+            outfile.write("<p>\n")
+            #outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
+            outfile.write('<a href="multiqc_report.html">multiqc report</a>' + "\n")

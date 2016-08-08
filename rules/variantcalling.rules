@@ -1,0 +1,396 @@
+#### Variant Calling ####
+rule make_gvcf:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
+        doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics",
+        java = ENV3 + config['tools']['java']
+    output:
+        gvcf = temp(config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf"),
+        gidx = temp(config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.idx")
+    params:
+        jar = config['jars']['gatk'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze]
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T HaplotypeCaller \
+        -R {params.ref} \
+        -I {input.bam} \
+        --emitRefConfidence GVCF \
+        --variant_index_type LINEAR \
+        --variant_index_parameter 128000 \
+        --genotyping_mode DISCOVERY \
+        -stand_emit_conf 10 \
+        -stand_call_conf 30 \
+        -o {output.gvcf}
+        """
+
+# sanity check on gvcf files
+def check_gvcfs(gvcfs):
+    for file in gvcfs:
+        if os.path.exists(file):
+            cmd = "tail -1 " + file
+            # print(cmd)
+            (output, error) = call_command(cmd)
+            line = output.decode()
+            #if re.search(lastctg, line):
+            #    print(lastctg)
+            #    print(line)
+            if not re.search(lastctg, line):
+                print(file + ' is incomplete')
+                quit()
+    
+def call_command(command):
+    process = subprocess.Popen(command.split(' '),
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+    return process.communicate()
+
+# if supplid a subject return either only one trio for that subject
+# if supplied 'family' as the subject, then all members, including siblings are returned
+# the family argument is really for sanity checking if a subject is given
+def gvcf_samples_in_family(family,subject):
+    # joint means all existing samples
+    if family == 'joint':
+        return [GVCFS,GVCFSLIST]
+    else:
+        if subject == 'family':
+            rows = sample_table.loc[(sample_table['FamilyID'] == family)]
+        else:
+            rows = sample_table.loc[(sample_table['FamilyID'] == family) & (sample_table['Subject'] == subject)]
+        samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+        assert(len(samples)>0)
+        if subject != 'family':
+            assert(len(samples)==3)
+        gvcfs = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
+        gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
+        return [gvcfs, gvcfslist]
+
+# make sure the family is done first
+# if family size is 3, then you're done, just copy
+# otherwise make both trios
+rule trio_vcfs:
+    input:
+        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
+        family = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
+        familygvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf"
+    log:
+        config['datadirs']['log'] + "/{family}_{subject}.trio.vcf.log"
+    params:
+        jar = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[1],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        db = config['dbsnp'][freeze]
+    threads: 8
+    run:
+        assert(len(input.gvcfs)==3)
+        check_gvcfs(input.gvcfs) 
+        check_gvcfs(input.familygvcfs)
+        # use the family count to determine course of action
+        if len(input.familygvcfs)==3:
+            shell("cp {input.family} {output.vcf}")
+        else:
+            shell("""
+                {input.java} {params.opts} -jar {params.jar} \
+                -T GenotypeGVCFs \
+                --disable_auto_index_creation_and_locking_when_reading_rods \
+                --dbsnp {params.db} \
+                -nt {threads} \
+                -R {params.ref} \
+                {params.gvcfslist} \
+                -o {output.vcf} 2> {log}
+            """)
+
+rule family_vcfs:
+    input:
+        gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf.idx"
+    log:
+        config['datadirs']['log'] + "/{family}.family.vcf.log"
+    params:
+        jar = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[1],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        db = config['dbsnp'][freeze]
+    threads: 8
+    run:
+        check_gvcfs(input.gvcfs) 
+        shell("""
+        {input.java} {params.opts} -jar {params.jar} \
+        -T GenotypeGVCFs \
+        --disable_auto_index_creation_and_locking_when_reading_rods \
+        --dbsnp {params.db} \
+        -nt {threads} \
+        -R {params.ref} \
+        {params.gvcfslist} \
+        -o {output.vcf} 2> {log}
+        """)
+
+def samples_in_family(family):
+    rows = sample_table.loc[sample_table['FamilyID'] ==  family]
+    for row in rows:
+        samples += [row['Subject'],row['Mother'],row['Father']]
+
+# convert the GRIN sample table into a GATK compliant 6-column pedfile:
+# http://gatkforums.broadinstitute.org/gatk/discussion/37/pedigree-analysis
+# For these tools, the PED files must contain only the first 6 columns from the PLINK format PED file, and no alleles, like a FAM file in PLINK.
+# Family ID
+# Individual ID
+# Paternal ID
+# Maternal ID
+# Sex (1=male; 2=female; other=unknown)
+# Phenotype
+rule sample_table_to_pedfile:
+    input:
+        config['sample_table']
+    params:
+        existingsamples = EXISTINGSAMPLES
+    output:
+        config['pedfile']
+    run:
+        st = pandas.read_table("{0}".format(input))
+        complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
+        trios = st.loc[complete_trios]
+        trios['Sex']=trios['Sex'].replace(['M','F'],[1,2])
+        trios['Affected_status']=trios['Affected_status'].replace('unaffected',1)
+        trios['Affected_status']=trios['Affected_status'].replace('[^1].+', 2, regex=True)
+        ped = trios[[0,1,3,2,4,5]]
+        ped = ped.fillna(0)
+        moms = [mom for mom in list(ped['Mother'].dropna()) if mom not in list(ped['Subject'])]
+        dads = [dad for dad in list(ped['Father'].dropna()) if dad not in list(ped['Subject'])]
+        #add rows for unaffected parents
+        momfams=ped[ped['Mother'].isin(moms)]['FamilyID']
+        momdf = pandas.DataFrame(momfams)
+        momdf['Subject']=moms
+        momdf['Father']=0
+        momdf['Mother']=0
+        momdf['Sex']=2
+        momdf['Affected_status']=1
+        
+        dadfams=ped[ped['Father'].isin(dads)]['FamilyID']
+        daddf = pandas.DataFrame(dadfams)
+        daddf['Subject']=dads
+        daddf['Father']=0
+        daddf['Mother']=0
+        daddf['Sex']=1
+        daddf['Affected_status']=1
+        
+        ped = ped.append([momdf,daddf])
+        ped = ped.drop_duplicates()
+        ped = ped.sort_values(by=['FamilyID','Subject'])
+        ped.to_csv("{0}".format(output), sep='\t',index=False)
+
+# R's Varia
+rule analysis_pedfile:
+    input:
+        config['pedfile']
+    output:
+        config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.{hasheader,(headered|nohead)}.pedfile"
+    run:
+        globalpedfile = pandas.read_table("{0}".format(input))
+        
+        probandrow = globalpedfile[(globalpedfile['FamilyID'] == wildcards.family) & (globalpedfile['Subject'] == wildcards.subject)]
+        assert(len(probandrow)==1)
+        parentalrows = globalpedfile[(globalpedfile['Subject'] == probandrow['Father'].item()) | (globalpedfile['Subject'] == probandrow['Mother'].item())]
+        assert(len(parentalrows)==2)
+        ped = probandrow.append([parentalrows])
+        
+        # hashes in the family names confuse R
+        ped = ped.replace('#','',regex=True)
+        if wildcards.hasheader == 'headered':
+            ped.to_csv("{0}".format(output),sep='\t',index=False,header=True)
+        else:
+            ped.to_csv("{0}".format(output),sep='\t',index=False,header=False)
+
+rule run_phase_by_transmission:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
+        ped = config['pedfile'],
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf.idx",
+        mvf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.mendelian_violations.txt"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir']
+    log: 
+        config['datadirs']['log'] + "/{file}.phase_by_transmission.log" 
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T PhaseByTransmission \
+        -R {params.ref} \
+        -V {input.vcf} \
+        -ped {input.ped} \
+        -mvf {output.mvf} \
+        -o {output.vcf} 2> {log}
+        """
+#        --disable_auto_index_creation_and_locking_when_reading_rods \
+
+# https://www.broadinstitute.org/gatk/guide/article?id=2806
+# https://github.com/chapmanb/bcbio-nextgen/blob/master/bcbio/variation/vfilter.py
+
+rule gatk_snps_only:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf.idx"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
+    log:
+        config['datadirs']['log'] + "/{file}.gatk_snps_only.log"
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T SelectVariants \
+        -R {params.ref} \
+        -V {input.vcf} \
+        -selectType SNP \
+        -o {output.vcf} 2> {log}
+        """
+
+rule gatk_indels_only:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf.idx"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
+    log:
+        config['datadirs']['log'] + "/{file}.gatk_indels_only.log"
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -T SelectVariants \
+        -R {params.ref} \
+        -V {input.vcf} \
+        -selectType INDEL \
+        -o {output.vcf} 2> {log}
+        """
+        
+# hard filtration
+# this "filters out, not filters for" filterExpression
+rule gatk_hard_filtration_snps:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf.idx"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
+    log:
+        "log/{file}.gatk_hard_filtration.log"
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -R {params.ref} \
+        -T VariantFiltration \
+        -o {output.vcf} \
+        --variant {input.vcf} \
+        --filterExpression "QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
+        --filterName "GATK3.5-hard-filter" \
+        2> {log}
+        """
+
+rule gatk_hard_filtration_indels:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf.idx"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
+    log:
+        "log/{file}.gatk_hard_filtration.log"
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -R {params.ref} \
+        -T VariantFiltration \
+        -o {output.vcf} \
+        --variant {input.vcf} \
+        --filterExpression "QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0" \
+        --filterName "GATK3.5-hard-filter" \
+        2> {log}
+        """
+
+rule select_passing:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
+    log:
+        "log/{file}.select_passing_variants.log"
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -R {params.ref} \
+         -T SelectVariants \
+        -o {output.vcf} \
+        --variant {input.vcf} \
+        --excludeFiltered \
+        2> {log}
+        """
+
+# """Run GATK CombineVariants to combine variant files.
+#
+# The default rule combines files with suffixes filteredSNP.vcf and
+# filteredINDEL.vcf.
+# """
+rule gatk_combine_variants:
+    input:
+        snps = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.filtered.vcf",
+        indels = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.filtered.vcf",
+        java = ENV3 + config['tools']['java']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf",
+        idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf.idx"
+    params:
+        jar  = config['jars']['gatk'],
+        ref = config['ref'][freeze],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir']
+    log:
+        "log/{file}.select_passing_variants.log"
+    shell:
+        """
+        {input.java} {params.opts} -jar {params.jar} \
+        -R {params.ref} \
+        -T CombineVariants \
+        --variant  {input.snps} \
+        --variant  {input.indels} \
+        -o {output.vcf} \
+        --assumeIdenticalSamples \
+        2> {log}
+        """

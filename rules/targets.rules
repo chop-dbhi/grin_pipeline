@@ -1,0 +1,82 @@
+rule all:
+    input: 
+        trios = TRIOVCFS,
+        analysis = ANALYSES,
+        phased = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
+
+#this is useful for extracting sequences from bams
+rule extract:
+    input: EXTRACT
+
+rule rdata:
+    input: RDATA
+
+rule xbrowse:
+    input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
+
+rule comvcfs:
+    input: COMVCFS
+
+rule vepvcfs:
+    input: VEPVCFS
+
+rule triovcfs:
+    input: TRIOVCFS
+
+rule analysisready:
+    input: ANALYSISREADY
+
+rule analyses:
+    input: ANALYSES
+
+rule target_lists:
+    input: LISTS
+
+rule print_reads:
+    input: RECBAMS
+
+rule join_gvcfs:
+    input: config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.vcf"
+
+rule make_gvcfs:
+    input: GVCFS
+
+rule make_bams:
+    input: BAMS
+
+rule make_sams:
+    input: SAMS
+
+rule make_merged:
+    input: MBAMS
+
+rule pdfs:
+    input: PDFS
+
+rule recalibrate:
+    input: POSTTABLES
+
+rule combine_indels:
+    input: INDELS
+
+rule realign:     # use combined indel list
+    input: RBAMS  # realign bams
+
+rule add_group:    # must be run before create_target
+    input: GBAIS   # realign bais
+
+rule make_bais:
+    input: DBAIS
+
+rule rmdupbams:
+    input: DBAMS
+
+rule printbams:
+    run:
+        print(BAMS)
+
+rule printtrios:
+    run:
+        print(EXISTINGSAMPLES)
+        print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
+        print("gems: {0}".format(TRIOGEMS))
