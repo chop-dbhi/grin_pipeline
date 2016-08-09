@@ -30,6 +30,7 @@ bioconductor-zlibbioc=1.16.0=r3.2.2_1
 boost=1.60.0=py35_0
 boto=2.39.0=py35_0
 botocore=1.4.11=py35_0
+bwa=0.7.15=0
 cairo=1.12.18=6
 click=6.6=py35_0
 cmake=3.3.1=0
@@ -193,4 +194,4 @@ vt=2015.11.10=0
 wheel=0.29.0=py35_0
 xz=5.0.5=1
 yaml=0.1.6=0
-zlib=1.2.8=0
+zlib=1.2.8=3
