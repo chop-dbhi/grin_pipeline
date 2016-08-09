@@ -1,5 +1,3 @@
-
-
 rule gemini_db:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
@@ -52,41 +50,6 @@ rule noasterisk:
         cat {input} | sed -e 's/\*/N/g' > {output}
         """
 
-
-#trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz
-#### Analysis ####
-rule variantAnalysisSetupUind:
-    input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{familypro}.vcf.bgz",
-    output:
-        uind = config['landing_dir'][freeze] + config['results']['analysis'] + "/{familypro}.uind.RData",
-    params:
-        bsgenome = config['bioc_sets']['bsgenome'][freeze],
-        txdb     = config['bioc_sets']['txdb'][freeze],
-        snpdb    = config['bioc_sets']['snpdb'][freeze],
-        esp      = config['bioc_sets']['esp'][freeze],
-        exac     = config['bioc_sets']['exac'][freeze],
-        sift     = config['bioc_sets']['sift'][freeze],
-        phylo    = config['bioc_sets']['phylo'][freeze]
-    run:
-        R("""
-        library(dplyr)
-        library(VariantFiltering)
-        uind_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
-                                       bsgenome="{params.bsgenome}", 
-                                       txdb="{params.txdb}",   
-                                       snpdb="{params.snpdb}",
-                                       otherAnnotations=c("{params.esp}",
-                                                          "{params.exac}",
-                                                          "{params.sift}",
-                                                          "{params.phylo}"
-                                                         )
-        )
-        cat("loading unrelated\n")
-        uind <- unrelatedIndividuals(uind_param)
-        save(uind,file="{output.uind}")
-        """)
-
 rule variantAnalysisSetupModel:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
@@ -126,7 +89,7 @@ rule variantAnalysisSetupModel:
         """)
 
 def getGender(proband):
-    res = sample_table.loc[sample_table['Subject'] ==  proband,"Sex"]
+    res = SAMPLE_TABLE.loc[SAMPLE_TABLE['Subject'] ==  proband,"Sex"]
     sex = str(res.values[0])
     return sex
 
@@ -164,8 +127,6 @@ rule variantAnalysisModels:
         rmarkdown::render("{input.source}",output_file="{params.outfile}",output_dir="{params.dirpath}")
         """)
 
-        
-    
 rule run_denovogear:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
