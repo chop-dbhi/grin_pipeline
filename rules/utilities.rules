@@ -125,3 +125,9 @@ rule symlinks:
                 name = re.sub('^E', 'E0', name)
             os.symlink('../' + file, 'fastq/' + name)
 
+
+rule printtrios:
+    run:
+        print(EXISTINGSAMPLES)
+        print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
+        print("gems: {0}".format(TRIOGEMS))
