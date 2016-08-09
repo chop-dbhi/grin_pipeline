@@ -25,7 +25,7 @@ def combine(inputf,outputf):
     dlocs = dict()
     "combine indels in the individual lists into a single list"
     indels = dict()
-    for name in inputf
+    for name in inputf:
         fin = open(name, "r")
         for line in fin.readlines():
             line = re.sub('\n', '', line)
