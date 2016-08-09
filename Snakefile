@@ -8,7 +8,7 @@ import configparser
 import shutil
 from snakemake.utils import R
 from functools import cmp_to_key
-from util import varsub
+from util.varsub import varsub
 from util import lists
 """
 run on respublica
