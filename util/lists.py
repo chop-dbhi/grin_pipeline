@@ -21,11 +21,11 @@ def cmp(a,b):
        else:
            return -1
 
-def combine():
+def combine(inputf,outputf):
     dlocs = dict()
     "combine indels in the individual lists into a single list"
     indels = dict()
-    for name in LISTS:
+    for name in inputf
         fin = open(name, "r")
         for line in fin.readlines():
             line = re.sub('\n', '', line)
@@ -46,7 +46,7 @@ def combine():
     # how to sniff version?
     chrs = list(indels.keys())  # works for both version 2 and 3
     chrs.sort()
-    with open(INDELS, "w") as out:
+    with open(outputf, "w") as out:
         for chr in chrs:
             dlocs = indels[chr]
             ks = list(dlocs.keys())

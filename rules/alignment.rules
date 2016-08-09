@@ -87,7 +87,7 @@ rule combine_lists:
     input: LISTS
     output: INDELS
     run:
-         combine()
+         combine(input,output)
 
 rule realign_target:   # with one combined list file
     input:  # deduced bams
