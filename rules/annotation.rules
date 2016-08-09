@@ -1,6 +1,3 @@
-
-
-#### Annotation ####
 rule ad_vcf:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
@@ -90,8 +87,6 @@ rule run_snpeff:
          {input.vcf} > {output.vcf}
         """
 
-#### run VEP  ####
-
 rule for_xbrowse:
     input:
          VEPVCFS,
@@ -146,9 +141,6 @@ rule run_vep:
           --plugin dbNSFP," + params.xbrowse + "/data/reference_data/dbNSFP.gz,Polyphen2_HVAR_pred,CADD_phred,SIFT_pred,FATHMM_pred,MutationTaster_pred,MetaSVM_pred \
           -i " + input.vcf + " -o " + output.vep
         shell(cmd)
-
-
-#### run annovar  ####
 
 rule table_annovar:
     input:
@@ -221,7 +213,6 @@ rule install_annovar_db:
         else:
             shell("{input.annovar} -buildver {wildcards.freeze} {opts} {wildcards.db} {params.dbdir}")
         shell("touch {output}")
-
 
 rule compress_vcf:
     input:
