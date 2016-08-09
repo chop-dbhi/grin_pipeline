@@ -1,6 +1,3 @@
-rule default:
-    input: all
-
 ##############################
 ### Sequence QC
 ##############################
@@ -102,11 +99,6 @@ rule rdata:
 ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html" for trio in COMPLETETRIOSFAMIDS]
 rule analyses:
     input: ANALYSES
-rule all:
-    input: 
-        trios = TRIOVCFS,
-        analysis = ANALYSES,
-        phased = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
 
 ##############################
 ### Reporting
