@@ -9,7 +9,7 @@ import shutil
 from snakemake.utils import R
 from functools import cmp_to_key
 from util.varsub import varsub
-from util.dirs import updir, makeadir
+from util.dirs import updir, makedir
 from util.lists import combine
 """
 run on respublica

@@ -1,3 +1,5 @@
+import os
+
 def updir(d, n):
   """Given path d, go up n dirs from d and return that path"""
   ret_val = d
