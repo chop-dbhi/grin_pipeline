@@ -9,7 +9,7 @@ def makedir(adir):
     if not os.path.exists(adir):
         shell("mkdir -p " + adir)
 
-class onechromosome(dlocs):
+class onechromosome:
     def __init__(self, dlocs):
         self.dlocs = dlocs
     def cmp(a,b):
