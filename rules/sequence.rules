@@ -22,7 +22,7 @@ rule sample_concordance:
         print("Complete Families (trios or quads): {0}".format(len(COMPLETEFAMILYFAMIDS)))
         print("Incomplete Families (files missing): {0}".format(len(INCOMPLETEFAMILIES)))
         f = open(output.ic, 'w')
-        for index, row in sample_table.iterrows():
+        for index, row in SAMPLE_TABLE.iterrows():
             if row['FamilyID'] in INCOMPLETEFAMILIES:
                 f.write("{0}".format(row['FamilyID']))
                 for member in ['Mother','Father','Subject']:
