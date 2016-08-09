@@ -35,10 +35,7 @@ def check_gvcfs(gvcfs):
             # print(cmd)
             (output, error) = call_command(cmd)
             line = output.decode()
-            #if re.search(lastctg, line):
-            #    print(lastctg)
-            #    print(line)
-            if not re.search(lastctg, line):
+            if not re.search(config['lastctg'][freeze], line):
                 print(file + ' is incomplete')
                 quit()
     
@@ -57,9 +54,9 @@ def gvcf_samples_in_family(family,subject):
         return [GVCFS,GVCFSLIST]
     else:
         if subject == 'family':
-            rows = sample_table.loc[(sample_table['FamilyID'] == family)]
+            rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family)]
         else:
-            rows = sample_table.loc[(sample_table['FamilyID'] == family) & (sample_table['Subject'] == subject)]
+            rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family) & (SAMPLE_TABLE['Subject'] == subject)]
         samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
         assert(len(samples)>0)
         if subject != 'family':
@@ -137,7 +134,7 @@ rule family_vcfs:
         """)
 
 def samples_in_family(family):
-    rows = sample_table.loc[sample_table['FamilyID'] ==  family]
+    rows = SAMPLE_TABLE.loc[SAMPLE_TABLE['FamilyID'] ==  family]
     for row in rows:
         samples += [row['Subject'],row['Mother'],row['Father']]
 
