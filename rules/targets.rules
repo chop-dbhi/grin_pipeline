@@ -1,16 +1,6 @@
-
-
 ##############################
 ### Sequence QC
 ##############################
-RISAWSNAMES = ['E01621','E01623','E01622']
-RISAWSFASTQ =[s for s in SAMPLELANES for r in RISAWSNAMES if r in s]
-DOWNLOADDIR = "kiel"
-DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
-
-#this is useful for extracting sequences from bams
-rule extract:
-    input: [config['datadirs']['fastq'] + "/"+os.path.basename(name).rsplit(".")[0]+"_"+pair+".fastq.gz" for name in glob.glob(config['datadirs']['oldbams'] + "/*bam") for pair in ["R1","R2"]]
 FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
 FASTQCS = [config['datadirs']['fastqc'] + "/" + re.sub("\.fastq.gz$", "_fastqc.zip", os.path.basename(name)) for name in FASTQS]
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
@@ -27,6 +17,13 @@ MANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name in PAIRNAMESINSAMPLETAB
 UNMANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name not in PAIRNAMESINSAMPLETABLE]
 SAMPLELANES = set([name.rsplit("_",maxsplit=1)[0] for name in PAIRNAMESINSAMPLETABLE]) # ['E0974_GCTACGC_L006', 'E0975_CGAGGCT_L006', 'E0977_GTAGAGG_L006']
 EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
+RISAWSNAMES = ['E01621','E01623','E01622']
+RISAWSFASTQ =[s for s in SAMPLELANES for r in RISAWSNAMES if r in s]
+DOWNLOADDIR = "kiel"
+DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
+#this is useful for extracting sequences from bams
+rule extract:
+    input: [config['datadirs']['fastq'] + "/"+os.path.basename(name).rsplit(".")[0]+"_"+pair+".fastq.gz" for name in glob.glob(config['datadirs']['oldbams'] + "/*bam") for pair in ["R1","R2"]]
 
 ##############################
 ### Alignment
