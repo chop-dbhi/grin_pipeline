@@ -1,0 +1,133 @@
+rule mkdirs:
+    run:
+        for adir in config['datadirs']:
+            makedir(config['datadirs'][adir])
+        # would be created automatically if necessary
+        #for adir in config['results']:
+        #    makedir(config['landing_dir'][freeze] + config['results'][adir])
+rule Rdeps:
+    run:
+        R("""
+        update.packages(ask=FALSE,repos=c("http://cran.rstudio.com"))
+        source("http://bioconductor.org/biocLite.R")
+        library(devtools)
+        install_github("zhezhangsh/GtUtility")
+        install_github("zhezhangsh/awsomics")
+        biocLite(c("BSgenome.Hsapiens.UCSC.hg38",
+        "TxDb.Hsapiens.UCSC.hg38.knownGene",
+        "SNPlocs.Hsapiens.dbSNP.20120608",
+        "MafDb.ALL.wgs.phase1.release.v3.20101123",
+        "MafDb.ESP6500SI.V2.SSA137",
+        "MafDb.ExAC.r0.3.sites",
+        "phastCons100way.UCSC.hg19",
+        "PolyPhen.Hsapiens.dbSNP131",
+        "SNPlocs.Hsapiens.dbSNP144.GRCh38",
+        "SIFT.Hsapiens.dbSNP137",
+        "org.Hs.eg.db",
+        "VariantFiltering"),suppressUpdates=TRUE)
+        """)
+
+rule checkSets:
+    run:
+        for para in [
+                    "config['bioc_sets']['bsgenome'][freeze]",
+                    "config['bioc_sets']['esp'][freeze]",
+                    "config['bioc_sets']['exac'][freeze]",
+                    "config['bioc_sets']['phylo'][freeze]",
+                    "config['bioc_sets']['sift'][freeze]",
+                    "config['bioc_sets']['snpdb'][freeze]",
+                    "config['bioc_sets']['txdb'][freeze]",
+                    "config['known'][freeze]",
+                    "config['ref'][freeze]",
+                    "config['refidx'][freeze]",
+                    "config['process_dir'][freeze]",
+                    "config['landing_dir'][freeze]",
+                    "config['vepassembly'][freeze]",
+                    "config['vepgenomes'][freeze]",
+                    "config['lastctg'][freeze]",
+                    "config['dbsnp'][freeze]",
+            ]:
+            # print(para)
+            try:
+                eval(para)
+            except:
+                print("%s not set for freeze %s.\n" % (para, freeze))
+                quit()
+
+# this is a utility to put things in the correct order in case something upstream gets touched
+rule catchup:
+    params:
+        picard = config['process_dir'][freeze] + config['results']['picard'],
+        lists = config['process_dir'][freeze] + config['results']['lists'],
+        realigned = config['process_dir'][freeze] + config['results']['realigned'],
+        recalibrated = config['process_dir'][freeze] + config['results']['recalibrated'],
+        postrecalibrated = config['process_dir'][freeze] + config['results']['postrecalibrated'],
+        gvcfs = config['process_dir'][freeze] + config['results']['gvcfs'],
+        vcfs = config['landing_dir'][freeze] + config['results']['vcfs'],
+        analysis = config['landing_dir'][freeze] + config['results']['analysis']
+    shell:
+        """
+        touch {params.picard}/*rmdup.bam
+        touch {params.picard}/*txt
+        sleep 2
+        touch {params.picard}/*rmdup.bai
+        sleep 2
+        touch {params.picard}/*group.bam
+        sleep 2
+        touch {params.picard}/*group.bai
+        sleep 2
+        touch {params.lists}/*
+        sleep 2
+        touch {params.realigned}/*bam
+        sleep 2
+        touch {params.realigned}/*bai
+        sleep 2
+        touch {params.recalibrated}/*table
+        sleep 2
+        touch {params.recalibrated}/*bam
+        sleep 2
+        touch {params.recalibrated}/*bai
+        sleep 2
+        touch {params.postrecalibrated}/*bam
+        sleep 2
+        touch {params.postrecalibrated}/*bai
+        sleep 2
+        touch {params.gvcfs}/*
+        sleep 2
+        touch {params.vcfs}/*
+        sleep 2
+        touch {params.analysis}/*
+        """
+
+rule gzip:
+    input: "{sample}.{ext,(fq|fastq)}"
+    output: "{sample}.{ext}.gz"
+    shell:
+        """
+        gzip -c {input} > {output}
+        """
+
+
+#### Sequence ####
+# make symlinks
+# do this once
+# remove _001
+rule symlinks:
+     input: DOWNLOADS
+     run:
+        if not os.path.exists('fastq'):
+            shell("mkdir fastq")
+        for file in DOWNLOADS:
+            name=os.path.basename(file).replace('_001','')
+            if re.search('-L2_', name):
+                name = re.sub('-L2_', '_', name)
+            else:
+                name = re.sub('^E', 'E0', name)
+            os.symlink('../' + file, 'fastq/' + name)
+
+
+rule printtrios:
+    run:
+        print(EXISTINGSAMPLES)
+        print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
+        print("gems: {0}".format(TRIOGEMS))

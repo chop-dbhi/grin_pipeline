@@ -1,0 +1,130 @@
+rule sample_concordance:
+    output:
+        ok="samplesondisk.txt", ms="missingsamples.txt", ump="unmanifestedpairs.txt", ic="incompletefamilies.txt"
+    run:
+        if len(SAMPLELANES) != len(PAIRNAMESINSAMPLETABLE)/2:
+            print("I see {0} lanes and {1} pairs\n".format(len(SAMPLELANES),len(PAIRNAMESINSAMPLETABLE)/2))
+        print("Received Pairs (on disk): {0}".format(len(ALLPAIRNAMES)))
+        print("Unmanifested Pairs (on disk, not in sample table): {0}".format(len(UNMANIFESTEDPAIRS)))
+        f = open(output.ump, 'w')
+        for pair in sorted(UNMANIFESTEDPAIRS):
+            f.write("{0}\n".format(pair))
+        print("Existing Samples (on disk, in sample table): {0}".format(len(EXISTINGSAMPLES)))
+        print("Missing Samples (in sample table, not on disk): {0}".format(len(MISSINGSAMPLES)))
+        f = open(output.ms, 'w')
+        for sample in sorted(MISSINGSAMPLES):
+            f.write("{0}\n".format(sample))
+        print("Manifested Pairs (in sample table): {0}".format(len(PAIRNAMESINSAMPLETABLE)))
+        f = open(output.ok, 'w')
+        for sample in sorted(MANIFESTEDPAIRS):
+            f.write("{0}\n".format(sample))
+        print("Fastqs: {0} Lanes in sample table {1}".format(len(FASTQS), len(PAIRNAMESINSAMPLETABLE)))
+        print("Complete Families (trios or quads): {0}".format(len(COMPLETEFAMILYFAMIDS)))
+        print("Incomplete Families (files missing): {0}".format(len(INCOMPLETEFAMILIES)))
+        f = open(output.ic, 'w')
+        for index, row in SAMPLE_TABLE.iterrows():
+            if row['FamilyID'] in INCOMPLETEFAMILIES:
+                f.write("{0}".format(row['FamilyID']))
+                for member in ['Mother','Father','Subject']:
+                    if row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]):
+                        f.write("\t{0}".format(row[member]))
+                f.write("\n")
+
+rule validateBam:
+    input:
+        bam = config['datadirs']['oldbams'] + "/{sample}.bam"
+    output:
+        report = config['datadirs']['oldbams'] + "/{sample}.report.txt"
+    shell:
+        """
+        picard ValidateSamFile I={input.bam} O={output.report}
+        """
+
+### Extract reads from older BAM files
+rule extractreads:
+    input:
+        java = ENV3 + config['tools']['java'],
+        bam = config['datadirs']['oldbams'] + "/{sample}.bam"
+    output:
+        pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq",
+        pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq",
+        unpaired = config['datadirs']['fastq'] + "/{sample}_U.fastq"
+    log:
+        config['datadirs']['log'] + "/{sample}.extract.log"
+    params:
+        picard = config['jars']['picard']['path'],
+        md = config['jars']['picard']['samtofastq'],
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        metrics = config['process_dir'][freeze] + config['results']['picard']
+    shell:
+        """
+        {params.picard} {params.opts}  \
+        {params.md} \
+        INPUT={input.bam} \
+        FASTQ={output.pair1} \
+        SECOND_END_FASTQ={output.pair2} \
+        UNPAIRED_FASTQ={output.unpaired} \
+        INCLUDE_NON_PF_READS=TRUE \
+        VALIDATION_STRINGENCY=LENIENT 2> {log}
+        """
+
+### QC ####
+rule fastqc: 
+    input: 
+        pair1 = config['datadirs']['fastq'] + "/{sample}1.fastq.gz",
+        pair2 = config['datadirs']['fastq'] + "/{sample}2.fastq.gz",
+        seq2qc = ENV3 + config['tools']['seq2qc']
+    log: 
+        config['datadirs']['log'] + "/{sample}.fastqc.log" 
+    output: 
+        pair1 = config['datadirs']['fastqc'] + "/{sample}1_fastqc.zip",
+        pair2 = config['datadirs']['fastqc'] + "/{sample}2_fastqc.zip",
+        html1 = config['datadirs']['fastqc'] + "/{sample}1_fastqc.html",
+        html2 = config['datadirs']['fastqc'] + "/{sample}2_fastqc.html"
+    params:
+        qcdir = config['datadirs']['fastqc']
+    # how to run qsub?
+    shell: "{input.seq2qc} -o {params.qcdir} {input.pair1} {input.pair2} 2> {log}" 
+
+### Mirror to Cavatica
+# waiting on boto fix to accept cbttc bucket name with dots in it
+#import configparser
+#awsconfig = configparser.ConfigParser()
+#awsconfig.read("/home/leipzigj/.aws/credentials")
+#from snakemake.remote.S3 import RemoteProvider as S3RemoteProvider
+#S3 = S3RemoteProvider(access_key_id=awsconfig['default']['aws_access_key_id'], secret_access_key=awsconfig['default']['aws_secret_access_key'], aws_s3_calling_format='boto.s3.connection.OrdinaryCallingFormat')
+
+rule copy_to_cavatica:
+    input:
+        config['datadirs']['fastq'] + "/{filename}"
+    output:
+        "aws/{filename}.sent"
+        #S3.remote("cbttc.seq.data/Ingo_project/{filename}")
+    threads: 1
+    shell:
+        """
+        {ENV3}/aws s3 --profile cavatica cp {input} s3://cbttc.seq.data/Ingo_project/{wildcards.filename}
+        touch {output}
+        """
+
+rule mirror_cavatica:
+    input:
+        expand("aws/{filename}_{pair}.fastq.gz.sent",filename=SAMPLELANES,pair=['R1','R2'])
+#        S3.remote(expand("cbttc.seq.data/Ingo_project/{filename}.fastq.gz",filename=SAMPLELANES))
+
+rule copy_to_risaws:
+     input:
+        config['datadirs']['fastq'] + "/{filename}"
+     output:
+        "risaws/{filename}.sent"
+     threads: 1
+     shell:
+        """
+        {ENV3}/aws s3 --profile risaws cp {input} s3://wuxi-demo-trios/{wildcards.filename}
+        touch {output}
+        """
+
+
+rule mirror_risaws:
+     input:
+        expand("risaws/{filename}_{pair}.fastq.gz.sent",filename=RISAWSFASTQ,pair=['R1','R2'])

@@ -1,0 +1,143 @@
+rule gemini_db:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz",
+        tbi = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.com.filtered.ad.de.nm.snpeff.vcf.bgz.tbi",
+        ped = config['pedfile'],
+        gemini = ENV2 + config['tools']['gemini']
+    output:
+        config['process_dir'][freeze] + config['results']['gemini'] + "/{file}.gemini.db"
+    threads:
+        3
+    shell:
+        """
+        {ENV2}
+        {input.gemini} load --cores {threads} -t snpEff -v {input.vcf} -p {input.ped} {output}
+        """
+
+rule testR:
+    run:
+        #import rpy2.robjects as robjects
+        #print(robjects.r)
+        (output, error) = call_command("which R")
+        print("{0} {1}".format(output,error))
+        try:
+            import rpy2
+            print("rpy2 version is", rpy2.__version__)
+        except Exception as e:
+            print("no rpy2", e)
+        #print("")
+        #R("""
+        #rnorm(100)
+        #""")
+
+rule describeR:
+    run:
+        R("""
+        library(dplyr)
+        library(VariantFiltering)
+        print(sessionInfo())
+        """)
+
+# alter records that have a '*' in the ALT field - these are causing problems in VariantAnnotation
+# https://github.com/Bioconductor-mirror/VariantAnnotation/commit/837f1f0c9fdcdc9de7677a9a067963413dfe26e7
+rule noasterisk:
+    input:
+        vcf = "{file}.vcf"
+    output:
+        vcf = "{file}.noask.vcf"
+    shell:
+        """
+        cat {input} | sed -e 's/\*/N/g' > {output}
+        """
+
+rule variantAnalysisSetupModel:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.nohead.pedfile"
+    output:
+        result = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
+    params:
+        bsgenome = config['bioc_sets']['bsgenome'][freeze],
+        txdb     = config['bioc_sets']['txdb'][freeze],
+        snpdb    = config['bioc_sets']['snpdb'][freeze],
+        esp      = config['bioc_sets']['esp'][freeze],
+        exac     = config['bioc_sets']['exac'][freeze],
+        sift     = config['bioc_sets']['sift'][freeze],
+        phylo    = config['bioc_sets']['phylo'][freeze]
+    run:
+        model_lut = {"denovo":"deNovo","arhomo":"autosomalRecessiveHomozygous","cmpdhet":"autosomalRecessiveHeterozygous","xlinked":"xLinked"}
+        modelname=model_lut[wildcards.model]
+        if wildcards.model == 'xlinked' and getGender(wildcards.pro) == 'F':
+            print(wildcards.pro + ' is female. Why are you asking for x-linked variants?')
+            quit()
+        R("""
+        library(dplyr)
+        library(VariantFiltering)
+        var_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
+                                       pedFilename="{input.ped}", bsgenome="{params.bsgenome}", 
+                                       txdb="{params.txdb}",   
+                                       snpdb="{params.snpdb}",
+                                       otherAnnotations=c("{params.esp}",
+                                                          "{params.exac}",
+                                                          "{params.sift}",
+                                                          "{params.phylo}"
+                                                         )
+        )
+        cat("loading {modelname}\n")
+        varresult<-{modelname}(var_param)
+        save(varresult,file="{output.result}")
+        """)
+
+def getGender(proband):
+    res = SAMPLE_TABLE.loc[SAMPLE_TABLE['Subject'] ==  proband,"Sex"]
+    sex = str(res.values[0])
+    return sex
+
+# boys only
+def xlinked(wildcards):
+    if getGender(wildcards.pro)=='M':
+        return config['landing_dir'][freeze] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
+    else:
+        return []
+
+rule variantAnalysisModels:
+    input:
+        denovo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
+        arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
+        cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
+        xlinked = xlinked,
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.nohead.pedfile",
+        source = "reports/grin_epilepsy_models.Rmd"
+    output:
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
+    params:
+        dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
+        outfile = "/{family}_{pro,\w+}.{ext}.denovo.html"
+    run:
+        R("""
+        library(rmarkdown)
+        denovo<-get(load('{input.denovo}'))
+        arhomo<-get(load('{input.arhomo}'))
+        cmpdhet<-get(load('{input.cmpdhet}'))
+        if('{input.xlinked}' != ''){{
+            xlinked<-get(load('{input.xlinked}'))
+        }}
+        mytrio<-"{wildcards.family} ({wildcards.pro})"
+        ped <-read.table("{input.ped}",header=TRUE)
+        rmarkdown::render("{input.source}",output_file="{params.outfile}",output_dir="{params.dirpath}")
+        """)
+
+rule run_denovogear:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
+        ped = config['pedfile']
+    output:
+        dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt"
+    log: 
+        config['datadirs']['log'] + "/{file}.dnm_auto.log.log" 
+    shell:
+        """
+        echo "SNP_INDEL CHILD_ID chr pos ref alt maxlike_null pp_null tgt_null(child/mom/dad) snpcode code maxlike_dnm pp_dnm tgt_dnm lookup flag child_rd dad_rd mom_rd child_mq dad_mq mom_mq" > {output.dnm_auto}
+        dng dnm auto --vcf {input.vcf} --ped {input.ped} | \
+        sed 's/CHILD_ID: //g;s/chr: //g;s/pos: //g;s/ref: //g;s/alt: //g;s/maxlike_null: //g;s/pp_null: //g;s/tgt: //g;s/tgt_null(child\/mom\/dad): //g;s/snpcode: //g;s/code: //g;s/maxlike_dnm: //g;s/pp_dnm: //g;s/tgt_dnm(child\/mom\/dad): //g;s/lookup: //g;s/flag: //g;s/READ_DEPTH child: //g;s/dad: //g;s/mom: //g;s/MAPPING_QUALITY child: //g;s/dad: //g;s/mom: //g' >> {output.dnm_auto}
+        """
