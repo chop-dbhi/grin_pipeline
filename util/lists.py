@@ -10,7 +10,6 @@ def makedir(adir):
         shell("mkdir -p " + adir)
 
 def cmp(a,b):
-    global dlocs
     if dlocs[a][0] == dlocs[b][0]:
        if dlocs[a][1] > dlocs[b][1]:
            return 1
@@ -23,7 +22,7 @@ def cmp(a,b):
            return -1
 
 def combine():
-    global dlocs
+    dlocs = dict()
     "combine indels in the individual lists into a single list"
     indels = dict()
     for name in LISTS:
@@ -54,4 +53,7 @@ def combine():
             # ks.sort(key=lamda x:dlocs[x[0])
             ks.sort(key=cmp_to_key(cmp))
             for loc in ks:
-                out.write(chr + ':' + loc + "\n") 
+                out.write(chr + ':' + loc + "\n")
+    return dlocs
+
+dlocs = combine()
