@@ -1,8 +1,4 @@
-rule all:
-    input: 
-        trios = TRIOVCFS,
-        analysis = ANALYSES,
-        phased = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
+
 
 ##############################
 ### Sequence QC
@@ -112,3 +108,8 @@ rule analyses:
 ### Rules in reporting are explicit
 ### e.g. snakemake siteindex
 ##############################
+rule all:
+    input: 
+        trios = TRIOVCFS,
+        analysis = ANALYSES,
+        phased = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
