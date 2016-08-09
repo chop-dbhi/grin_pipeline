@@ -4,79 +4,111 @@ rule all:
         analysis = ANALYSES,
         phased = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
 
+##############################
+### Sequence QC
+##############################
+RISAWSNAMES = ['E01621','E01623','E01622']
+RISAWSFASTQ =[s for s in SAMPLELANES for r in RISAWSNAMES if r in s]
+DOWNLOADDIR = "kiel"
+DOWNLOADS = glob.glob(DOWNLOADDIR + "/*/fastq/*/*/*fastq.gz")
+
 #this is useful for extracting sequences from bams
 rule extract:
-    input: EXTRACT
+    input: [config['datadirs']['fastq'] + "/"+os.path.basename(name).rsplit(".")[0]+"_"+pair+".fastq.gz" for name in glob.glob(config['datadirs']['oldbams'] + "/*bam") for pair in ["R1","R2"]]
+FASTQS = glob.glob(config['datadirs']['fastq'] + "/*.gz")
+FASTQCS = [config['datadirs']['fastqc'] + "/" + re.sub("\.fastq.gz$", "_fastqc.zip", os.path.basename(name)) for name in FASTQS]
+#FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
+#Trio_SL        C2952   C2953   C2954   f       EOEE
+#ISR_#45        E08320                          f       Focal Epilepsy  x
+SAMPLE_TABLE = pandas.read_table(config['sample_table'])
+MANIFESTSAMPLES = list(set(list(SAMPLE_TABLE['Subject'])+list(SAMPLE_TABLE['Mother'].dropna())+list(SAMPLE_TABLE['Father'].dropna())))
+# ['E0974_GCTACGC_L006_R1', 'E0975_CGAGGCT_L006_R1', 'E0977_GTAGAGG_L006_R1', 'E0975_CGAGGCT_L006_R2', 'E0977_GTAGAGG_L006_R2', 'E0974_GCTACGC_L006_R2']
+ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQS])
+PAIRNAMESINSAMPLETABLE = [name for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)] # some files may not be manifested
+SAMPLESONDISK = [sample for name in ALLPAIRNAMES for sample in MANIFESTSAMPLES if name.startswith(sample)]
+MISSINGSAMPLES = [sample for sample in MANIFESTSAMPLES if sample not in SAMPLESONDISK]
+MANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name in PAIRNAMESINSAMPLETABLE]
+UNMANIFESTEDPAIRS = [name for name in ALLPAIRNAMES if name not in PAIRNAMESINSAMPLETABLE]
+SAMPLELANES = set([name.rsplit("_",maxsplit=1)[0] for name in PAIRNAMESINSAMPLETABLE]) # ['E0974_GCTACGC_L006', 'E0975_CGAGGCT_L006', 'E0977_GTAGAGG_L006']
+EXISTINGSAMPLES = set([name.split("_",maxsplit=1)[0] for name in SAMPLELANES])
 
-rule rdata:
-    input: RDATA
+##############################
+### Alignment
+##############################
+SBAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.bam" for name in SAMPLELANES] #used by mergelanes
+GBAMS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bam" for name in EXISTINGSAMPLES]  #used by multiqc
+INDELS = config['process_dir'][freeze] + config['results']['realigned'] + "/indels.list" #used by combinelists
+LISTS = [config['process_dir'][freeze] + config['results']['lists'] + "/" + name + ".list" for name in EXISTINGSAMPLES] #used by combine
 
-rule xbrowse:
-    input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
-
-rule comvcfs:
-    input: COMVCFS
-
-rule vepvcfs:
-    input: VEPVCFS
-
-rule triovcfs:
-    input: TRIOVCFS
-
-rule analysisready:
-    input: ANALYSISREADY
-
-rule analyses:
-    input: ANALYSES
-
+## Convenience intermediate targets
+rule make_sams:
+    input: [config['process_dir'][freeze] + config['results']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
+rule make_bams:
+    input: [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
+rule make_merged:
+    input: [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.merged.bam" for name in EXISTINGSAMPLES]
+rule make_bais:
+    input: [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".rmdup.bai" for name in EXISTINGSAMPLES]
+rule add_group:
+    input: [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bai" for name in EXISTINGSAMPLES]
+rule realign:
+    input: [config['process_dir'][freeze] + config['results']['realigned'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
+rule combine_indels:
+    input: INDELS
 rule target_lists:
     input: LISTS
+rule recalibrate:
+    input: [config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
 
-rule print_reads:
-    input: RECBAMS
-
+##############################
+### Variant Calling
+##############################
+GVCFS = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES] #used by gvcf_samples_in_family
+GVCFSLIST = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]) #used by gvcf_samples_in_family
+rule make_gvcfs:
+    input: GVCFS
 rule join_gvcfs:
     input: config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.vcf"
 
-rule make_gvcfs:
-    input: GVCFS
 
-rule make_bams:
-    input: BAMS
+##############################
+### Annotation
+##############################
+ANNOVARDBS = [config['annovardbdir'] + "/" + freeze + "_" + db + ".installed" for db in config['annovardbs']] #table_annovar
+ANNOVAR_PROTOCOLS = ','.join(config['annovardbs']) #table_annovar
+COMPLETETRIOSFAMIDS = sorted(list(set([row['FamilyID']+'_'+row['Subject'] for index, row in SAMPLE_TABLE.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]))) # a quad produces two trios
+TRIOVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
+rule triovcfs:
+    input: TRIOVCFS
+COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in SAMPLE_TABLE.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]) # quads are one family
+FAMILYVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
+COMVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.com.filtered.vcf" for trio in COMPLETEFAMILYFAMIDS]
+rule comvcfs:
+    input: COMVCFS
+VEPVCFS = [config['landing_dir'][freeze] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
+rule vepvcfs:
+    input: VEPVCFS
+INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in SAMPLE_TABLE.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
+ANALYSISREADY = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
+rule analysisready:
+    input: ANALYSISREADY
+rule xbrowse:
+    input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
 
-rule make_sams:
-    input: SAMS
 
-rule make_merged:
-    input: MBAMS
+##############################
+### Analysis
+##############################
+TRIOGEMS = [config['landing_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
+RDATA         = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
+rule rdata:
+    input: RDATA
+ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html" for trio in COMPLETETRIOSFAMIDS]
+rule analyses:
+    input: ANALYSES
 
-rule pdfs:
-    input: PDFS
-
-rule recalibrate:
-    input: POSTTABLES
-
-rule combine_indels:
-    input: INDELS
-
-rule realign:     # use combined indel list
-    input: RBAMS  # realign bams
-
-rule add_group:    # must be run before create_target
-    input: GBAIS   # realign bais
-
-rule make_bais:
-    input: DBAIS
-
-rule rmdupbams:
-    input: DBAMS
-
-rule printbams:
-    run:
-        print(BAMS)
-
-rule printtrios:
-    run:
-        print(EXISTINGSAMPLES)
-        print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
-        print("gems: {0}".format(TRIOGEMS))
+##############################
+### Reporting
+### Rules in reporting are explicit
+### e.g. snakemake siteindex
+##############################
