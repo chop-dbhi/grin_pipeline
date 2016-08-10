@@ -3,15 +3,35 @@ rule align:
     input:
         pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq.gz",
         pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
-        align = ENV3 + config['tools']['align']
+        align = ENV3 + config['tools']['align']['bwa']
     output:
         sam = temp(config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.sam")
     threads:
         12
     log: 
+        config['datadirs']['log'] + "/{sample}.bwa.log"
+    params:
+        refidx = config['refidx']['bwa'][freeze],
+        rg = lambda wildcards: wildcards.sample.rsplit("_",maxsplit=1)[0],
+        sm = lambda wildcards: wildcards.sample.split("_",maxsplit=1)[0]
+    shell:
+        """
+       {input.align} mem -t {threads} {params.refidx} {input.read1} {input.read2} -R '@RG\tID:{params.rg}\tSM:{params.sm}' > {output.sam} 2> {log}
+        """
+
+rule novoalign:
+    input:
+        pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq.gz",
+        pair2 = config['datadirs']['fastq'] + "/{sample}_R2.fastq.gz",
+        align = ENV3 + config['tools']['align']['novoalign']
+    output:
+        sam = temp(config['process_dir'][freeze] + config['results']['sams'] + "/{sample}.novo.sam")
+    threads:
+        12
+    log: 
         config['datadirs']['log'] + "/{sample}.novoalign.log"
     params:
-        refidx = config['refidx'][freeze]
+        refidx = config['refidx']['novoalign'][freeze]
     shell:
         """
         {input.align} -c {threads} -a -k -d {params.refidx} -o SAM -f {input.pair1} {input.pair2} 1> {output.sam} 2> {log}
