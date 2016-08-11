@@ -69,10 +69,10 @@ rule novosortbam:
         {input.sort} -m 14g -t {params.tmpdir} --threads {threads} --removeduplicates --keeptags -i -o {output.sorted} {input.bam} 2> {log}
         """
 
+#### NOTE: The combined target list routine is not actually used due to N+1 issues ####
 ## here we create individual realign target lists, one from each bam file
 ## later, the individual lists will be combined into a single list
 ## an alternative ways is to directly create a signle list from the bam files
-
 rule target_list: # create individual realign target list
     input:  # deduced bams
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam",
@@ -99,7 +99,6 @@ rule target_list: # create individual realign target list
         -known {params.knownsites} \
         -o {output.samplelist} 2> {log}
         """
-
 
 
 # combine indels from individual target alignment lists into a single list
