@@ -16,7 +16,7 @@ rule align:
         sm = lambda wildcards: wildcards.sample.split("_",maxsplit=1)[0]
     shell:
         """
-       {input.align} mem -t {threads} {params.refidx} {input.pair1} {input.pair2} -R '@RG\tID:{params.rg}\tSM:{params.sm}' > {output.sam} 2> {log}
+       {input.align} mem -t {threads} {params.refidx} {input.pair1} {input.pair2} -R '@RG\\tID:{params.rg}\\tSM:{params.sm}' > {output.sam} 2> {log}
         """
 
 rule novoalign:
