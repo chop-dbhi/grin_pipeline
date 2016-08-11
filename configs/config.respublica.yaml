@@ -93,7 +93,7 @@ refidx:
         hg38:
             $isilon/reference/human/GRCh38/genome.idx
     bwa:
-        hg37:   # created with novoindex -k 14 -s 1 human_g1k_v37.fasta.idx human_g1k_v37.fasta
+        hg37:   # bwa index genome.fa (creates .amb .ann .pac)
             $isilon/reference/human/g1k_v37/human_g1k_v37.fasta
         hg38:
             $isilon/reference/human/GRCh38/genome
