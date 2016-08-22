@@ -1,0 +1,21 @@
+# annotate using vcfanno and a config file with required annotations and fields.
+rule annotate_using_vcfanno:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.vcf",
+        vcfanno = config['tools']['vcfanno']['path'],
+        lua = config['tools']['vcfanno']['lua'],
+        conf = config['tools']['vcfanno']['conf'],
+        bgzip = ENV3 + config['tools']['bgzip']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.gz"
+    params:
+        processes = 4,
+        base_path = config['tools']['gemini']['gemini_anno']
+    shell:
+        """
+        {input.vcfanno} -p {params.processes} \
+        -base-path {params.base_path} \
+        -lua {input.lua} \
+        {input.conf} \
+        {input.vcf} | bgzip -c > {output.vcf}
+        """
