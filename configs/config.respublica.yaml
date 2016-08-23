@@ -182,7 +182,7 @@ tools:
     bgzip:
         bgzip
     vcfanno:
-        path: $isilon/bin/vcfanno/0.0.11/bin/vcfanno
+        path: vcfanno
         lua: configs/vcfanno.lua
         conf: configs/vcfanno.conf
     gemini:
