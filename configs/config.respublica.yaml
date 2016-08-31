@@ -185,6 +185,7 @@ tools:
         path: vcfanno
         lua: configs/vcfanno.lua
         conf: configs/vcfanno.conf
+    vcf2db: /mnt/isilon/cbmi/variome/bin/vcf2db/vcf2db.py
     gemini:
         gemini_tool: $isilon/bin/gemini/tools/bin/gemini
         gemini_python: $isilon/bin/gemini/tools/bin/gemini_python
