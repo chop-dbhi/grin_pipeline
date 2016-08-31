@@ -116,6 +116,7 @@ rule tabix:
         {input.tabix} -p vcf {input.vcf}
         """
 
+# annotate using vcfanno and a config file with required annotations and fields.
 rule annotate_using_vcfanno:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.vcf.bgz",
