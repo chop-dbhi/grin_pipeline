@@ -54,8 +54,8 @@ workdir: config['projdir']
 # working with minimal examples
 include:
     "rules/annotation_gemini.rules"
-# include:
-#     "rules/analysis_gemini.rules"
+include:
+    "rules/analysis_gemini.rules"
 
 #### Internal
 onsuccess:
