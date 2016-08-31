@@ -1,21 +1,29 @@
-# annotate using vcfanno and a config file with required annotations and fields.
-rule annotate_using_vcfanno:
+# create geminidb
+rule gemini_db:
     input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.vcf",
-        vcfanno = config['tools']['vcfanno']['path'],
-        lua = config['tools']['vcfanno']['lua'],
-        conf = config['tools']['vcfanno']['conf'],
-        bgzip = ENV3 + config['tools']['bgzip']
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.gz",
+        gemini_python = config['tools']['gemini']['gemini_python'],
+        vcf2db = config['tools']['vcf2db'],
+        pedfile = config['pedfile']
     output:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.gz"
-    params:
-        processes = 4,
-        base_path = config['tools']['gemini']['gemini_anno']
+        gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db"
     shell:
         """
-        {input.vcfanno} -p {params.processes} \
-        -base-path {params.base_path} \
-        -lua {input.lua} \
-        {input.conf} \
-        {input.vcf} | bgzip -c > {output.vcf}
+        {input.gemini_python} {input.vcf2db} --legacy-compression {input.vcf} {input.pedfile} {output.gemini_db}
         """
+
+# get inheritance models
+rule get_models:
+    input:
+        gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + 
+        "/{file}.ad.de.nm.snpeff.anno.db",
+        gemini_tool = config['tools']['gemini']['gemini_tool'] 
+    output:
+        gemini_out = config['landing_dir'][freeze] + config['results']['gemini'] + 
+        "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.txt"
+    run:
+        model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
+        modelname = model_lut[wildcards.model]
+        shell("{input.gemini_tool} {modelname} {input.gemini_db} > {output.gemini_out}")
+
+# make gemini reports
