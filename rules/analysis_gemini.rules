@@ -19,7 +19,7 @@ rule get_models:
         "/{file}.ad.de.nm.snpeff.anno.db",
         gemini_tool = config['tools']['gemini']['gemini_tool'] 
     output:
-        gemini_out = config['landing_dir'][freeze] + config['results']['gemini'] + 
+        gemini_out = config['landing_dir'][freeze] + config['results']['analysis'] + 
         "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.txt"
     run:
         model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
@@ -27,3 +27,26 @@ rule get_models:
         shell("{input.gemini_tool} {modelname} {input.gemini_db} > {output.gemini_out}")
 
 # make gemini reports
+rule variantAnalysisModels:
+    input:
+        denovo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.denovo.txt",
+        arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.arhomo.txt",
+        cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.cmpdhet.txt",
+        xlinked = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.xlinked.txt",
+        source = "reports/grin_epilepsy_models_gemini.Rmd"
+    output:
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.models.html"
+    params:
+        dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
+        outfile = "/{file}.ad.de.nm.snpeff.models.html"
+    run:
+        R("""
+        library(rmarkdown)
+        options(scipen = 999, stringsAsFactors = F)
+        # returns 0 if file is empty
+        denovo <- tryCatch(expr = read.delim('{input.denovo}', stringsAsFactors = F), error = function(e) 0)
+        arhomo <- tryCatch(expr = read.delim('{input.arhomo}', stringsAsFactors = F), error = function(e) 0)
+        cmpdhet <- tryCatch(expr = read.delim('{input.cmpdhet}', stringsAsFactors = F), error = function(e) 0)
+        xlinked <- tryCatch(expr = read.delim('{input.xlinked}', stringsAsFactors = F), error = function(e) 0)
+        rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}")
+        """)
