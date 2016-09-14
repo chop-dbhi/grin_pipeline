@@ -1,0 +1,315 @@
+---
+title: "GRIN Epilepsy Trio Analysis (Gemini)"
+author: "Jeremy Leipzig"
+date: "`r Sys.Date()`"
+output: html_document
+css: styles.css
+---
+```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+library(knitr)
+library(DT)
+library(plyr)
+library(dplyr)
+options(scipen = 999, stringsAsFactors = F, digits = 2)
+```
+
+```{r functions, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+# http://www.r-bloggers.com/identifying-records-in-data-frame-a-that-are-not-contained-in-data-frame-b-%E2%80%93-a-comparison/
+thisnotinthat <- function(x.1,x.2,...){
+  x.1p <- do.call("paste", x.1)
+  x.2p <- do.call("paste", x.2)
+  x.1[! x.1p %in% x.2p, ]
+}
+
+viewDataTable <- function(dat){
+  DT::datatable(dat,
+                extensions = c('Buttons'),
+                selection = "single",
+                filter = "bottom",
+                options = list(
+                  dom = 'Bfrtip',
+                  buttons = list('colvis','pageLength', 'copy','print',
+                                 list(extend = "collection",
+                                      buttons = c('csv', 'excel', 'pdf'),
+                                      text = 'Download'
+                                 )),
+                  searchHighlight = TRUE,
+                  lengthMenu = list(c(5, 10, 15, 20, 25, -1), c('5', '10', '15', '20', '25', 'All')),
+                  initComplete = JS("function(settings, json) {",
+                                    "$(this.api().table().header()).css({'background-color': '#003366', 'color': '#fff'});",
+                                    "}"),
+                  scrollX = TRUE
+                ))
+}
+```
+
+# De novo analysis
+
+Genotype Requirements:
+  
+1. all affecteds must be het
+2. all unaffected must be homref or homalt
+3. at least 1 affected kid must have unaffected parents
+4. if an affected has affected parents, it’s not de_novo
+5. all affected kids must have unaffected (or no) parents
+6. warning if none of the affected samples have parents.
+
+## Variant summary for de novo variants
+This represents a brief summary of the de novo variants.
+
+```{r denovo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+if(nrow(denovo) == 0)
+{
+  print("0 de novo variants found<br/>")
+  showChunk<-FALSE
+} else {
+  showChunk<-TRUE
+  dt <- plyr::count(denovo , 'impact_so')
+  viewDataTable(dat = data.frame(Description = dt$impact_so, 
+                                 Variants = dt$freq, 
+                                 Perc = prop.table(dt$freq)*100))
+}
+```
+
+```{r denovo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+varcount <- unique(length(denovo$variant_id))
+```
+
+There are `r varcount` de novo variants.
+
+#### Triage 1: De novo variants in recurrent genes
+
+These are variants found in the recurrent genes associated with recurrent mutations in epilepsy.
+
+```{r denovo_recurrent, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+in_recurrent <- denovo[which(denovo$recurrent_genes != "None"),]
+# denovo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
+if (nrow(in_recurrent) == 0){
+  print("No variants found in recurrent genes<br/>")
+} else { 
+  viewDataTable(dat = in_recurrent)
+}
+```
+
+#### Triage 2: De novo variants in literature genes with low tolerance
+
+These are the remaining variants cited in the literature genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
+
+```{r denovo_literature, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+in_literature <- denovo[which(denovo$literature_genes != "None" & as.numeric(denovo$rvis_score) <= 0),]
+in_literature <- thisnotinthat(x.1 = in_literature, x.2 = in_recurrent)
+# denovo %>% dplyr::filter(literature_genes != "None") %>% 
+#   dplyr::filter(rvis_score<=0) %>% 
+#   thisnotinthat(in_recurrent) -> in_literature
+if (nrow(in_literature) == 0){
+  print("No remaining variants found in literature genes<br/>")
+} else {
+  viewDataTable(dat = in_literature)
+}
+```
+
+#### Triage 3: De novo coding variants not in the above
+
+These are remaining variants that are located in the coding sequence of at least one transcript.
+
+```{r denovo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+codingonly <- denovo[which(denovo$is_coding==1),]
+codingonly <- thisnotinthat(codingonly, in_literature)
+# denovo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
+if (nrow(codingonly) == 0){
+  print("No remaining variants found in coding genes<br/>")
+} else { 
+  viewDataTable(dat = codingonly)
+}
+```
+
+#### Other de novo variants
+
+These are the remaining de novo variants
+
+```{r denovo_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+others <- thisnotinthat(denovo, codingonly)
+# denovo %>% thisnotinthat(codingonly) -> others
+viewDataTable(dat = others)
+```
+
+## Autosomal recessive homozygous
+
+Genotype Requirements:
+  
+1. all affecteds must be hom_alt
+2. no unaffected can be hom_alt (can be unknown)
+3. if parents exist they must be unaffected and het for all affected kids
+4. if there are no affecteds that have a parent, a warning is issued.
+
+## Variant summary for autosomal recessive homozygous variants
+This represents a brief summary of the autosomal recessive homozygous variants.
+
+```{r arhomo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+if(nrow(arhomo) == 0)
+{
+  print("0 autosomal recessive variants found<br/>")
+  showChunk<-FALSE
+} else {
+  showChunk<-TRUE
+  dt <- plyr::count(arhomo , 'impact_so')
+  viewDataTable(dat = data.frame(Description = dt$impact_so, 
+                                 Variants = dt$freq, 
+                                 Perc = prop.table(dt$freq)*100))
+}
+```
+
+```{r arhomo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+varcount <- unique(length(arhomo$variant_id))
+```
+
+There are `r varcount` autosomal recessive homozygous variants.
+
+#### Triage 1: Autosomal recessive homozygous variants in recurrent genes
+
+These are variants found in the genes associated with recurrent mutations in epilepsy.
+
+```{r arhomo_recurrent, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+in_recurrent <- arhomo[which(arhomo$recurrent_genes != "None"),]
+# arhomo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
+if (nrow(in_recurrent) == 0){
+  print("No variants found in recurrent genes<br/>")
+} else { 
+  viewDataTable(dat = in_recurrent)
+}
+```
+
+#### Triage 2: Autosomal recessive homozygous variants in literature genes with low tolerance
+
+These are the remaining variants cited in the genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
+
+```{r arhomo_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+in_literature <- arhomo[which(arhomo$literature_genes != "None" & as.numeric(arhomo$rvis_score) <= 0),]
+in_literature <- thisnotinthat(x.1 = in_literature, x.2 = in_recurrent)
+#arhomo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(rvis_score<=0) %>% thisnotinthat(in_recurrent) -> in_literature
+if (nrow(in_literature) == 0){
+  print("No remaining variants found in literature genes<br/>")
+} else {
+  viewDataTable(dat = in_literature)
+}
+```
+
+#### Triage 3: Autosomal recessive homozygous variants not in the above
+
+These are remaining variants that are located in the coding sequence of at least one transcript.
+
+```{r arhomo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+codingonly <- arhomo[which(arhomo$is_coding==1),]
+codingonly <- thisnotinthat(codingonly, in_literature)
+#arhomo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
+if (nrow(codingonly) == 0){
+  print("No remaining variants found in coding genes<br/>")
+} else { 
+  viewDataTable(dat = codingonly)
+}
+```
+
+#### Other autosomal recessive homozygous variants
+
+These are the remaining autosomal recessive homozygous variants
+
+```{r arhomo_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+others <- thisnotinthat(arhomo, codingonly)
+#arhomo %>% thisnotinthat(codingonly) -> others
+viewDataTable(dat = others)
+```
+
+## Compound Heterozygotes
+
+Many autosomal recessive disorders are caused by compound heterozygotes. Unlike canonical recessive sites where the same recessive allele is inherited from both parents at the _same_ site in the gene, compound heterozygotes occur when the individual’s phenotype is caused by two heterozygous recessive alleles at _different_ sites in a particular gene.
+
+Genotype Requirements:
+  
+1. All affected individuals must be heterozygous at both sites.
+2. No unaffected can be homozygous alterate at either site.
+3. Neither parent of an affected sample can be homozygous reference at both sites.
+4. If any unphased-unaffected is het at both sites, the site will be give lower priority
+5. No phased-unaffected can be heterozygous at both sites.
+6. Remove candidates where an affected from the same family does NOT share the same het pair.
+7. Sites are automatically phased by transmission when parents are present in order to remove false positive candidates.
+
+## Variant summary for Compound Heterozygotes
+
+This represents a brief summary of the Compound Heterozygotes.
+
+```{r cmpdhet_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+if(nrow(cmpdhet) == 0)
+{
+  print("0 Compound Heterozygotes found<br/>")
+  showChunk<-FALSE
+} else {
+  showChunk<-TRUE
+  dt <- plyr::count(cmpdhet , 'impact_so')
+  viewDataTable(dat = data.frame(Description = dt$impact_so, 
+                                 Variants = dt$freq, 
+                                 Perc = prop.table(dt$freq)*100))
+}
+```
+
+```{r cmpdhet_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+varcount <- unique(length(arhomo$variant_id))
+```
+
+There are `r varcount` compound heterozygotes.
+
+#### Triage 1: Compound Heterozygotes in recurrent genes
+
+These are variants found in the genes associated with recurrent mutations in epilepsy.
+
+```{r cmpdhet_recurrent, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+in_recurrent <- cmpdhet[which(cmpdhet$recurrent_genes != "None"),]
+# cmpdhet %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
+if (nrow(in_recurrent) == 0){
+  print("No variants found in recurrent genes<br/>")
+} else { 
+  viewDataTable(dat = in_recurrent)
+}
+```
+
+#### Triage 2: Compound Heterozygotes in literature genes with low tolerance
+
+These are the remaining variants cited in the genes cited in the existing literature. 
+Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
+
+```{r cmpdhet_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+in_literature <- cmpdhet[which(cmpdhet$literature_genes != "None" & as.numeric(cmpdhet$rvis_score) <= 0),]
+in_literature <- thisnotinthat(x.1 = in_literature, x.2 = in_recurrent)
+# cmpdhet %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(rvis_score<=0) %>% thisnotinthat(in_recurrent) -> in_literature
+if (nrow(in_literature) == 0){
+  print("No remaining variants found in literature genes<br/>")
+} else {
+  viewDataTable(dat = in_literature)
+}
+```
+
+#### Triage 3: Compound Heterozygotes not in the above
+
+These are remaining variants that are located in the coding sequence of at least one transcript.
+
+```{r cmpdhet_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+codingonly <- cmpdhet[which(cmpdhet$is_coding==1),]
+codingonly <- thisnotinthat(codingonly, in_literature)
+#cmpdhet %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
+if (nrow(codingonly) == 0){
+  print("No remaining variants found in coding genes<br/>")
+} else { 
+  viewDataTable(dat = codingonly)
+}
+```
+
+#### Other Compound Heterozygotes
+
+These are the remaining compound heterozygotes
+
+```{r cmpdhet_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+others <- thisnotinthat(cmpdhet, codingonly)
+# cmpdhet %>% thisnotinthat(codingonly) -> others
+viewDataTable(dat = others)
+```
+
+#### Done
