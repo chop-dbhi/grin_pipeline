@@ -10,7 +10,7 @@ library(knitr)
 library(DT)
 library(plyr)
 library(dplyr)
-options(scipen = 999, stringsAsFactors = F, digits = 2)
+options(digits = 2)
 ```
 
 ```{r functions, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
@@ -35,9 +35,9 @@ viewDataTable <- function(dat){
                                  )),
                   searchHighlight = TRUE,
                   lengthMenu = list(c(5, 10, 15, 20, 25, -1), c('5', '10', '15', '20', '25', 'All')),
-                  initComplete = JS("function(settings, json) {",
-                                    "$(this.api().table().header()).css({'background-color': '#003366', 'color': '#fff'});",
-                                    "}"),
+                  initComplete = DT::JS("function(settings, json) {",
+                                        "$(this.api().table().header()).css({'background-color': '#003366', 'color': '#fff'});",
+                                        "}"),
                   scrollX = TRUE
                 ))
 }
@@ -82,8 +82,7 @@ There are `r varcount` de novo variants.
 These are variants found in the recurrent genes associated with recurrent mutations in epilepsy.
 
 ```{r denovo_recurrent, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-in_recurrent <- denovo[which(denovo$recurrent_genes != "None"),]
-# denovo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
+denovo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
 if (nrow(in_recurrent) == 0){
   print("No variants found in recurrent genes<br/>")
 } else { 
@@ -96,11 +95,7 @@ if (nrow(in_recurrent) == 0){
 These are the remaining variants cited in the literature genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
 
 ```{r denovo_literature, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-in_literature <- denovo[which(denovo$literature_genes != "None" & as.numeric(denovo$rvis_score) <= 0),]
-in_literature <- thisnotinthat(x.1 = in_literature, x.2 = in_recurrent)
-# denovo %>% dplyr::filter(literature_genes != "None") %>% 
-#   dplyr::filter(rvis_score<=0) %>% 
-#   thisnotinthat(in_recurrent) -> in_literature
+denovo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
 if (nrow(in_literature) == 0){
   print("No remaining variants found in literature genes<br/>")
 } else {
@@ -113,9 +108,7 @@ if (nrow(in_literature) == 0){
 These are remaining variants that are located in the coding sequence of at least one transcript.
 
 ```{r denovo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-codingonly <- denovo[which(denovo$is_coding==1),]
-codingonly <- thisnotinthat(codingonly, in_literature)
-# denovo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
+denovo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
 if (nrow(codingonly) == 0){
   print("No remaining variants found in coding genes<br/>")
 } else { 
@@ -129,7 +122,6 @@ These are the remaining de novo variants
 
 ```{r denovo_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 others <- thisnotinthat(denovo, codingonly)
-# denovo %>% thisnotinthat(codingonly) -> others
 viewDataTable(dat = others)
 ```
 
@@ -170,8 +162,7 @@ There are `r varcount` autosomal recessive homozygous variants.
 These are variants found in the genes associated with recurrent mutations in epilepsy.
 
 ```{r arhomo_recurrent, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-in_recurrent <- arhomo[which(arhomo$recurrent_genes != "None"),]
-# arhomo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
+arhomo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
 if (nrow(in_recurrent) == 0){
   print("No variants found in recurrent genes<br/>")
 } else { 
@@ -184,9 +175,7 @@ if (nrow(in_recurrent) == 0){
 These are the remaining variants cited in the genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
 
 ```{r arhomo_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-in_literature <- arhomo[which(arhomo$literature_genes != "None" & as.numeric(arhomo$rvis_score) <= 0),]
-in_literature <- thisnotinthat(x.1 = in_literature, x.2 = in_recurrent)
-#arhomo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(rvis_score<=0) %>% thisnotinthat(in_recurrent) -> in_literature
+arhomo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
 if (nrow(in_literature) == 0){
   print("No remaining variants found in literature genes<br/>")
 } else {
@@ -199,9 +188,7 @@ if (nrow(in_literature) == 0){
 These are remaining variants that are located in the coding sequence of at least one transcript.
 
 ```{r arhomo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-codingonly <- arhomo[which(arhomo$is_coding==1),]
-codingonly <- thisnotinthat(codingonly, in_literature)
-#arhomo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
+arhomo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
 if (nrow(codingonly) == 0){
   print("No remaining variants found in coding genes<br/>")
 } else { 
@@ -214,8 +201,7 @@ if (nrow(codingonly) == 0){
 These are the remaining autosomal recessive homozygous variants
 
 ```{r arhomo_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-others <- thisnotinthat(arhomo, codingonly)
-#arhomo %>% thisnotinthat(codingonly) -> others
+arhomo %>% thisnotinthat(codingonly) -> others
 viewDataTable(dat = others)
 ```
 
@@ -262,8 +248,7 @@ There are `r varcount` compound heterozygotes.
 These are variants found in the genes associated with recurrent mutations in epilepsy.
 
 ```{r cmpdhet_recurrent, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-in_recurrent <- cmpdhet[which(cmpdhet$recurrent_genes != "None"),]
-# cmpdhet %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
+cmpdhet %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
 if (nrow(in_recurrent) == 0){
   print("No variants found in recurrent genes<br/>")
 } else { 
@@ -277,9 +262,7 @@ These are the remaining variants cited in the genes cited in the existing litera
 Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
 
 ```{r cmpdhet_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-in_literature <- cmpdhet[which(cmpdhet$literature_genes != "None" & as.numeric(cmpdhet$rvis_score) <= 0),]
-in_literature <- thisnotinthat(x.1 = in_literature, x.2 = in_recurrent)
-# cmpdhet %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(rvis_score<=0) %>% thisnotinthat(in_recurrent) -> in_literature
+cmpdhet %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
 if (nrow(in_literature) == 0){
   print("No remaining variants found in literature genes<br/>")
 } else {
@@ -292,9 +275,7 @@ if (nrow(in_literature) == 0){
 These are remaining variants that are located in the coding sequence of at least one transcript.
 
 ```{r cmpdhet_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-codingonly <- cmpdhet[which(cmpdhet$is_coding==1),]
-codingonly <- thisnotinthat(codingonly, in_literature)
-#cmpdhet %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
+cmpdhet %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
 if (nrow(codingonly) == 0){
   print("No remaining variants found in coding genes<br/>")
 } else { 
@@ -307,8 +288,7 @@ if (nrow(codingonly) == 0){
 These are the remaining compound heterozygotes
 
 ```{r cmpdhet_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-others <- thisnotinthat(cmpdhet, codingonly)
-# cmpdhet %>% thisnotinthat(codingonly) -> others
+cmpdhet %>% thisnotinthat(codingonly) -> others
 viewDataTable(dat = others)
 ```
 
