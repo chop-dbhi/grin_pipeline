@@ -1,6 +1,0 @@
-# this file lists channels to the conda
-# just update this file if you have new channels to add
-drramki
-r
-bioconda
-conda-forge
