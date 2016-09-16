@@ -66,10 +66,6 @@ include:
 include:
     "rules/analysis.rules"
 include:
-    "rules/annotation_gemini.rules"
-include:
-    "rules/analysis_gemini.rules"
-include:
     "rules/reporting.rules"
 
 rule all:
