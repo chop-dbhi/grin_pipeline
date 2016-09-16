@@ -1,0 +1,7 @@
+channels:
+  - drramki
+  - r
+  - bioconda
+  - defaults
+  - conda-forge
+always_yes: true
