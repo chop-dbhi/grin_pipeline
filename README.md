@@ -7,19 +7,11 @@ Do this once:
 wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 sh Miniconda3-latest-Linux-x86_64.sh
 # type "yes"
-# allow this to install into your home
-conda config --add channels bioconda
-conda config --add channels r
-conda config --add channels asmeurer
-conda config --add channels drramki
+#replace the your .condarc with the one included here
+cp configs/.condarc ~/.condarc
 conda create --name grinenv --file requirements.txt python=3.5
 source activate grinenv
 ```
-
-### Fetch dependencies
-```
-snakemake Rdeps
-````
 
 ### To run a trio
 ```
