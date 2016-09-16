@@ -142,7 +142,7 @@ results:  # subdirectories in process_dir or landing_dir
     pdfs:             pdfs
     gvcfs:            gvcfs
     vep:              vep
-    vtpeek:           vcf
+    vtmeta:           vtmeta
     gemini:           gemini
     vcfs:             vcfs
     analysis:         analysis
@@ -181,8 +181,15 @@ tools:
         tabix
     bgzip:
         bgzip
+    vcfanno:
+        path: vcfanno
+        lua: configs/vcfanno.lua
+        conf: configs/vcfanno.conf
+    vcf2db: $isilon/bin/vcf2db/vcf2db.py
     gemini:
-        $isilon/bin/gemini/bin/gemini
+        gemini_tool: $isilon/bin/gemini/tools/bin/gemini
+        gemini_python: $isilon/bin/gemini/tools/bin/gemini_python
+        gemini_anno: $isilon/bin/gemini/data/gemini_data
     vep:
         $isilon/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
     multiqc:
@@ -209,12 +216,14 @@ jars:
     gatk:
         $isilon/bin/GATK/GenomeAnalysisTK.jar
     snpeff:
+        cnf:
+            hg37: configs/snpEff.GRCh37.config
+            hg38: configs/snpEff.GRCh38.config
         path:
             snpEff
-        cnf:
-            configs/snpEff.GRCh38.4.2.config
         db:
-            GRCh38.82
+            hg37: GRCh37.75
+            hg38: GRCh38.82
         ud:
             '10'
         format:
