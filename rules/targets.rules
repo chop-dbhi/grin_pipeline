@@ -93,10 +93,9 @@ rule xbrowse:
 ### Analysis
 ##############################
 TRIOGEMS = [config['landing_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
-RDATA         = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask." + model + ".RData" for trio in COMPLETETRIOSFAMIDS for model in ['denovo','arhomo']]
-rule rdata:
-    input: RDATA
-ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.models.html" for trio in COMPLETETRIOSFAMIDS]
+
+# note we are leaving out the GATK phasing here
+ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.models.html" for trio in COMPLETETRIOSFAMIDS]
 rule analyses:
     input: ANALYSES
 
