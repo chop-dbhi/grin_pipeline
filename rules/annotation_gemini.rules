@@ -122,7 +122,7 @@ rule annotate_using_vcfanno:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.vcf.bgz",
         vcfanno = ENV3 + config['tools']['vcfanno']['path'],
         lua = config['tools']['vcfanno']['lua'],
-        conf = config['tools']['vcfanno']['conf'],
+        conf = config['tools']['vcfanno']['conf'][freeze],
         bgzip = ENV3 + config['tools']['bgzip']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.gz"
