@@ -184,7 +184,9 @@ tools:
     vcfanno:
         path: vcfanno
         lua: configs/vcfanno.lua
-        conf: configs/vcfanno.conf
+        conf: 
+            hg37: configs/vcfanno_GRCh37.conf
+            hg38: configs/vcfanno_GRCh38.conf
     vcf2db: $isilon/bin/vcf2db/vcf2db.py
     gemini:
         gemini_tool: $isilon/bin/gemini/tools/bin/gemini
