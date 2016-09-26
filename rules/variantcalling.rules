@@ -299,7 +299,7 @@ rule gatk_hard_filtration_snps:
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
     log:
-        "log/{file}.gatk_hard_filtration.log"
+        config['datadirs']['log'] + "/{file}.gatk_hard_filtration.log"
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -324,7 +324,7 @@ rule gatk_hard_filtration_indels:
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
     log:
-        "log/{file}.gatk_hard_filtration.log"
+        config['datadirs']['log'] + "/{file}.gatk_hard_filtration.log"
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -349,7 +349,7 @@ rule select_passing:
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
     log:
-        "log/{file}.select_passing_variants.log"
+        config['datadirs']['log'] + "/{file}.select_passing_variants.log"
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
@@ -379,7 +379,7 @@ rule gatk_combine_variants:
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir']
     log:
-        "log/{file}.select_passing_variants.log"
+        config['datadirs']['log'] + "/{file}.select_passing_variants.log"
     shell:
         """
         {input.java} {params.opts} -jar {params.jar} \
