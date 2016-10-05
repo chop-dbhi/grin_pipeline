@@ -1,0 +1,146 @@
+import uuid
+import hashlib
+mapping = {}
+names = {}
+uuids = {}
+chksums = {}
+buckets = {}
+mapped = 'mapped/mapping.txt'
+
+def get_md5(file, block_size=2**20):
+# http://stackoverflow.com/questions/1131220/get-md5-hash-of-big-files-in-python
+    md5 = hashlib.md5() # must get a new instance!!!!!
+    with open(file,'rb') as f:
+        for chunk in iter(lambda: f.read(block_size), b''):
+             md5.update(chunk)
+    return md5.hexdigest()
+
+def get_mapped():
+    global names
+    global mapping
+    global uuids
+
+    if os.path.exists(mapped):
+        fmap = open(mapped, "r")
+        for line in fmap.readlines():
+            line = line.rstrip().lstrip()
+            (uid, name, chksum, bucket) = line.split()
+
+            name = re.sub('\.fastq.gz$', '', name)
+            uid = re.sub('\.fastq.gz$', '', uid)
+            names[name] = uid
+            chksums[name] = chksum
+            buckets[name] = bucket
+            root = re.sub('_R[12].*$', '', name)
+            uid = re.sub('_R[12]$', '', uid)
+            mapping[root] = uid
+            uuids[uid] = 1
+        fmap.close()
+
+def get_fastq_files():
+    fastqs = []
+    
+    if os.path.exists("files.txt"):
+        fin = open("files.txt", "r")
+        for line in fin.readlines():
+            if re.search('^\s*#', line):  # comment lines
+                continue
+            if re.search('^\s*$', line):  # blank lines
+                continue
+            name = re.sub('#.*$', '', line).rstrip().lstrip() # also remove comments
+            fastqs.append(name)
+        fin.close()
+    else:
+        print("files.txt doesn't exist!")
+
+    return(fastqs)
+
+def get_uuid(name):
+    global mapping
+    global uuids
+    # name = re.sub('.*/', '', name)
+    # name = name.rstrip('.gz')    # make sure files are gziped
+    # root = re.sub('_R[12].*\.fastq\.gz$', '', name)
+    root = re.sub('_R[12].*$', '', name)
+    tail = re.sub(root, '', name)
+    tail = re.sub('^(...).*', r'\1', tail)
+
+    if root in mapping:
+        uid = mapping[root]
+    else:
+        uid = str(uuid.uuid4())
+        while uid in uuids:       # make sure no collision
+            uid = str(uuid.uuid4())
+        uuids[uid] = 1
+        mapping[root] = uid
+
+    return uid + tail
+
+def get_uuids():
+    global uuids
+    global names
+    global mapping
+
+    has_new = False
+
+    get_mapped()
+
+    for bucket in get_fastq_files():
+        name = re.sub('.*/', '', bucket)
+        name = re.sub('\.fastq.gz$', '', name)
+        if not name in names:
+            has_new = True
+            # print(name)
+            bucket = re.sub('/.*$', '', bucket)
+            uid = get_uuid(name)
+            buckets[name] = bucket
+            names[name] = uid
+            chksums[name] = get_md5('fastq/' + name + '.fastq.gz')
+     
+    if has_new:
+        keys = sorted(list(names.keys()))
+        with open(mapped, "w") as fmap:
+            for name in keys:
+               # print(name)
+               fmap.write(names[name] + ".fastq.gz " + name + ".fastq.gz " + chksums[name] + " " + buckets[name] + "\n")
+
+    return [name + '.fastq.gz' for name in names]
+
+def upload_mapfile():
+    tgt = "test/mapping.txt"
+    cmd = "aws --profile risaws s3api put-object --bucket chop-grin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, mapped)
+    print(cmd)
+    # shell(cmd)
+
+rule mapping:
+    input: fastq = "fastq/{name}.fastq.gz"
+    output: fastq = "mapped/{name}.fastq.gz"
+    run:
+        tgt = names[wildcards.name] + '.fastq.gz'
+
+        if not os.path.exists(tgt):
+            cmd = "ln -s ../%s mapped/%s" % (input.fastq, tgt)
+            # print(cmd)
+            shell(cmd)
+
+        cmd = "ln -s %s mapped/%s.fastq.gz" % (tgt, wildcards.name)
+        # print(cmd)
+        shell(cmd)
+
+rule uploading:
+    input: fastq = "mapped/{name}.fastq.gz"
+    output: fastq = "uploaded/{name}.fastq.gz"
+    run:
+        bucket = buckets[wildcards.name]
+        name = names[wildcards.name] + '.fastq.gz'
+        tgt = bucket + '/' + name
+        src = 'fastq/' + wildcards.name + '.fastq.gz'
+
+        # print('copy ' + src + ' to ' + tgt + ' ...')
+        cmd = "aws --profile risaws s3api put-object --bucket chop-grin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, src)
+        # print(cmd)
+        # shell(cmd)
+
+        cmd = "ln -s ../mapped/%s %s" % (name, output.fastq)
+        # print(cmd)
+        shell(cmd)
