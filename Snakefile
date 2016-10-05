@@ -67,6 +67,8 @@ include:
     "rules/analysis.rules"
 include:
     "rules/reporting.rules"
+include:
+    "rules/uuid.rules"
 
 rule all:
     input: 
