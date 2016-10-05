@@ -91,7 +91,7 @@ rule xbrowse:
 rule upload_files:
     input: ['uploaded/' + name for name in get_uuids()]
     run:
-        print(mapped)
+        upload_mapfile()
 
 rule map_uuid:
     input: ['mapped/' + name for name in get_uuids()]

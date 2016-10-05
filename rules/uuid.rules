@@ -106,13 +106,11 @@ def get_uuids():
 
     return [name + '.fastq.gz' for name in names]
 
-rule upload_files:
-    input: ['uploaded/' + name for name in get_uuids()]
-    run:
-        print(mapped)
-
-rule map_uuid:
-    input: ['mapped/' + name for name in get_uuids()]
+def upload_mapfile():
+    tgt = "test/mapping.txt"
+    cmd = "aws --profile risaws s3api put-object --bucket chop-grin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, mapped)
+    print(cmd)
+    # shell(cmd)
 
 rule mapping:
     input: fastq = "fastq/{name}.fastq.gz"
@@ -141,6 +139,7 @@ rule uploading:
         # print('copy ' + src + ' to ' + tgt + ' ...')
         cmd = "aws --profile risaws s3api put-object --bucket chop-grin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, src)
         # print(cmd)
+        # shell(cmd)
 
         cmd = "ln -s ../mapped/%s %s" % (name, output.fastq)
         # print(cmd)
