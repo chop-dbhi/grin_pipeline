@@ -1,0 +1,88 @@
+rule variantAnalysisSetupModel:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{pro,\w+}.{ext}.vcf.bgz",
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.nohead.pedfile"
+    output:
+        result = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.{model,(denovo|arhomo|cmpdhet|xlinked)}.RData"
+    params:
+        bsgenome = config['bioc_sets']['bsgenome'][freeze],
+        txdb     = config['bioc_sets']['txdb'][freeze],
+        snpdb    = config['bioc_sets']['snpdb'][freeze],
+        esp      = config['bioc_sets']['esp'][freeze],
+        exac     = config['bioc_sets']['exac'][freeze],
+        sift     = config['bioc_sets']['sift'][freeze],
+        phylo    = config['bioc_sets']['phylo'][freeze]
+    run:
+        model_lut = {"denovo":"deNovo","arhomo":"autosomalRecessiveHomozygous","cmpdhet":"autosomalRecessiveHeterozygous","xlinked":"xLinked"}
+        modelname=model_lut[wildcards.model]
+        if wildcards.model == 'xlinked' and getGender(wildcards.pro) == 'F':
+            print(wildcards.pro + ' is female. Why are you asking for x-linked variants?')
+            quit()
+        R("""
+        library(dplyr)
+        library(VariantFiltering)
+        var_param <- VariantFilteringParam(vcfFilenames="{input.vcf}",
+                                       pedFilename="{input.ped}", bsgenome="{params.bsgenome}", 
+                                       txdb="{params.txdb}",   
+                                       snpdb="{params.snpdb}",
+                                       otherAnnotations=c("{params.esp}",
+                                                          "{params.exac}",
+                                                          "{params.sift}",
+                                                          "{params.phylo}"
+                                                         )
+        )
+        cat("loading {modelname}\n")
+        varresult<-{modelname}(var_param)
+        save(varresult,file="{output.result}")
+        """)
+        
+rule variantAnalysisModels:
+    input:
+        denovo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.denovo.RData",
+        arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.arhomo.RData",
+        cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.cmpdhet.RData",
+        xlinked = xlinked,
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.nohead.pedfile",
+        source = "reports/grin_epilepsy_models.Rmd"
+    output:
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{pro,\w+}.{ext}.models.html"
+    params:
+        dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
+        outfile = "/{family}_{pro,\w+}.{ext}.denovo.html"
+    run:
+        R("""
+        library(rmarkdown)
+        denovo<-get(load('{input.denovo}'))
+        arhomo<-get(load('{input.arhomo}'))
+        cmpdhet<-get(load('{input.cmpdhet}'))
+        if('{input.xlinked}' != ''){{
+            xlinked<-get(load('{input.xlinked}'))
+        }}
+        mytrio<-"{wildcards.family} ({wildcards.pro})"
+        ped <-read.table("{input.ped}",header=TRUE)
+        rmarkdown::render("{input.source}",output_file="{params.outfile}",output_dir="{params.dirpath}")
+        """)
+
+rule testR:
+    run:
+        #import rpy2.robjects as robjects
+        #print(robjects.r)
+        (output, error) = call_command("which R")
+        print("{0} {1}".format(output,error))
+        try:
+            import rpy2
+            print("rpy2 version is", rpy2.__version__)
+        except Exception as e:
+            print("no rpy2", e)
+        #print("")
+        #R("""
+        #rnorm(100)
+        #""")
+
+rule describeR:
+    run:
+        R("""
+        library(dplyr)
+        library(VariantFiltering)
+        print(sessionInfo())
+        """)
