@@ -221,10 +221,10 @@ jars:
                         configs/snpEff.GRCh37.config
                 db:
                         GRCh37.75
-    ud:
-        '10'
+        ud:
+            '10'
         format:
-                -classic
+                    -classic
 
 bioc_sets:
     bsgenome:
