@@ -211,20 +211,20 @@ jars:
     snpeff:
         path:
             snpEff
-	hg37:
-	        cnf:
-			configs/snpEff.GRCh38.config
-        	db:
-			GRCh38.82
-	hg38:
+        hg37:
+                cnf:
+                        configs/snpEff.GRCh38.config
+                db:
+                        GRCh38.82
+        hg38:
                 cnf:
                         configs/snpEff.GRCh37.config
                 db:
                         GRCh37.75
-        ud:
-            '10'
+    ud:
+        '10'
         format:
-            -classic
+                -classic
 
 bioc_sets:
     bsgenome:

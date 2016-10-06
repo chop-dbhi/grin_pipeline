@@ -72,12 +72,11 @@ rule run_snpeff:
         snpeff  = config['jars']['snpeff']['path'],
         conf = config['jars']['snpeff']['cnf'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
-        database = config['jars']['snpeff']['db'],
-        updown = config['jars']['snpeff']['ud'],
+        database = config['jars']['snpeff'][freeze]['db'],
+        updown = config['jars']['snpeff'][freeze]['ud'],
         format = config['jars']['snpeff']['format']
     shell:
         """
-        source /home/leipzigj/miniconda3/envs/grinenv/bin/activate grinenv 
         {params.snpeff} \
         {params.opts} \
         -c {params.conf} \
