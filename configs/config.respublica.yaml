@@ -211,10 +211,16 @@ jars:
     snpeff:
         path:
             snpEff
-        cnf:
-            configs/snpEff.GRCh38.4.2.config
-        db:
-            GRCh38.82
+	hg37:
+	        cnf:
+			configs/snpEff.GRCh38.config
+        	db:
+			GRCh38.82
+	hg38:
+                cnf:
+                        configs/snpEff.GRCh37.config
+                db:
+                        GRCh37.75
         ud:
             '10'
         format:
