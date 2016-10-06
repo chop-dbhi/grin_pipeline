@@ -70,10 +70,10 @@ rule run_snpeff:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snpeff.vcf"
     params:
         snpeff  = config['jars']['snpeff']['path'],
-        conf = config['jars']['snpeff']['cnf'],
+        conf = config['jars']['snpeff'][freeze]['cnf'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         database = config['jars']['snpeff'][freeze]['db'],
-        updown = config['jars']['snpeff'][freeze]['ud'],
+        updown = config['jars']['snpeff']['ud'],
         format = config['jars']['snpeff']['format']
     shell:
         """
