@@ -96,6 +96,7 @@ rule target_list: # create individual realign target list
         -R {params.ref} \
         -I {input.bam} \
         -nt {threads} \
+        -nct 1 \
         -known {params.knownsites} \
         -o {output.samplelist} 2> {log}
         """
@@ -185,6 +186,7 @@ rule recalibrate_bam:
         """
         {input.java} {params.opts} -jar {params.jar} \
         -T PrintReads \
+        -nt 1 \
         -nct {threads} \
         -R {params.ref} \
         -I {input.bam} \
