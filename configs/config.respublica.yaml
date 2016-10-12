@@ -216,7 +216,8 @@ jars:
         samtofastq:
             SamToFastq
     gatk:
-        $isilon/bin/GATK/GenomeAnalysisTK.jar
+        path:
+            gatk
     snpeff:
         cnf:
             hg37: configs/snpEff.GRCh37.config

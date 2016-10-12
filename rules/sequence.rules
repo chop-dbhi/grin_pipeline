@@ -43,7 +43,6 @@ rule validateBam:
 ### Extract reads from older BAM files
 rule extractreads:
     input:
-        java = ENV3 + config['tools']['java'],
         bam = config['datadirs']['oldbams'] + "/{sample}.bam"
     output:
         pair1 = config['datadirs']['fastq'] + "/{sample}_R1.fastq",
