@@ -49,7 +49,7 @@ snakemake -j 300 --cluster-config configs/cluster.yaml -c "qsub -V -l h_vmem={cl
 ### Development
 To update the requirements file (after installing some new package):
 ```
-conda list -e > requirements.txt
+conda list --explicit > requirements.txt
 ```
 
 To update your conda environment with a new requirements file:
