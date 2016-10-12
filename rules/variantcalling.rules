@@ -6,8 +6,8 @@ rule make_gvcf:
         doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics",
         java = ENV3 + config['tools']['java']
     output:
-        gvcf = temp(config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf"),
-        gidx = temp(config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.idx")
+        gvcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf",
+        gidx = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.idx"
     params:
         jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
@@ -99,6 +99,7 @@ rule trio_vcfs:
                 --disable_auto_index_creation_and_locking_when_reading_rods \
                 --dbsnp {params.db} \
                 -nt {threads} \
+                -nct 1 \
                 -R {params.ref} \
                 {params.gvcfslist} \
                 -o {output.vcf} 2> {log}
@@ -128,6 +129,7 @@ rule family_vcfs:
         --disable_auto_index_creation_and_locking_when_reading_rods \
         --dbsnp {params.db} \
         -nt {threads} \
+        -nct 1 \
         -R {params.ref} \
         {params.gvcfslist} \
         -o {output.vcf} 2> {log}

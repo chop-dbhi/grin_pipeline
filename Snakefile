@@ -52,6 +52,8 @@ SLINK = "{{SLINK}}"
 workdir: config['projdir']
 
 include:
+    "rules/uuid.rules"
+include:
     "rules/targets.rules"
 include:
     "rules/utilities.rules"
