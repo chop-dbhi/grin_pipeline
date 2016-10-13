@@ -7,8 +7,6 @@ Do this once:
 wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 sh Miniconda3-latest-Linux-x86_64.sh
 # type "yes"
-#replace the your .condarc with the one included here
-cp configs/.condarc ~/.condarc
 conda create --name grinenv --file requirements.txt python=3.5
 source activate grinenv
 ```
