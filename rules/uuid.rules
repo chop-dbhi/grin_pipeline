@@ -1,5 +1,6 @@
 import uuid
 import hashlib
+import boto3
 mapping = {}
 names = {}
 uuids = {}
@@ -34,7 +35,7 @@ def get_mapped():
             root = re.sub('_R[12].*$', '', name)
             uid = re.sub('_R[12]$', '', uid)
             mapping[root] = uid
-            uuids[uid] = 1
+            uuids[uid] = root
         fmap.close()
 
 def get_fastq_files():
@@ -50,8 +51,8 @@ def get_fastq_files():
             name = re.sub('#.*$', '', line).rstrip().lstrip() # also remove comments
             fastqs.append(name)
         fin.close()
-    else:
-        print("files.txt doesn't exist!")
+    #else:
+        #print("files.txt doesn't exist!")
 
     return(fastqs)
 
@@ -71,8 +72,8 @@ def get_uuid(name):
         uid = str(uuid.uuid4())
         while uid in uuids:       # make sure no collision
             uid = str(uuid.uuid4())
-        uuids[uid] = 1
         mapping[root] = uid
+        uuids[uid] = root
 
     return uid + tail
 
@@ -85,14 +86,15 @@ def get_uuids():
 
     get_mapped()
 
-    for bucket in get_fastq_files():
-        name = re.sub('.*/', '', bucket)
+    for line in get_fastq_files():
+        # <bucket>:<s3_path>/<sample_file_name>
+        name = re.sub('.*/', '', line)
         name = re.sub('\.fastq.gz$', '', name)
         if not name in names:
             has_new = True
             # print(name)
-            bucket = re.sub('/.*$', '', bucket)
-            uid = get_uuid(name)
+            bucket = re.sub('[^/]+$', '', line)
+            uid = get_uuid(name)   # uid includes _R1 or _R2
             buckets[name] = bucket
             names[name] = uid
             chksums[name] = get_md5('fastq/' + name + '.fastq.gz')
@@ -109,11 +111,14 @@ def get_uuids():
 def upload_mapfile():
     tgt = "test/mapping.txt"
     cmd = "aws --profile risaws s3api put-object --bucket chop-grin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, mapped)
-    print(cmd)
+    # print(cmd)
     # shell(cmd)
 
+def lookup_uuid(name):
+    return names[name]
+
 rule mapping:
-    input: fastq = "fastq/{name}.fastq.gz"
+    input: fastq = "fastq/{name}.fastq.gz", filelist="files.txt"
     output: fastq = "mapped/{name}.fastq.gz"
     run:
         tgt = names[wildcards.name] + '.fastq.gz'
@@ -131,16 +136,59 @@ rule uploading:
     input: fastq = "mapped/{name}.fastq.gz"
     output: fastq = "uploaded/{name}.fastq.gz"
     run:
-        bucket = buckets[wildcards.name]
+        (bucket, path) = buckets[wildcards.name].split(':')
         name = names[wildcards.name] + '.fastq.gz'
-        tgt = bucket + '/' + name
+        tgt = path + name    # path should have a trailing slash (/)
         src = 'fastq/' + wildcards.name + '.fastq.gz'
 
         # print('copy ' + src + ' to ' + tgt + ' ...')
-        cmd = "aws --profile risaws s3api put-object --bucket chop-grin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, src)
+        #cmd = "aws --profile risaws s3api put-object --bucket %s --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (bucket, tgt, src)
         # print(cmd)
         # shell(cmd)
+
+        # requires a default entry in ~/.aws/credentials
+        s3 = boto3.client('s3')
+        data = open(src, "rb")
+        res = s3.put_object(Bucket=bucket,
+                            Body=data,
+                            Key=path+name,
+                            ServerSideEncryption='AES256')
 
         cmd = "ln -s ../mapped/%s %s" % (name, output.fastq)
         # print(cmd)
         shell(cmd)
+
+rule metadata:
+    input: pair1="mapped/{name}_R1.fastq.gz", pair2="mapped/{name}_R2.fastq.gz"
+    output: lookup_uuid("{name}")
+    run:
+        with open("meta/" + wildcards.name+ ".meta", "w") as fout:
+            fout.write('''
+{
+  "submission_type": "sequence", 
+  "submission_status": "active",
+  "submitter_id": "CCMCH",
+  "data_type": "fastq",
+  "sample": "5eb427c5-5668-472e-9bb1-a1268b4425a2",
+  "reads": [{
+    "path": "http://wuxi-demo-trios.s3.amazonaws.com/8949bd8f-8b3c-4615-b55c-61ad489367de_1.fq.gz", 
+    "md5sum": "b9ba8a9c31907e09c2cc02eb3b02c82b", 
+    "internal_id": "E01175-L2_S13_L003_R1_001.fastq",
+    "flowcell": "123FUAAXX",
+    "lane": 1,
+    "paired_end": 1
+    },{
+    "path": "http://wuxi-demo-trios.s3.amazonaws.com/8949bd8f-8b3c-4615-b55c-61ad489367de_2.fq.gz", 
+    "md5sum": "0b553a2255d43a80a79375ea63e1e18a", 
+    "internal_id": "E01175-L2_S13_L003_R2_001.fastq",
+    "flowcell": "123FUAAXX",
+    "lane": 1,
+    "paired_end": 2
+  }],
+  "platform": "Illumina HiSeq 4000",
+  "capture": "Agilent SureSelect Human All Exon 50mb",
+  "technique": "WES",
+  "comments": "second run"
+}
+''')
+
