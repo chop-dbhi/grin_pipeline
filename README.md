@@ -16,7 +16,7 @@ source activate grinenv
 ### To run a trio
 ```
 source activate grinenv
-snakemake GRCh38/analysis/1KGCEU.trio.phased.com.filtered.ad.de.nm.snpeff.models.html
+snakemake GRCh38/analysis/1KGCEU.trio.com.filtered.ad.de.nm.snpeff.models.html
 ```
 
 ### To generate a VCF of all trios, separately and combined
