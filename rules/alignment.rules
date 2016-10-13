@@ -77,13 +77,12 @@ rule target_list: # create individual realign target list
     input:  # deduced bams
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam",
         bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         samplelist = temp(config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list")
     log:
         config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
-        jar = config['jars']['gatk'],
         opts = config['tools']['opts']['high'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze],
         knownsites = config['known'][freeze]
@@ -91,7 +90,7 @@ rule target_list: # create individual realign target list
         24
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T RealignerTargetCreator \
         -R {params.ref} \
         -I {input.bam} \
@@ -115,19 +114,18 @@ rule realign_target:   # with one combined list file
         list = config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list",
         dbam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam",
         dbai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         rbam = temp(config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam"),
         rbai = temp(config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai")
     params:
-        jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze],
         known = config['known'][freeze],
         result = config['process_dir'][freeze] + config['results']['picard']
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T IndelRealigner \
         -R {params.ref} \
         -I {params.result}/{wildcards.sample}.group.bam \
@@ -143,19 +141,18 @@ rule generate_recalibration_table:
     input:
         bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         table = temp(config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table")
     log:
         config['datadirs']['log'] + "/{sample}.generate_recalibration_table.log"
     params:
-        jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze],
         known = config['known'][freeze]
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T BaseRecalibrator \
         -R {params.ref} \
         -I {input.bam} \
@@ -170,21 +167,20 @@ rule recalibrate_bam:
         table = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
         bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         bam = temp(config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam"),
         bai = temp(config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai")
     log:
         config['datadirs']['log'] + "/{sample}.recalibrate_bam.log"
     params:
-        jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze]
     threads:
         8
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T PrintReads \
         -nt 1 \
         -nct {threads} \
@@ -199,17 +195,16 @@ rule post_recalibrated_table:
         table = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
         bam = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         table = config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table",
     params:
-        jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze],
         known = config['known'][freeze]
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T BaseRecalibrator \
         -R {params.ref} \
         -I {input.bam} \
@@ -224,16 +219,15 @@ rule analyze_bqsr:
     input:
         before = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.table",
         after = config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/{sample}.table",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         pdf = config['process_dir'][freeze] + config['results']['pdfs'] + "/{sample}.pdf"
     params:
-        jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze]
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T AnalyzeCovariates \
         -R {params.ref} \
         -before {input.before} \
@@ -262,14 +256,13 @@ rule depth_of_coverage:
     input:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         sample_summary = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_summary",
         sample_interval_summary = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_interval_summary",
         sample_interval_stats = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_interval_statistics",
         sample_stats = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics"
     params:
-        jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze],
         targets = config['exon_interval_lists'][freeze],
@@ -278,7 +271,7 @@ rule depth_of_coverage:
         config['datadirs']['log'] + "/{sample}.depth_of_coverage.log"
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T DepthOfCoverage \
         -I {input.bam} \
         -R {params.ref} \
@@ -301,7 +294,6 @@ rule depth_of_coverage:
 rule mark_duplicates:
     input:
         bam = config['process_dir'][freeze] + config['results']['bams'] + "/{sample}.sorted.merged.bam",
-        java = ENV3 + config['tools']['java']
     output:
         bam = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam"),
         txt = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.txt"),
@@ -342,7 +334,6 @@ rule add_readgroup:
     input:
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam",
         bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bai",
-        java = ENV3 + config['tools']['java']
     output:
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam", # needed by run_multiqc
         #bai = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai")

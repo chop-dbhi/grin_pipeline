@@ -75,14 +75,13 @@ rule run_snpeff:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.vcf"
     params:
         snpeff  = config['jars']['snpeff']['path'],
-        conf =  config['jars']['snpeff']['cnf'][freeze],
+        conf = config['jars']['snpeff'][freeze]['cnf'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
-        database = config['jars']['snpeff']['db'][freeze],
+        database = config['jars']['snpeff'][freeze]['db'],
         updown = config['jars']['snpeff']['ud'],
         format = config['jars']['snpeff']['format']
     shell:
         """
-        source activate grinenv 
         {params.snpeff} \
         {params.opts} \
         -c {params.conf} \

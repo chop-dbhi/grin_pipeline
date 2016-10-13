@@ -3,5 +3,5 @@ channels:
   - r
   - bioconda
   - defaults
-  - conda-forge
+#  - conda-forge
 always_yes: true
