@@ -12,7 +12,7 @@ rule getgatk:
     output: ENV3 + config['jars']['gatk']['path']
     shell:
         """
-        gatk-register GenomeAnalysisTK-3.6.tar.bz2
+        gatk-register tools/GenomeAnalysisTK-3.6.tar.bz2
         """
 
 rule Rdeps:
