@@ -22,11 +22,17 @@ thisnotinthat <- function(x.1,x.2,...){
 }
 
 viewDataTable <- function(dat){
+
+  cols2hide <- grep('Description|Variants|Perc|chromosome|position|rsid|^ref$|^alt$|^gene$|
+                    impact_severity|rvis_score|depths|gt_quals|family_genotypes',
+                    colnames(dat), invert = TRUE)
+
   DT::datatable(dat,
                 extensions = c('Buttons'),
                 selection = "single",
                 filter = "bottom",
                 options = list(
+                  columnDefs = list(list(visible = FALSE, targets = cols2hide)),
                   dom = 'Bfrtip',
                   buttons = list('colvis','pageLength', 'copy','print',
                                  list(extend = "collection",
@@ -64,6 +70,10 @@ Genotype Requirements:
 This represents a brief summary of the de novo variants.
 
 ```{r denovo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+
+denovo$start <- ifelse(denovo$vcf_id=="None",paste0(denovo$start,'-',denovo$end),denovo$end)
+colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chromosome','position','rsid')
+
 if(nrow(denovo) == 0)
 {
   print("0 de novo variants found<br/>")
@@ -144,6 +154,10 @@ Genotype Requirements:
 This represents a brief summary of the autosomal recessive homozygous variants.
 
 ```{r arhomo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+
+arhomo$start <- ifelse(arhomo$vcf_id=="None",paste0(arhomo$start,'-',arhomo$end),arhomo$end)
+colnames(arhomo)[grep('chr|start|vcf_id', colnames(arhomo))] <- c('chromosome','position','rsid')
+
 if(nrow(arhomo) == 0)
 {
   print("0 autosomal recessive variants found<br/>")
@@ -230,6 +244,10 @@ Genotype Requirements:
 This represents a brief summary of the Compound Heterozygotes.
 
 ```{r cmpdhet_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+
+cmpdhet$start <- ifelse(cmpdhet$vcf_id=="None",paste0(cmpdhet$start,'-',cmpdhet$end),cmpdhet$end)
+colnames(cmpdhet)[grep('chr|start|vcf_id', colnames(cmpdhet))] <- c('chromosome','position','rsid')
+
 if(nrow(cmpdhet) == 0)
 {
   print("0 Compound Heterozygotes found<br/>")
