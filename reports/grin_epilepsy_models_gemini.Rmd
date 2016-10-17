@@ -10,6 +10,7 @@ library(knitr)
 library(DT)
 library(plyr)
 library(dplyr)
+library(GenomicRanges)
 options(digits = 2)
 ```
 
@@ -71,8 +72,18 @@ This represents a brief summary of the de novo variants.
 
 ```{r denovo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 
-denovo$start <- ifelse(denovo$vcf_id=="None",paste0(denovo$start,'-',denovo$end),denovo$end)
+# find overlaps and add posterior probability to denovo
+gr1 <- with(denovo, GRanges(chrom, IRanges(start = start, end = end))) 
+gr2 <- with(denovogear, GRanges(chr, IRanges(start = pos, end = pos)))
+type1 <- findOverlaps(query = gr1, subject = gr2, type = 'any')
+denovo$pp_dnm <- NA
+denovo[queryHits(type1),'pp_dnm'] <- denovogear[subjectHits(type1),'pp_dnm']
+denovo <- denovo[order(denovo$pp_dnm, decreasing = TRUE),]
+
+# no need of start/end
+denovo$start <- ifelse(denovo$vcf_id == "None", paste0(denovo$start,'-',denovo$end), denovo$end)
 colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chromosome','position','rsid')
+denovo$end <- NULL
 
 if(nrow(denovo) == 0)
 {
@@ -157,6 +168,7 @@ This represents a brief summary of the autosomal recessive homozygous variants.
 
 arhomo$start <- ifelse(arhomo$vcf_id=="None",paste0(arhomo$start,'-',arhomo$end),arhomo$end)
 colnames(arhomo)[grep('chr|start|vcf_id', colnames(arhomo))] <- c('chromosome','position','rsid')
+arhomo$end <- NULL
 
 if(nrow(arhomo) == 0)
 {
@@ -247,6 +259,7 @@ This represents a brief summary of the Compound Heterozygotes.
 
 cmpdhet$start <- ifelse(cmpdhet$vcf_id=="None",paste0(cmpdhet$start,'-',cmpdhet$end),cmpdhet$end)
 colnames(cmpdhet)[grep('chr|start|vcf_id', colnames(cmpdhet))] <- c('chromosome','position','rsid')
+cmpdhet$end <- NULL
 
 if(nrow(cmpdhet) == 0)
 {
