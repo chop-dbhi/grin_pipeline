@@ -72,7 +72,6 @@ This represents a brief summary of the de novo variants.
 
 ```{r denovo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 
-# find overlaps and add posterior probability to denovo
 gr1 <- with(denovo, GRanges(chrom, IRanges(start = start, end = end))) 
 gr2 <- with(denovogear, GRanges(chr, IRanges(start = pos, end = pos)))
 type1 <- findOverlaps(query = gr1, subject = gr2, type = 'any')
@@ -80,7 +79,6 @@ denovo$pp_dnm <- NA
 denovo[queryHits(type1),'pp_dnm'] <- denovogear[subjectHits(type1),'pp_dnm']
 denovo <- denovo[order(denovo$pp_dnm, decreasing = TRUE),]
 
-# no need of start/end
 denovo$start <- ifelse(denovo$vcf_id == "None", paste0(denovo$start,'-',denovo$end), denovo$end)
 colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chromosome','position','rsid')
 denovo$end <- NULL
