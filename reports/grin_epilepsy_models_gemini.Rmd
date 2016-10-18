@@ -42,6 +42,12 @@ viewDataTable <- function(dat){
                 ))
 }
 ```
+# Filters:
+We used the following filters to reduce the number of reported false positives:
+
+1. Spurious inherited variants can often appear due to insufficient sequence coverage so the **mininum sequence depth** was set to **15**.
+
+2. We are interested in mutations that are likely to have functional consequence so only variants with **Medium or High impact severity** were used.
 
 # De novo analysis
 
@@ -67,7 +73,7 @@ if(nrow(denovo) == 0)
   dt <- plyr::count(denovo , 'impact_so')
   viewDataTable(dat = data.frame(Description = dt$impact_so, 
                                  Variants = dt$freq, 
-                                 Perc = prop.table(dt$freq)*100))
+                                 Perc = round(prop.table(dt$freq)*100,2)))
 }
 ```
 
@@ -147,7 +153,7 @@ if(nrow(arhomo) == 0)
   dt <- plyr::count(arhomo , 'impact_so')
   viewDataTable(dat = data.frame(Description = dt$impact_so, 
                                  Variants = dt$freq, 
-                                 Perc = prop.table(dt$freq)*100))
+                                 Perc = round(prop.table(dt$freq)*100,2)))
 }
 ```
 
@@ -233,7 +239,7 @@ if(nrow(cmpdhet) == 0)
   dt <- plyr::count(cmpdhet , 'impact_so')
   viewDataTable(dat = data.frame(Description = dt$impact_so, 
                                  Variants = dt$freq, 
-                                 Perc = prop.table(dt$freq)*100))
+                                 Perc = round(prop.table(dt$freq)*100,2)))
 }
 ```
 
