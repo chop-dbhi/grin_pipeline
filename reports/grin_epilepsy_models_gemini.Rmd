@@ -10,6 +10,7 @@ library(knitr)
 library(DT)
 library(plyr)
 library(dplyr)
+library(GenomicRanges)
 options(digits = 2)
 ```
 
@@ -22,11 +23,17 @@ thisnotinthat <- function(x.1,x.2,...){
 }
 
 viewDataTable <- function(dat){
+
+  cols2hide <- grep('Description|Variants|Perc|chromosome|position|rsid|^ref$|^alt$|^gene$|
+                    impact_severity|rvis_score|depths|gt_quals|family_genotypes',
+                    colnames(dat), invert = TRUE)
+
   DT::datatable(dat,
                 extensions = c('Buttons'),
                 selection = "single",
                 filter = "bottom",
                 options = list(
+                  columnDefs = list(list(visible = FALSE, targets = cols2hide)),
                   dom = 'Bfrtip',
                   buttons = list('colvis','pageLength', 'copy','print',
                                  list(extend = "collection",
@@ -64,9 +71,11 @@ Genotype Requirements:
 This represents a brief summary of the de novo variants.
 
 ```{r denovo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-if(nrow(denovo) == 0)
+
+if(denovo == 0)
 {
   print("0 de novo variants found<br/>")
+  varcount <- 0
   showChunk<-FALSE
 } else {
   showChunk<-TRUE
@@ -75,6 +84,19 @@ if(nrow(denovo) == 0)
                                  Variants = dt$freq, 
                                  Perc = round(prop.table(dt$freq)*100,2)))
 }
+```
+
+```{r denovo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+gr1 <- with(denovo, GRanges(chrom, IRanges(start = start, end = end))) 
+gr2 <- with(denovogear, GRanges(chr, IRanges(start = pos, end = pos)))
+type1 <- findOverlaps(query = gr1, subject = gr2, type = 'any')
+denovo$pp_dnm <- NA
+denovo[queryHits(type1),'pp_dnm'] <- denovogear[subjectHits(type1),'pp_dnm']
+denovo <- denovo[order(denovo$pp_dnm, decreasing = TRUE),]
+
+denovo$start <- ifelse(denovo$vcf_id == "None", paste0(denovo$start,'-',denovo$end), denovo$end)
+colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chromosome','position','rsid')
+denovo$end <- NULL
 ```
 
 ```{r denovo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
@@ -144,9 +166,11 @@ Genotype Requirements:
 This represents a brief summary of the autosomal recessive homozygous variants.
 
 ```{r arhomo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-if(nrow(arhomo) == 0)
+
+if(arhomo == 0)
 {
   print("0 autosomal recessive variants found<br/>")
+  varcount <- 0
   showChunk<-FALSE
 } else {
   showChunk<-TRUE
@@ -155,6 +179,12 @@ if(nrow(arhomo) == 0)
                                  Variants = dt$freq, 
                                  Perc = round(prop.table(dt$freq)*100,2)))
 }
+```
+
+```{r arhomo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+arhomo$start <- ifelse(arhomo$vcf_id=="None",paste0(arhomo$start,'-',arhomo$end),arhomo$end)
+colnames(arhomo)[grep('chr|start|vcf_id', colnames(arhomo))] <- c('chromosome','position','rsid')
+arhomo$end <- NULL
 ```
 
 ```{r arhomo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
@@ -230,9 +260,11 @@ Genotype Requirements:
 This represents a brief summary of the Compound Heterozygotes.
 
 ```{r cmpdhet_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-if(nrow(cmpdhet) == 0)
+
+if(cmpdhet == 0)
 {
   print("0 Compound Heterozygotes found<br/>")
+  varcount <- 0
   showChunk<-FALSE
 } else {
   showChunk<-TRUE
@@ -241,6 +273,12 @@ if(nrow(cmpdhet) == 0)
                                  Variants = dt$freq, 
                                  Perc = round(prop.table(dt$freq)*100,2)))
 }
+```
+
+```{r cmpdhet_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+cmpdhet$start <- ifelse(cmpdhet$vcf_id=="None",paste0(cmpdhet$start,'-',cmpdhet$end),cmpdhet$end)
+colnames(cmpdhet)[grep('chr|start|vcf_id', colnames(cmpdhet))] <- c('chromosome','position','rsid')
+cmpdhet$end <- NULL
 ```
 
 ```{r cmpdhet_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
