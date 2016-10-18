@@ -217,7 +217,7 @@ jars:
             SamToFastq
     gatk:
         path:
-            gatk
+            GenomeAnalysisTK
     snpeff:
         cnf:
             hg37: configs/snpEff.GRCh37.config
