@@ -27,7 +27,7 @@ rule get_models:
 rule run_denovogear:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
-        ped = config['pedfile']
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.nohead.pedfile"
     output:
         dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.trio.com.filtered.dnm_auto.txt"
     shell:
