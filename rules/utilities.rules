@@ -8,7 +8,6 @@ rule mkdirs:
 
 # this is the bioconda workaround for GATK licensing
 rule getgatk:
-    input: "tools/GenomeAnalysisTK-3.6.tar.bz2"
     output: ENV3 + config['jars']['gatk']['path']
     shell:
         """
