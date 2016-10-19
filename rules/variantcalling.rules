@@ -1,5 +1,5 @@
 #### Variant Calling ####
-rule make_gvcf:
+rule bam_to_gvcf:
     input:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",

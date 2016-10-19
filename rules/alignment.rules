@@ -318,7 +318,7 @@ rule mark_duplicates:
 
 # samtools index seems more reliable than picard
 # in terms of returning an exit code
-rule make_index:  # create bai files if needed
+rule index_bam:  # create bai files if needed
     input:
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bam",
         samtools = ENV3 + config['tools']['samtools']
