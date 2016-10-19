@@ -58,6 +58,6 @@ conda install --name grinenv --file  requirements.txt
 You might find this will trigger Snakemake to want to remake downstream files, because executables are listed as input (this ensures they actually exist). To remedy this you can postdate any offending executables if you are confident their updates do not affect results.
 ```
 touch -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
-touch -dh 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
+touch -h -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
 touch -d 20150101 tools/GenomeAnalysisTK-3.6.tar.bz2 
 ```

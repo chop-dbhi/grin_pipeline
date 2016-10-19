@@ -124,13 +124,11 @@ varcount <- unique(length(denovo$variant_id))
 <div class="panel-body">
 These are variants found in the recurrent genes associated with recurrent mutations in epilepsy.
 
-```{r denovo_recurrent, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r denovo_recurrent, results='asis', warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 denovo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
-if (nrow(in_recurrent) == 0){
-  varcount<-0
-} else { 
-  viewDataTable(dat = in_recurrent)
-  varcount <- unique(length(in_recurrent$variant_id))
+varcount <- unique(length(in_recurrent$variant_id))
+if(varcount>0){
+viewDataTable(dat = in_recurrent)
 }
 ```
 **There are `r varcount` de novo variants in recurrent genes.**
@@ -145,13 +143,11 @@ if (nrow(in_recurrent) == 0){
 <div class="panel-body">
 These are the remaining variants cited in the literature genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
 
-```{r denovo_literature, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r denovo_literature, results='asis', warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 denovo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
-if (nrow(in_literature) == 0){
-  varcount<-0
-} else {
-  viewDataTable(dat = in_literature)
-    varcount <- unique(length(in_literature$variant_id))
+varcount <- unique(length(in_literature$variant_id))
+if(varcount){
+viewDataTable(dat = in_literature)
 }
 ```
 **There are `r varcount` remaining variants found in literature genes.**
@@ -168,11 +164,9 @@ These are remaining variants that are located in the coding sequence of at least
 
 ```{r denovo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 denovo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
-if (nrow(codingonly) == 0){
-  varcount<-0 
-} else { 
-  viewDataTable(dat = codingonly)
-  varcount <- unique(length(codingonly$variant_id))
+varcount <- unique(length(codingonly$variant_id))
+if(varcount){
+viewDataTable(dat = codingonly)
 }
 ```
 **There are `r varcount` remaining variants found in coding genes**
@@ -256,12 +250,10 @@ There are `r varcount` autosomal recessive homozygous variants.
 These are variants found in the genes associated with recurrent mutations in epilepsy.
 
 ```{r arhomo_recurrent, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-arhomo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
-if (nrow(in_recurrent) == 0){
-  varcount <- 0
-} else { 
-  viewDataTable(dat = in_recurrent)
-  varcount <- unique(length(in_recurrent$variant_id))
+arhomo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent
+varcount <- unique(length(in_recurrent$variant_id))
+if(varcount>0){
+viewDataTable(dat = in_recurrent)
 }
 ```
 
@@ -279,12 +271,9 @@ These are the remaining variants cited in the genes cited in the existing litera
 
 ```{r arhomo_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 arhomo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
-
-if (nrow(in_literature) == 0){
-  varcount<-0
-} else {
-  viewDataTable(dat = in_literature)
-    varcount <- unique(length(in_literature$variant_id))
+varcount <- unique(length(in_literature$variant_id))
+if(varcount>0){
+viewDataTable(dat = in_literature)
 }
 ```
 **There are `r varcount` remaining variants found in literature genes.**
@@ -300,32 +289,42 @@ if (nrow(in_literature) == 0){
 
 These are remaining variants that are located in the coding sequence of at least one transcript.
 
-```{r arhomo_coding, eval=TRUE, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r arhomo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 arhomo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
-if (nrow(codingonly) == 0){
-  varcount<-0
-} else { 
-  viewDataTable(dat = codingonly)
-  varcount <- unique(length(codingonly$variant_id))
+varcount <- unique(length(codingonly$variant_id))
+
+if(varcount > 0){
+viewDataTable(dat = codingonly)
 }
 ```
 **There are `r varcount` remaining variants found in coding genes**
 </div>
 </div>
 
-##### Other autosomal recessive homozygous variants
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Other autosomal recessive homozygous variants</h3>
+</div>
+<div class="panel-body">
 
 These are the remaining autosomal recessive homozygous variants
 
 ```{r arhomo_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 arhomo %>% thisnotinthat(codingonly) -> others
+varcount <- unique(length(others$variant_id))
+
+if(varcount > 0){
 viewDataTable(dat = others)
+}
 ```
+**There are `r varcount` remaining variants**
+</div>
+</div>
 
 ## Compound Heterozygotes
 
 Many autosomal recessive disorders are caused by compound heterozygotes. Unlike canonical recessive sites where the same recessive allele is inherited from both parents at the _same_ site in the gene, compound heterozygotes occur when the individual’s phenotype is caused by two heterozygous recessive alleles at _different_ sites in a particular gene.
-
+<blockquote>
 Genotype Requirements:
   
 1. All affected individuals must be heterozygous at both sites.
@@ -335,16 +334,19 @@ Genotype Requirements:
 5. No phased-unaffected can be heterozygous at both sites.
 6. Remove candidates where an affected from the same family does NOT share the same het pair.
 7. Sites are automatically phased by transmission when parents are present in order to remove false positive candidates.
+</blockquote>
 
-#### Variant summary for Compound Heterozygotes
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Variant summary for Compound Heterozygotes</h3>
+</div>
+<div class="panel-body">
 
 This represents a brief summary of the Compound Heterozygotes.
 
 ```{r cmpdhet_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 
-if(cmpdhet == 0)
-{
-  print("0 Compound Heterozygotes found<br/>")
+if(cmpdhet == 0){
   varcount <- 0
   showChunk<-FALSE
 } else {
@@ -366,7 +368,9 @@ cmpdhet$end <- NULL
 varcount <- unique(length(arhomo$variant_id))
 ```
 
-There are `r varcount` compound heterozygotes.
+**There are `r varcount` compound heterozygotes.**
+</div>
+</div>
 
 #### Triage comphet
 ##### Triage 1: Compound Heterozygotes in recurrent genes
@@ -389,25 +393,33 @@ Many of the literature-cited genes are likely tolerant, so this list is further 
 
 ```{r cmpdhet_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 cmpdhet %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
-if (nrow(in_literature) == 0){
-  print("No remaining variants found in literature genes<br/>")
-} else {
-  viewDataTable(dat = in_literature)
+varcount <- unique(length(in_literature$variant_id))
+if(varcount){
+viewDataTable(dat = in_literature)
 }
 ```
+**There are `r varcount` remaining variants found in literature genes.**
 
-##### Triage 3: Compound Heterozygotes not in the above
 
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Triage 3: Comp het coding variants not in the above</h3>
+</div>
+<div class="panel-body">
 These are remaining variants that are located in the coding sequence of at least one transcript.
 
-```{r cmpdhet_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+```{r denovo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 cmpdhet %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
-if (nrow(codingonly) == 0){
-  print("No remaining variants found in coding genes<br/>")
-} else { 
-  viewDataTable(dat = codingonly)
+varcount <- unique(length(codingonly$variant_id))
+if(varcount){
+viewDataTable(dat = codingonly)
 }
 ```
+**There are `r varcount` remaining variants found in coding genes**
+</div>
+</div>
+
+
 
 ##### Other Compound Heterozygotes
 
