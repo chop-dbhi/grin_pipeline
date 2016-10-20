@@ -333,7 +333,7 @@ rule gatk_hard_filtration_indels:
 
 rule select_passing:
     input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type}.hard.vcf",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
