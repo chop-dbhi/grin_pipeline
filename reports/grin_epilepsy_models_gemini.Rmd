@@ -184,11 +184,10 @@ These are the remaining de novo variants
 others <- thisnotinthat(denovo, in_literature)
 others <- thisnotinthat(others, codingonly)
 
-if (nrow(others) == 0){
-  varcount<-0 
-} else { 
+varcount <- unique(length(others$variant_id))
+if(varcount)
+{
   viewDataTable(dat = others)
-  varcount <- unique(length(others$variant_id))
 }
 ```
 **There are `r varcount` remaining variants**
@@ -314,11 +313,10 @@ These are the remaining autosomal recessive homozygous variants
 others <- thisnotinthat(arhomo, in_literature)
 others <- thisnotinthat(others, codingonly)
 
-if (nrow(others) == 0){
-  varcount<-0 
-} else { 
+varcount <- unique(length(others$variant_id))
+if(varcount)
+{
   viewDataTable(dat = others)
-  varcount <- unique(length(others$variant_id))
 }
 ```
 **There are `r varcount` remaining variants**
@@ -447,11 +445,10 @@ These are the remaining compound heterozygotes
 others <- thisnotinthat(cmpdhet, in_literature)
 others <- thisnotinthat(others, codingonly)
 
-if (nrow(others) == 0){
-  varcount<-0 
-} else { 
+varcount <- unique(length(others$variant_id))
+if(varcount)
+{
   viewDataTable(dat = others)
-  varcount <- unique(length(others$variant_id))
 }
 ```
 **There are `r varcount` remaining variants**
