@@ -100,9 +100,9 @@ if(denovo == 0)
 gr1 <- with(denovo, GRanges(chrom, IRanges(start = start, end = end))) 
 gr2 <- with(denovogear, GRanges(chr, IRanges(start = pos, end = pos)))
 type1 <- findOverlaps(query = gr1, subject = gr2, type = 'any')
-denovo$pp_dnm <- NA
-denovo[queryHits(type1),'pp_dnm'] <- denovogear[subjectHits(type1),'pp_dnm']
-denovo <- denovo[order(denovo$pp_dnm, decreasing = TRUE),]
+denovo$denovogear <- NA
+denovo[queryHits(type1),'denovogear'] <- denovogear[subjectHits(type1),'denovogear']
+denovo <- denovo[order(denovo$denovogear, decreasing = TRUE),]
 
 denovo$start <- ifelse(denovo$vcf_id == "None", paste0(denovo$start,'-',denovo$end), denovo$end)
 colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chromosome','position','rsid')
@@ -181,7 +181,8 @@ viewDataTable(dat = codingonly)
 These are the remaining de novo variants
 
 ```{r denovo_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-others <- thisnotinthat(denovo, codingonly)
+others <- thisnotinthat(denovo, in_literature)
+others <- thisnotinthat(others, codingonly)
 
 if (nrow(others) == 0){
   varcount<-0 
@@ -310,11 +311,14 @@ viewDataTable(dat = codingonly)
 These are the remaining autosomal recessive homozygous variants
 
 ```{r arhomo_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-arhomo %>% thisnotinthat(codingonly) -> others
-varcount <- unique(length(others$variant_id))
+others <- thisnotinthat(arhomo, in_literature)
+others <- thisnotinthat(others, codingonly)
 
-if(varcount > 0){
-viewDataTable(dat = others)
+if (nrow(others) == 0){
+  varcount<-0 
+} else { 
+  viewDataTable(dat = others)
+  varcount <- unique(length(others$variant_id))
 }
 ```
 **There are `r varcount` remaining variants**
@@ -439,10 +443,14 @@ viewDataTable(dat = codingonly)
 These are the remaining compound heterozygotes
 
 ```{r cmpdhet_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-cmpdhet %>% thisnotinthat(codingonly) -> others
-varcount <- unique(length(others$variant_id))
-if(varcount){
-viewDataTable(dat = others)
+others <- thisnotinthat(cmpdhet, in_literature)
+others <- thisnotinthat(others, codingonly)
+
+if (nrow(others) == 0){
+  varcount<-0 
+} else { 
+  viewDataTable(dat = others)
+  varcount <- unique(length(others$variant_id))
 }
 ```
 **There are `r varcount` remaining variants**
