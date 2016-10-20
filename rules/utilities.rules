@@ -109,8 +109,8 @@ rule catchup:
         """
 
 rule gzip:
-    input: "{sample}.{ext,(fq|fastq)}"
-    output: "{sample}.{ext}.gz"
+    input: "{sample}.{ext}"
+    output: "{sample}.{ext,(fq|fastq)}.gz"
     shell:
         """
         gzip -c {input} > {output}
