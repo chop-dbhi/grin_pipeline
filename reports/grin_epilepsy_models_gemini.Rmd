@@ -83,7 +83,7 @@ This represents a brief summary of the de novo variants.
 
 ```{r denovo_summary, results='asis', warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 
-if(denovo == 0)
+if(length(denovo) == 1 && denovo == 0)
 {
   varcount <- 0
   showChunk<-FALSE
@@ -215,7 +215,7 @@ This represents a brief summary of the autosomal recessive homozygous variants.
 
 ```{r arhomo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 
-if(arhomo == 0)
+if(length(arhomo) == 1 && arhomo == 0)
 {
   varcount <- 0
   showChunk<-FALSE
@@ -350,7 +350,8 @@ This represents a brief summary of the Compound Heterozygotes.
 
 ```{r cmpdhet_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 
-if(cmpdhet == 0){
+if(length(cmpdhet) == 1 && cmpdhet == 0)
+{
   varcount <- 0
   showChunk<-FALSE
 } else {
