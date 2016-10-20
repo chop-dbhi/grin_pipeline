@@ -100,9 +100,9 @@ if(denovo == 0)
 gr1 <- with(denovo, GRanges(chrom, IRanges(start = start, end = end))) 
 gr2 <- with(denovogear, GRanges(chr, IRanges(start = pos, end = pos)))
 type1 <- findOverlaps(query = gr1, subject = gr2, type = 'any')
-denovo$denovogear <- NA
-denovo[queryHits(type1),'denovogear'] <- denovogear[subjectHits(type1),'denovogear']
-denovo <- denovo[order(denovo$denovogear, decreasing = TRUE),]
+denovo$denovo_prob <- NA
+denovo[queryHits(type1),'denovo_prob'] <- denovogear[subjectHits(type1),'denovo_prob']
+denovo <- denovo[order(denovo$denovo_prob, decreasing = TRUE),]
 
 denovo$start <- ifelse(denovo$vcf_id == "None", paste0(denovo$start,'-',denovo$end), denovo$end)
 colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chromosome','position','rsid')
