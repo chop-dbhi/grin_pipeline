@@ -101,7 +101,7 @@ gr1 <- with(denovo, GRanges(chrom, IRanges(start = start, end = end)))
 gr2 <- with(denovogear, GRanges(chr, IRanges(start = pos, end = pos)))
 type1 <- findOverlaps(query = gr1, subject = gr2, type = 'any')
 denovo$denovo_prob <- NA
-denovo[queryHits(type1),'denovo_prob'] <- denovogear[subjectHits(type1),'denovo_prob']
+denovo[queryHits(type1),'denovo_prob'] <- denovogear[subjectHits(type1),'pp_dnm']
 denovo <- denovo[order(denovo$denovo_prob, decreasing = TRUE),]
 
 denovo$start <- ifelse(denovo$vcf_id == "None", paste0(denovo$start,'-',denovo$end), denovo$end)
