@@ -110,7 +110,7 @@ denovo$end <- NULL
 ```
 
 ```{r denovo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-varcount <- unique(length(denovo$variant_id))
+varcount <- length(unique(denovo$variant_id))
 ```
 
 **There are `r varcount` de novo variants.**
@@ -126,7 +126,7 @@ These are variants found in the recurrent genes associated with recurrent mutati
 
 ```{r denovo_recurrent, results='asis', warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 denovo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent 
-varcount <- unique(length(in_recurrent$variant_id))
+varcount <- length(unique(in_recurrent$variant_id))
 if(varcount>0){
 viewDataTable(dat = in_recurrent)
 }
@@ -145,7 +145,7 @@ These are the remaining variants cited in the literature genes cited in the exis
 
 ```{r denovo_literature, results='asis', warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 denovo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
-varcount <- unique(length(in_literature$variant_id))
+varcount <- length(unique(in_literature$variant_id))
 if(varcount){
 viewDataTable(dat = in_literature)
 }
@@ -164,7 +164,7 @@ These are remaining variants that are located in the coding sequence of at least
 
 ```{r denovo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 denovo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
-varcount <- unique(length(codingonly$variant_id))
+varcount <- length(unique(codingonly$variant_id))
 if(varcount){
 viewDataTable(dat = codingonly)
 }
@@ -184,7 +184,7 @@ These are the remaining de novo variants
 others <- thisnotinthat(denovo, in_literature)
 others <- thisnotinthat(others, codingonly)
 
-varcount <- unique(length(others$variant_id))
+varcount <- length(unique(others$variant_id))
 if(varcount)
 {
   viewDataTable(dat = others)
@@ -235,7 +235,7 @@ arhomo$end <- NULL
 ```
 
 ```{r arhomo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-varcount <- unique(length(arhomo$variant_id))
+varcount <- length(unique(arhomo$variant_id))
 ```
 
 There are `r varcount` autosomal recessive homozygous variants.
@@ -251,7 +251,7 @@ These are variants found in the genes associated with recurrent mutations in epi
 
 ```{r arhomo_recurrent, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 arhomo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent
-varcount <- unique(length(in_recurrent$variant_id))
+varcount <- length(unique(in_recurrent$variant_id))
 if(varcount>0){
 viewDataTable(dat = in_recurrent)
 }
@@ -271,7 +271,7 @@ These are the remaining variants cited in the genes cited in the existing litera
 
 ```{r arhomo_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 arhomo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
-varcount <- unique(length(in_literature$variant_id))
+varcount <- length(unique(in_literature$variant_id))
 if(varcount>0){
 viewDataTable(dat = in_literature)
 }
@@ -291,7 +291,7 @@ These are remaining variants that are located in the coding sequence of at least
 
 ```{r arhomo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 arhomo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
-varcount <- unique(length(codingonly$variant_id))
+varcount <- length(unique(codingonly$variant_id))
 
 if(varcount > 0){
 viewDataTable(dat = codingonly)
@@ -313,7 +313,7 @@ These are the remaining autosomal recessive homozygous variants
 others <- thisnotinthat(arhomo, in_literature)
 others <- thisnotinthat(others, codingonly)
 
-varcount <- unique(length(others$variant_id))
+varcount <- length(unique(others$variant_id))
 if(varcount)
 {
   viewDataTable(dat = others)
@@ -368,7 +368,7 @@ cmpdhet$end <- NULL
 ```
 
 ```{r cmpdhet_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
-varcount <- unique(length(arhomo$variant_id))
+varcount <- length(unique(arhomo$variant_id))
 ```
 
 **There are `r varcount` compound heterozygotes.**
@@ -385,7 +385,7 @@ These are variants found in the genes associated with recurrent mutations in epi
 
 ```{r cmpdhet_recurrent, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 cmpdhet %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent
-varcount <- unique(length(in_recurrent$variant_id))
+varcount <- length(unique(in_recurrent$variant_id))
 if(varcount){
 viewDataTable(dat = in_recurrent)
 }
@@ -405,7 +405,7 @@ Many of the literature-cited genes are likely tolerant, so this list is further 
 
 ```{r cmpdhet_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 cmpdhet %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
-varcount <- unique(length(in_literature$variant_id))
+varcount <- length(unique(in_literature$variant_id))
 if(varcount){
 viewDataTable(dat = in_literature)
 }
@@ -424,7 +424,7 @@ These are remaining variants that are located in the coding sequence of at least
 
 ```{r cmpdhet_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 cmpdhet %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
-varcount <- unique(length(codingonly$variant_id))
+varcount <- length(unique(codingonly$variant_id))
 if(varcount){
 viewDataTable(dat = codingonly)
 }
@@ -445,7 +445,7 @@ These are the remaining compound heterozygotes
 others <- thisnotinthat(cmpdhet, in_literature)
 others <- thisnotinthat(others, codingonly)
 
-varcount <- unique(length(others$variant_id))
+varcount <- length(unique(others$variant_id))
 if(varcount)
 {
   viewDataTable(dat = others)
