@@ -40,7 +40,7 @@ rule fastqc_summary:
         PROJECT_HOME<-"{params.projdir}";
         path.out<-"{params.projdir}/fastqc/summary";
         fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
-        knitr::knit("reports/summary_fastqc.Rmd")
+        ezknitr::ezknit(file="reports/summary_fastqc.Rmd",out_dir=PROJECT_HOME)
         rmarkdown::render('summary_fastqc.md', output_format='html_document')
         """)
 
