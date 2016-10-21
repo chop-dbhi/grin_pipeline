@@ -154,7 +154,7 @@ rule sample_table_to_pedfile:
     output:
         config['pedfile']
     run:
-        st = pandas.read_table("{0}".format(input))
+        st = pandas.read_table("{0}".format(input),dtype={'FamilyID': object,'Subject':object,'Mother':object,'Father':object,'Sex':object,'Affected_status':object,'Not_in_Varbank':object})
         complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
         trios = st.loc[complete_trios]
         trios['Sex']=trios['Sex'].replace(['M','F'],[1,2])
