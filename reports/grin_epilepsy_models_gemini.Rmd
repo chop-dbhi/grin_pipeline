@@ -104,7 +104,7 @@ denovo$denovo_prob <- NA
 denovo[queryHits(type1),'denovo_prob'] <- denovogear[subjectHits(type1),'pp_dnm']
 denovo <- denovo[order(denovo$denovo_prob, decreasing = TRUE),]
 
-denovo$start <- ifelse(denovo$vcf_id == "None", paste0(denovo$start,'-',denovo$end), denovo$end)
+denovo$start <- ifelse(denovo$end-denovo$start==1, denovo$end, paste0(denovo$start,'-',denovo$end))
 colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chromosome','position','rsid')
 denovo$end <- NULL
 ```
@@ -229,7 +229,7 @@ if(length(arhomo) == 1 && arhomo == 0)
 
 
 ```{r arhomo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
-arhomo$start <- ifelse(arhomo$vcf_id=="None",paste0(arhomo$start,'-',arhomo$end),arhomo$end)
+arhomo$start <- ifelse(arhomo$end-arhomo$start==1, arhomo$end, paste0(arhomo$start,'-',arhomo$end))
 colnames(arhomo)[grep('chr|start|vcf_id', colnames(arhomo))] <- c('chromosome','position','rsid')
 arhomo$end <- NULL
 ```
@@ -362,7 +362,7 @@ if(length(cmpdhet) == 1 && cmpdhet == 0)
 ```
 
 ```{r cmpdhet_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
-cmpdhet$start <- ifelse(cmpdhet$vcf_id=="None",paste0(cmpdhet$start,'-',cmpdhet$end),cmpdhet$end)
+cmpdhet$start <- ifelse(cmpdhet$end-cmpdhet$start==1, cmpdhet$end, paste0(cmpdhet$start,'-',cmpdhet$end))
 colnames(cmpdhet)[grep('chr|start|vcf_id', colnames(cmpdhet))] <- c('chromosome','position','rsid')
 cmpdhet$end <- NULL
 ```
