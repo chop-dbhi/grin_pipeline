@@ -31,6 +31,7 @@ rule extract:
 ##############################
 SBAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.bam" for name in SAMPLELANES] #used by mergelanes
 GBAMS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bam" for name in EXISTINGSAMPLES]  #used by multiqc
+REBAMS = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
 INDELS = config['process_dir'][freeze] + config['results']['realigned'] + "/indels.list" #used by combinelists
 LISTS = [config['process_dir'][freeze] + config['results']['lists'] + "/" + name + ".list" for name in EXISTINGSAMPLES] #used by combine
 
@@ -83,7 +84,7 @@ VEPVCFS = [config['landing_dir'][freeze] + config['results']['vep'] + "/" + trio
 rule make_vepvcfs:
     input: VEPVCFS
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in SAMPLE_TABLE.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
-ANALYSISREADY = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
+ANALYSISREADY = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
 rule make_analysisready:
     input: ANALYSISREADY
 rule make_xbrowse:
