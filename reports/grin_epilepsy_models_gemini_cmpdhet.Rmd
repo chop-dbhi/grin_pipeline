@@ -1,11 +1,15 @@
 ---
-title: "GRIN Epilepsy Trio Analysis (Gemini)"
 date: "`r Sys.Date()`"
 output:
   html_document:
     toc: true
     lib_dir: libs
 css: styles.css
+params: 
+    title: "GRIN Epilepsy Trio Analysis!"
+---
+---
+title: `r params$title`
 ---
 ```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
 library(knitr)
