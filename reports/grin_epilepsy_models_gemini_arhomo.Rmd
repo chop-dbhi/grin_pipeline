@@ -1,0 +1,194 @@
+---
+title: "GRIN Epilepsy Trio Analysis (Gemini)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    lib_dir: libs
+css: styles.css
+---
+```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+library(knitr)
+library(DT)
+library(plyr)
+library(dplyr)
+library(GenomicRanges)
+options(digits = 2)
+options(width=1200)
+```
+
+```{r functions, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
+## http://www.r-bloggers.com/identifying-records-in-data-frame-a-that-are-not-contained-in-data-frame-b-%E2%80%93-a-comparison/
+thisnotinthat <- function(x.1,x.2,...){
+  x.1p <- do.call("paste", x.1)
+  x.2p <- do.call("paste", x.2)
+  x.1[! x.1p %in% x.2p, ]
+}
+
+viewDataTable <- function(dat){
+
+  cols2hide <- grep('Description|Variants|Perc|chromosome|position|rsid|^ref$|^alt$|^gene$|
+                    impact_severity|rvis_score|depths|gt_quals|family_genotypes',
+                    colnames(dat), invert = TRUE)
+
+  DT::datatable(dat,
+                extensions = c('Buttons'),
+                selection = "single",
+                filter = "bottom",
+                options = list(
+                  columnDefs = list(list(visible = FALSE, targets = cols2hide)),
+                  dom = 'Bfrtip',
+                  buttons = list('colvis','pageLength', 'copy','print',
+                                 list(extend = "collection",
+                                      buttons = c('csv', 'excel', 'pdf'),
+                                      text = 'Download'
+                                 )),
+                  searchHighlight = TRUE,
+                  lengthMenu = list(c(5, 10, 15, 20, 25, -1), c('5', '10', '15', '20', '25', 'All')),
+                  initComplete = DT::JS("function(settings, json) {",
+                                        "$(this.api().table().header()).css({'background-color': '#003366', 'color': '#fff'});",
+                                        "}"),
+                  scrollX = TRUE
+                ))
+}
+```
+
+## Filters
+<blockquote>
+We used the following filters to reduce the number of reported false positives:
+
+1. Spurious inherited variants can often appear due to insufficient sequence coverage so the **mininum sequence depth** was set to **15**.
+
+2. We are interested in mutations that are likely to have functional consequence so only variants with **Medium or High impact severity** were used.
+</blockquote>
+
+
+## Autosomal recessive homozygous
+<blockquote>
+Genotype Requirements:
+  
+1. all affecteds must be hom_alt
+2. no unaffected can be hom_alt (can be unknown)
+3. if parents exist they must be unaffected and het for all affected kids
+4. if there are no affecteds that have a parent, a warning is issued.
+</blockquote>
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Variant summary for autosomal recessive homozygous variants</h3>
+</div>
+<div class="panel-body">
+This represents a brief summary of the autosomal recessive homozygous variants.
+
+```{r arhomo_summary, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+
+if(length(arhomo) == 1 && arhomo == 0)
+{
+  varcount <- 0
+  showChunk <- FALSE
+} else {
+  showChunk <- TRUE
+  dt <- plyr::count(arhomo , 'impact_so')
+  viewDataTable(dat = data.frame(Description = dt$impact_so, 
+                                 Variants = dt$freq, 
+                                 Perc = round(prop.table(dt$freq)*100,2)))
+}
+```
+
+
+```{r arhomo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+arhomo$start <- ifelse(arhomo$end-arhomo$start==1, arhomo$end, paste0(arhomo$start,'-',arhomo$end))
+colnames(arhomo)[grep('chr|start|vcf_id', colnames(arhomo))] <- c('chromosome','position','rsid')
+arhomo$end <- NULL
+```
+
+```{r arhomo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+varcount <- length(unique(arhomo$variant_id))
+```
+
+There are `r varcount` autosomal recessive homozygous variants.
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Triage 1: Autosomal recessive homozygous variants in recurrent genes</h3>
+</div>
+<div class="panel-body">
+These are variants found in the genes associated with recurrent mutations in epilepsy.
+
+```{r arhomo_recurrent, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+arhomo %>% dplyr::filter(recurrent_genes != "None") -> in_recurrent
+varcount <- length(unique(in_recurrent$variant_id))
+if(varcount>0)
+{
+  viewDataTable(dat = in_recurrent)
+}
+```
+
+**There are `r varcount` de novo variants in recurrent genes.**
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Triage 2: Autosomal recessive homozygous variants in literature genes with low tolerance</h3>
+</div>
+<div class="panel-body">
+
+These are the remaining variants cited in the genes cited in the existing literature. Many of the literature-cited genes are likely tolerant, so this list is further filtered to only genes with an RVIS "ALL_0.1." value of <= 0.
+
+```{r arhomo_literature, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+arhomo %>% dplyr::filter(literature_genes != "None") %>% dplyr::filter(as.numeric(rvis_score)<=0) %>% thisnotinthat(in_recurrent) -> in_literature
+varcount <- length(unique(in_literature$variant_id))
+if(varcount)
+{
+  viewDataTable(dat = in_literature)
+}
+```
+**There are `r varcount` remaining variants found in literature genes.**
+</div>
+</div>
+
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Triage 3: Autosomal recessive homozygous variants not in the above</h3>
+</div>
+<div class="panel-body">
+
+These are remaining variants that are located in the coding sequence of at least one transcript.
+
+```{r arhomo_coding, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+arhomo %>% dplyr::filter(is_coding==1) %>% thisnotinthat(in_literature) -> codingonly
+varcount <- length(unique(codingonly$variant_id))
+if(varcount)
+{
+  viewDataTable(dat = codingonly)
+}
+```
+**There are `r varcount` remaining variants found in coding genes**
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Other autosomal recessive homozygous variants</h3>
+</div>
+<div class="panel-body">
+
+These are the remaining autosomal recessive homozygous variants
+
+```{r arhomo_others, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+others <- thisnotinthat(arhomo, in_literature)
+others <- thisnotinthat(others, codingonly)
+
+varcount <- length(unique(others$variant_id))
+if(varcount)
+{
+  viewDataTable(dat = others)
+}
+```
+**There are `r varcount` remaining variants**
+</div>
+</div>
