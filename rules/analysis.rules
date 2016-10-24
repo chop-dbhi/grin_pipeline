@@ -68,7 +68,8 @@ rule variantAnalysisModels:
     input:
         x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt",
         denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt",
-        source = "reports/grin_epilepsy_models_gemini_{model}.Rmd"
+        source = "reports/grin_epilepsy_models_gemini_{model}.Rmd",
+        rvis = "annotations/rvis.RData"
     output:
         html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.{model}.html"
     params:
@@ -78,6 +79,7 @@ rule variantAnalysisModels:
         R("""
         library(rmarkdown)
         # returns 0 if file is empty
+        rvis <- get(load('{input.rvis}'))
         x <- '{input.x}'
         x <- sub('.txt','',x)
         x <- sub('.*anno.','',x)
