@@ -193,8 +193,7 @@ rule analysis_pedfile:
     output:
         config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.{hasheader,(headered|nohead)}.pedfile"
     run:
-        globalpedfile = pandas.read_table("{0}".format(input))
-        
+        globalpedfile = pandas.read_table("{0}".format(input),dtype={'FamilyID': object,'Subject':object,'Father':object,'Mother':object,'Sex':object,'Affected_status':object})
         probandrow = globalpedfile[(globalpedfile['FamilyID'] == wildcards.family) & (globalpedfile['Subject'] == wildcards.subject)]
         assert(len(probandrow)==1)
         parentalrows = globalpedfile[(globalpedfile['Subject'] == probandrow['Father'].item()) | (globalpedfile['Subject'] == probandrow['Mother'].item())]
