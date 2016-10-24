@@ -38,28 +38,52 @@ rule run_denovogear:
         """
 
 # make gemini reports
+# rule variantAnalysisModels:
+#     input:
+#         denovo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.denovo.txt",
+#         denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt",
+#         arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.arhomo.txt",
+#         cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.cmpdhet.txt",
+#         xlinked = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.xlinked.txt",
+#         source = "reports/grin_epilepsy_models_gemini.Rmd"
+#     output:
+#         html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.models.html"
+#     params:
+#         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
+#         outfile = "/{file}.ad.de.nm.snpeff.models.html"
+#     run:
+#         R("""
+#         library(rmarkdown)
+#         # returns 0 if file is empty
+#         denovo <- tryCatch(expr = read.delim('{input.denovo}', stringsAsFactors = F), error = function(e) 0)
+#         denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T), error = function(e) 0)
+#         arhomo <- tryCatch(expr = read.delim('{input.arhomo}', stringsAsFactors = F), error = function(e) 0)
+#         cmpdhet <- tryCatch(expr = read.delim('{input.cmpdhet}', stringsAsFactors = F), error = function(e) 0)
+#         xlinked <- tryCatch(expr = read.delim('{input.xlinked}', stringsAsFactors = F), error = function(e) 0)
+#         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}")
+#         """)
+
+# split gemini reports
 rule variantAnalysisModels:
     input:
-        denovo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.denovo.txt",
+        x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt",
         denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt",
-        arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.arhomo.txt",
-        cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.cmpdhet.txt",
-        xlinked = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.xlinked.txt",
-        source = "reports/grin_epilepsy_models_gemini.Rmd"
+        source = "reports/grin_epilepsy_models_gemini_{model}.Rmd"
     output:
-        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.models.html"
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.{model}.html"
     params:
         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
-        outfile = "/{file}.ad.de.nm.snpeff.models.html"
+        outfile = "/{file}.ad.de.nm.snpeff.{model}.html"
     run:
         R("""
         library(rmarkdown)
         # returns 0 if file is empty
-        denovo <- tryCatch(expr = read.delim('{input.denovo}', stringsAsFactors = F), error = function(e) 0)
+        x <- '{input.x}'
+        x <- sub('.txt','',x)
+        x <- sub('.*anno.','',x)
+        y <- tryCatch(expr = read.delim('{input.x}', stringsAsFactors = F), error = function(e) 0)
+        assign(x, y)
         denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T), error = function(e) 0)
-        arhomo <- tryCatch(expr = read.delim('{input.arhomo}', stringsAsFactors = F), error = function(e) 0)
-        cmpdhet <- tryCatch(expr = read.delim('{input.cmpdhet}', stringsAsFactors = F), error = function(e) 0)
-        xlinked <- tryCatch(expr = read.delim('{input.xlinked}', stringsAsFactors = F), error = function(e) 0)
         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}")
         """)
 
