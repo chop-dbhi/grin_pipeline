@@ -117,7 +117,7 @@ denovo$start <- ifelse(denovo$end-denovo$start==1, denovo$end, paste0(denovo$sta
 colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chr','pos','rsid')
 denovo$end <- NULL
 denovo <- denovo[,c(2:16,1,17:ncol(denovo))]
-denovo <- denovo[denovo$denovo_prob>=0.20,]
+denovo <- denovo[which(denovo$denovo_prob>=0.20),]
 ```
 
 ```{r denovo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
