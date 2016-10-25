@@ -6,7 +6,8 @@ FASTQCS = [config['datadirs']['fastqc'] + "/" + re.sub("\.fastq.gz$", "_fastqc.z
 #FamilyID       Subject Mother  Father  Sex     Affected_status Not_in_Varbank
 #Trio_SL        C2952   C2953   C2954   f       EOEE
 #ISR_#45        E08320                          f       Focal Epilepsy  x
-SAMPLE_TABLE = pandas.read_table(config['sample_table'])
+SAMPLE_TABLE = pandas.read_table(config['sample_table'],dtype={'FamilyID': object,'Subject':object,'Mother':object,'Father':object,'Sex':object,'Affected_status':object,'Not_in_Varbank':object})
+BLACKLIST= pandas.read_table("metadata/blacklist.txt")
 MANIFESTSAMPLES = list(set(list(SAMPLE_TABLE['Subject'])+list(SAMPLE_TABLE['Mother'].dropna())+list(SAMPLE_TABLE['Father'].dropna())))
 # ['E0974_GCTACGC_L006_R1', 'E0975_CGAGGCT_L006_R1', 'E0977_GTAGAGG_L006_R1', 'E0975_CGAGGCT_L006_R2', 'E0977_GTAGAGG_L006_R2', 'E0974_GCTACGC_L006_R2']
 ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQS])
@@ -30,6 +31,7 @@ rule extract:
 ##############################
 SBAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.bam" for name in SAMPLELANES] #used by mergelanes
 GBAMS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bam" for name in EXISTINGSAMPLES]  #used by multiqc
+REBAMS = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
 INDELS = config['process_dir'][freeze] + config['results']['realigned'] + "/indels.list" #used by combinelists
 LISTS = [config['process_dir'][freeze] + config['results']['lists'] + "/" + name + ".list" for name in EXISTINGSAMPLES] #used by combine
 
@@ -42,15 +44,15 @@ rule make_merged:
     input: [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.merged.bam" for name in EXISTINGSAMPLES]
 rule make_bais:
     input: [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".rmdup.bai" for name in EXISTINGSAMPLES]
-rule add_group:
+rule make_group:
     input: [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bai" for name in EXISTINGSAMPLES]
-rule realign:
+rule make_realigned:
     input: [config['process_dir'][freeze] + config['results']['realigned'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
-rule combine_indels:
+rule make_combine_indels:
     input: INDELS
-rule target_lists:
+rule make_target_lists:
     input: LISTS
-rule recalibrate:
+rule make_recalibrated:
     input: [config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
 
 ##############################
@@ -60,7 +62,7 @@ GVCFS = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name
 GVCFSLIST = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]) #used by gvcf_samples_in_family
 rule make_gvcfs:
     input: GVCFS
-rule join_gvcfs:
+rule make_joint:
     input: config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.vcf"
 
 
@@ -71,25 +73,30 @@ ANNOVARDBS = [config['annovardbdir'] + "/" + freeze + "_" + db + ".installed" fo
 ANNOVAR_PROTOCOLS = ','.join(config['annovardbs']) #table_annovar
 COMPLETETRIOSFAMIDS = sorted(list(set([row['FamilyID']+'_'+row['Subject'] for index, row in SAMPLE_TABLE.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]))) # a quad produces two trios
 TRIOVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
-rule triovcfs:
+rule make_triovcfs:
     input: TRIOVCFS
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in SAMPLE_TABLE.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]) # quads are one family
 FAMILYVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
 COMVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.com.filtered.vcf" for trio in COMPLETEFAMILYFAMIDS]
-rule comvcfs:
+rule make_comvcfs:
     input: COMVCFS
 VEPVCFS = [config['landing_dir'][freeze] + config['results']['vep'] + "/" + trio + ".family.com.filtered.vep.vcf" for trio in COMPLETEFAMILYFAMIDS]
-rule vepvcfs:
+rule make_vepvcfs:
     input: VEPVCFS
 INCOMPLETEFAMILIES = set([row['FamilyID'] for index, row in SAMPLE_TABLE.iterrows() if any([row[member] not in EXISTINGSAMPLES and not pandas.isnull(row[member]) for member in ['Mother','Father','Subject']])])
-ANALYSISREADY = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.com.filtered.ad.de.nm.snpeff.noask.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
-rule analysisready:
+ANALYSISREADY = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.vcf.bgz" for trio in COMPLETETRIOSFAMIDS]
+rule make_analysisready:
     input: ANALYSISREADY
-rule xbrowse:
+rule make_xbrowse:
     input: config['landing_dir'][freeze] + config['results']['vep'] + "/project.yaml", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.txt", config['landing_dir'][freeze] + config['results']['vep'] + "/samples.ped"
 
+<<<<<<< .merge_file_eGPvCc
 rule upload_files:
     input: [config['results']['uploaded'] + '/' + name for name in get_uuids()]
+=======
+rule make_upload_files:
+    input: ['uploaded/' + name for name in get_uuids()]
+>>>>>>> .merge_file_YMyiz6
     run:
         upload_mapfile()
 
@@ -102,7 +109,7 @@ rule map_uuid:
 TRIOGEMS = [config['landing_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
 # note we are leaving out the GATK phasing here
-ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.models.html" for trio in COMPLETETRIOSFAMIDS]
+ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff." + model + ".html" for model in ['denovo','arhomo','cmpdhet'] for trio in COMPLETETRIOSFAMIDS]
 rule analyses:
     input: ANALYSES
 

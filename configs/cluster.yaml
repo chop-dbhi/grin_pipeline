@@ -22,7 +22,7 @@ depth_of_coverage:
   h_vmem: 55G
   mem_free: 44G
   m_mem_free: 38G
-make_index: 
+index_bam: 
   h_vmem: 10G
   mem_free: 8G
   m_mem_free: 7G
@@ -153,7 +153,7 @@ add_readgroup:
   mem_free: 44G
   m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
-make_gvcf: 
+bam_to_gvcf: 
   h_vmem: 70G
   mem_free: 56G
   m_mem_free: 49G

@@ -1,20 +1,19 @@
 #### Variant Calling ####
-rule make_gvcf:
+rule bam_to_gvcf:
     input:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
         doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         gvcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf",
         gidx = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.idx"
     params:
-        jar = config['jars']['gatk'],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze]
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T HaplotypeCaller \
         -R {params.ref} \
         -I {input.bam} \
@@ -73,13 +72,12 @@ rule trio_vcfs:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
         family = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
         familygvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf"
     log:
         config['datadirs']['log'] + "/{family}_{subject}.trio.vcf.log"
     params:
-        jar = config['jars']['gatk'],
         ref = config['ref'][freeze],
         gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[1],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
@@ -94,11 +92,12 @@ rule trio_vcfs:
             shell("cp {input.family} {output.vcf}")
         else:
             shell("""
-                {input.java} {params.opts} -jar {params.jar} \
+                {input.gatk} {params.opts} \
                 -T GenotypeGVCFs \
                 --disable_auto_index_creation_and_locking_when_reading_rods \
                 --dbsnp {params.db} \
                 -nt {threads} \
+                -nct 1 \
                 -R {params.ref} \
                 {params.gvcfslist} \
                 -o {output.vcf} 2> {log}
@@ -107,14 +106,13 @@ rule trio_vcfs:
 rule family_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
         idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf.idx"
     log:
         config['datadirs']['log'] + "/{family}.family.vcf.log"
     params:
-        jar = config['jars']['gatk'],
         ref = config['ref'][freeze],
         gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[1],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
@@ -123,11 +121,12 @@ rule family_vcfs:
     run:
         check_gvcfs(input.gvcfs) 
         shell("""
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T GenotypeGVCFs \
         --disable_auto_index_creation_and_locking_when_reading_rods \
         --dbsnp {params.db} \
         -nt {threads} \
+        -nct 1 \
         -R {params.ref} \
         {params.gvcfslist} \
         -o {output.vcf} 2> {log}
@@ -155,7 +154,7 @@ rule sample_table_to_pedfile:
     output:
         config['pedfile']
     run:
-        st = pandas.read_table("{0}".format(input))
+        st = pandas.read_table("{0}".format(input),dtype={'FamilyID': object,'Subject':object,'Mother':object,'Father':object,'Sex':object,'Affected_status':object,'Not_in_Varbank':object})
         complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
         trios = st.loc[complete_trios]
         trios['Sex']=trios['Sex'].replace(['M','F'],[1,2])
@@ -194,8 +193,7 @@ rule analysis_pedfile:
     output:
         config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.{hasheader,(headered|nohead)}.pedfile"
     run:
-        globalpedfile = pandas.read_table("{0}".format(input))
-        
+        globalpedfile = pandas.read_table("{0}".format(input),dtype={'FamilyID': object,'Subject':object,'Father':object,'Mother':object,'Sex':object,'Affected_status':object})
         probandrow = globalpedfile[(globalpedfile['FamilyID'] == wildcards.family) & (globalpedfile['Subject'] == wildcards.subject)]
         assert(len(probandrow)==1)
         parentalrows = globalpedfile[(globalpedfile['Subject'] == probandrow['Father'].item()) | (globalpedfile['Subject'] == probandrow['Mother'].item())]
@@ -213,20 +211,19 @@ rule run_phase_by_transmission:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
         ped = config['pedfile'],
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf",
         idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.phased.vcf.idx",
         mvf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.mendelian_violations.txt"
     params:
-        jar  = config['jars']['gatk'],
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir']
     log: 
         config['datadirs']['log'] + "/{file}.phase_by_transmission.log" 
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T PhaseByTransmission \
         -R {params.ref} \
         -V {input.vcf} \
@@ -242,19 +239,18 @@ rule run_phase_by_transmission:
 rule gatk_snps_only:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
         idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf.idx"
     params:
-        jar  = config['jars']['gatk'],
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
     log:
         config['datadirs']['log'] + "/{file}.gatk_snps_only.log"
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T SelectVariants \
         -R {params.ref} \
         -V {input.vcf} \
@@ -265,19 +261,18 @@ rule gatk_snps_only:
 rule gatk_indels_only:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
         idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf.idx"
     params:
-        jar  = config['jars']['gatk'],
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
     log:
         config['datadirs']['log'] + "/{file}.gatk_indels_only.log"
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -T SelectVariants \
         -R {params.ref} \
         -V {input.vcf} \
@@ -290,69 +285,66 @@ rule gatk_indels_only:
 rule gatk_hard_filtration_snps:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.vcf",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf",
         idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.hard.vcf.idx"
     params:
-        jar  = config['jars']['gatk'],
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
     log:
         "log/{file}.gatk_hard_filtration.log"
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -R {params.ref} \
         -T VariantFiltration \
         -o {output.vcf} \
         --variant {input.vcf} \
-        --filterExpression "QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
-        --filterName "GATK3.5-hard-filter" \
+        --filterExpression "'QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0'" \
+        --filterName "GATK3.6-hard-filter" \
         2> {log}
         """
 
 rule gatk_hard_filtration_indels:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.vcf",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf",
         idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.hard.vcf.idx"
     params:
-        jar  = config['jars']['gatk'],
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
     log:
         "log/{file}.gatk_hard_filtration.log"
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -R {params.ref} \
         -T VariantFiltration \
         -o {output.vcf} \
         --variant {input.vcf} \
-        --filterExpression "QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0" \
-        --filterName "GATK3.5-hard-filter" \
+        --filterExpression "'QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0'" \
+        --filterName "GATK3.6-hard-filter" \
         2> {log}
         """
 
 rule select_passing:
     input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
-        java = ENV3 + config['tools']['java']
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type}.hard.vcf",
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",
         idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf"
     params:
-        jar  = config['jars']['gatk'],
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir']
     log:
         "log/{file}.select_passing_variants.log"
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -R {params.ref} \
          -T SelectVariants \
         -o {output.vcf} \
@@ -370,19 +362,18 @@ rule gatk_combine_variants:
     input:
         snps = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.snps.filtered.vcf",
         indels = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.indels.filtered.vcf",
-        java = ENV3 + config['tools']['java']
+        gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf",
         idx = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.com.filtered.vcf.idx"
     params:
-        jar  = config['jars']['gatk'],
         ref = config['ref'][freeze],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir']
     log:
         "log/{file}.select_passing_variants.log"
     shell:
         """
-        {input.java} {params.opts} -jar {params.jar} \
+        {input.gatk} {params.opts} \
         -R {params.ref} \
         -T CombineVariants \
         --variant  {input.snps} \
