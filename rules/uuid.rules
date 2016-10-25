@@ -1,12 +1,19 @@
 import uuid
 import hashlib
 import boto3
-mapping = {}
+seq_mapping = {}
+spl_mapping = {}
 names = {}
-uuids = {}
+uid2name = {}
+seq_uuids = {}
+spl_uuids = {}
+all_uuids = {}
 chksums = {}
 buckets = {}
-mapped = 'mapped/mapping.txt'
+seq_map = 'sequence_mapping.txt'
+spl_map = 'sample_mapping.txt'
+fastq_list = 'fastq_files.txt'
+sample_list = 'sample_files.txt'
 
 def get_md5(file, block_size=2**20):
 # http://stackoverflow.com/questions/1131220/get-md5-hash-of-big-files-in-python
@@ -18,11 +25,13 @@ def get_md5(file, block_size=2**20):
 
 def get_mapped():
     global names
-    global mapping
-    global uuids
+    global seq_mapping
+    global seq_uuids
+    global all_uuids
+    global uid2name
 
-    if os.path.exists(mapped):
-        fmap = open(mapped, "r")
+    if os.path.exists(seq_map):
+        fmap = open(seq_map, "r")
         for line in fmap.readlines():
             line = line.rstrip().lstrip()
             (uid, name, chksum, bucket) = line.split()
@@ -30,19 +39,21 @@ def get_mapped():
             name = re.sub('\.fastq.gz$', '', name)
             uid = re.sub('\.fastq.gz$', '', uid)
             names[name] = uid
+            uid2name[uid] = name
             chksums[name] = chksum
-            buckets[name] = bucket
+            buckets[uid] = bucket
             root = re.sub('_R[12].*$', '', name)
             uid = re.sub('_R[12]$', '', uid)
-            mapping[root] = uid
-            uuids[uid] = root
+            seq_mapping[root] = uid
+            seq_uuids[uid] = root
+            all_uuids[uid] = 1
         fmap.close()
 
 def get_fastq_files():
     fastqs = []
     
-    if os.path.exists("files.txt"):
-        fin = open("files.txt", "r")
+    if os.path.exists(fastq_list):
+        fin = open(fastq_list, "r")
         for line in fin.readlines():
             if re.search('^\s*#', line):  # comment lines
                 continue
@@ -52,13 +63,20 @@ def get_fastq_files():
             fastqs.append(name)
         fin.close()
     #else:
-        #print("files.txt doesn't exist!")
+        #print(fastq_list + " doesn't exist!")
 
     return(fastqs)
 
+def new_uuid():
+    uid = str(uuid.uuid4())
+    while uid in all_uuids:       # make sure no collision
+        uid = str(uuid.uuid4())
+    all_uuids[uid] = 1
+    return uid
+
 def get_uuid(name):
-    global mapping
-    global uuids
+    global seq_mapping
+    global seq_uuids
     # name = re.sub('.*/', '', name)
     # name = name.rstrip('.gz')    # make sure files are gziped
     # root = re.sub('_R[12].*\.fastq\.gz$', '', name)
@@ -66,21 +84,20 @@ def get_uuid(name):
     tail = re.sub(root, '', name)
     tail = re.sub('^(...).*', r'\1', tail)
 
-    if root in mapping:
-        uid = mapping[root]
+    if root in seq_mapping:
+        uid = seq_mapping[root]
     else:
-        uid = str(uuid.uuid4())
-        while uid in uuids:       # make sure no collision
-            uid = str(uuid.uuid4())
-        mapping[root] = uid
-        uuids[uid] = root
+        uid = new_uuid()
+        seq_mapping[root] = uid
+        seq_uuids[uid] = root
 
     return uid + tail
 
-def get_uuids():
-    global uuids
+def get_uuids():      # uuids for fastq files
+    global seq_uuids
     global names
-    global mapping
+    global uid2name
+    global seq_mapping
 
     has_new = False
 
@@ -95,92 +112,172 @@ def get_uuids():
             # print(name)
             bucket = re.sub('[^/]+$', '', line)
             uid = get_uuid(name)   # uid includes _R1 or _R2
-            buckets[name] = bucket
+            buckets[uid] = bucket  # with a trailing slash (/)
             names[name] = uid
+            uid2name[uid] = name
             chksums[name] = get_md5('fastq/' + name + '.fastq.gz')
      
     if has_new:
         keys = sorted(list(names.keys()))
-        with open(mapped, "w") as fmap:
+        with open(seq_map, "w") as fmap:
             for name in keys:
                # print(name)
-               fmap.write(names[name] + ".fastq.gz " + name + ".fastq.gz " + chksums[name] + " " + buckets[name] + "\n")
+               uid = names[name]
+               fmap.write(uid + ".fastq.gz " + name + ".fastq.gz " + chksums[name] + " " + buckets[uid] + "\n")
 
-    return [name + '.fastq.gz' for name in names]
+    # return [name + '.fastq.gz' for name in names]
+    # print(names.values())
+    return [uuid + '.fastq.gz' for uuid in uid2name]
+
+def get_sample_mapping():
+    global spl_mapping
+    global spl_uuids
+
+    if os.path.exists(spl_map):
+        with open(spl_map, "r") as fmap:
+            for line in fmap.readlines():
+                (uid, name) = line.split()
+                spl_mapping[name] = uid
+                spl_uuids[uid] = name
+            
+def get_sample_files():
+    samples = []
+    if os.path.exists(sample_list):
+        with open(sample_list, "r") as fin:
+            for line in fin.readlines():
+                if re.search('^\s*#', line):  # comment lines
+                    continue
+                if re.search('^\s*$', line):  # blank lines
+                    continue
+                name = re.sub('#.*$', '', line).rstrip().lstrip() # also remove comments
+                samples.append(name)
+    #else:
+        # print(sample_list + " doesn't exist")
+ 
+
+    return samples
+
 
 def upload_mapfile():
-    tgt = "test/mapping.txt"
-    cmd = "aws --profile risaws s3api put-object --bucket chop-grin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, mapped)
-    # print(cmd)
+    tgt = seq_map
+    cmd = "aws --profile risaws s3api put-object --bucket chop-grin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, seq_map)
+    print(cmd)
     # shell(cmd)
 
-def lookup_uuid(name):
-    return names[name]
+def getname(uuid):
+    return 'fastq/' + uid2name[uuid] + '.fastq.gz'
+
+def get_meta_files():
+    # uploaded = config['results']['uploaded']
+    # return [config['results']['sequence_meta'] + re.sub(uploaded, '', re.sub('_R1\..*$', '.json', name)) for name in glob.glob(uploaded + "/*_R1.*.gz")]
+    return [config['results']['sequence_meta'] + '/' + re.sub('_R1\..*$', '.json', name) for name in get_uuids() if re.search('_R1\.', name)]
+
+def get_sample_uuids():
+    global spl_mapping
+    global spl_uuids
+    has_new = False
+
+    get_sample_mapping()
+
+    for sample in get_sample_files():
+        if not sample in spl_mapping:
+            has_new = True
+            uid = new_uuid()
+            spl_mapping[sample] = uid
+            spl_uuids[uid] = sample
+
+    if has_new:
+        keys = sorted(list(spl_mapping.keys()))
+        with open(spl_map, "w") as fmap:
+            for name in keys:
+               # print(name)
+               uid = spl_mapping[name]
+               fmap.write(uid + " " + name + "\n")
+
+    return [uuid + '.json' for uuid in spl_uuids.keys()]
+
+def get_sample_name(uuid):
+     return 'samples/'+ spl_uuids[uuid] + '.csv'
+
 
 rule mapping:
-    input: fastq = "fastq/{name}.fastq.gz", filelist="files.txt"
-    output: fastq = "mapped/{name}.fastq.gz"
+    # input: fastq = "fastq/{name}.fastq.gz", filelist = fastq_list
+    input: fastq = lambda wildcards: getname(wildcards.name), filelist = fastq_list
+    output: uuid = config['results']['mapped'] + "/{name}.fastq.gz"
     run:
-        tgt = names[wildcards.name] + '.fastq.gz'
-
-        if not os.path.exists(tgt):
-            cmd = "ln -s ../%s mapped/%s" % (input.fastq, tgt)
-            # print(cmd)
-            shell(cmd)
-
-        cmd = "ln -s %s mapped/%s.fastq.gz" % (tgt, wildcards.name)
-        # print(cmd)
+        # tgt = uid2name[wildcards.name] + '.fastq.gz'
+        # cmd = "ln -s ../fastq/%s mapped/%s.fastq.gz" % (tgt, wildcards.name)
+        cmd = "ln -s ../%s %s" % (input.fastq, output.uuid)
+        print(cmd)
         shell(cmd)
 
-rule uploading:
-    input: fastq = "mapped/{name}.fastq.gz"
-    output: fastq = "uploaded/{name}.fastq.gz"
+rule uploading:  # should also upload metadata
+    input: config['results']['mapped'] + "/{uuid}.fastq.gz"
+    output: config['results']['uploaded'] + "/{uuid}.fastq.gz"
     run:
-        (bucket, path) = buckets[wildcards.name].split(':')
-        name = names[wildcards.name] + '.fastq.gz'
-        tgt = path + name    # path should have a trailing slash (/)
-        src = 'fastq/' + wildcards.name + '.fastq.gz'
+        (bucket, path) = buckets[wildcards.uuid].split(':')
+        # name = names[wildcards.uuid] + '.fastq.gz'
+        tgt = path + wildcards.uuid + '.fastq.gz' # path should have a trailing slash (/)
+        src = 'fastq/' + uid2name[wildcards.uuid] + '.fastq.gz'
 
         # print('copy ' + src + ' to ' + tgt + ' ...')
-        #cmd = "aws --profile risaws s3api put-object --bucket %s --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (bucket, tgt, src)
-        # print(cmd)
+        cmd = "aws --profile risaws s3api put-object --bucket %s --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (bucket, tgt, src)
+        print(cmd)
         # shell(cmd)
 
         # requires a default entry in ~/.aws/credentials
-        s3 = boto3.client('s3')
-        data = open(src, "rb")
-        res = s3.put_object(Bucket=bucket,
-                            Body=data,
-                            Key=path+name,
-                            ServerSideEncryption='AES256')
+        # s3 = boto3.client('s3')
+        # data = open(src, "rb")
+        # res = s3.put_object(Bucket=bucket,
+        #                     Body=data,
+        #                     Key=tgt,
+        #                     RequestPayer='requester',
+        #                     ServerSideEncryption='AES256')
 
-        cmd = "ln -s ../mapped/%s %s" % (name, output.fastq)
-        # print(cmd)
+        cmd = "ln -s ../%s %s" % (src, output)
+        print(cmd)
         shell(cmd)
 
-rule metadata:
-    input: pair1="mapped/{name}_R1.fastq.gz", pair2="mapped/{name}_R2.fastq.gz"
-    output: lookup_uuid("{name}")
+# files = get_meta_files()
+# print(files)
+
+rule get_meta:
+     input: get_meta_files()
+     # input: files
+
+rule get_samples:
+     input: get_sample_uuids()
+
+rule sequence_meta:
+    input: pair1 = config['results']['uploaded'] + "/{uuid}_R1.fastq.gz", pair2 = config['results']['uploaded'] + "/{uuid}_R2.fastq.gz"
+    output: out = config['results']['sequence_meta'] + "/{uuid}.json"
     run:
-        with open("meta/" + wildcards.name+ ".meta", "w") as fout:
-            fout.write('''
-{
+        print('output: ' + output.out)
+        uid = new_uuid()
+        uuid  = wildcards.uuid
+        name1 = uid2name[uuid+'_R1']
+        name2 = uid2name[uuid+'_R2']
+        (bucket, path) = buckets[uuid+'_R1'].split(':')
+        chksum1 = chksums[name1]
+        chksum2 = chksums[name2]
+        fout = open(output.out, "w")
+        fout.write('''{
   "submission_type": "sequence", 
   "submission_status": "active",
   "submitter_id": "CCMCH",
   "data_type": "fastq",
-  "sample": "5eb427c5-5668-472e-9bb1-a1268b4425a2",
+  "sample": "%s",
   "reads": [{
-    "path": "http://wuxi-demo-trios.s3.amazonaws.com/8949bd8f-8b3c-4615-b55c-61ad489367de_1.fq.gz", 
-    "md5sum": "b9ba8a9c31907e09c2cc02eb3b02c82b", 
-    "internal_id": "E01175-L2_S13_L003_R1_001.fastq",
+    "path": "http://%s.s3.amazonaws.com/%s%s_R1.fastq.gz", 
+    "md5sum": "%s", 
+    "internal_id": "%s.fastq",
     "flowcell": "123FUAAXX",
     "lane": 1,
     "paired_end": 1
     },{
-    "path": "http://wuxi-demo-trios.s3.amazonaws.com/8949bd8f-8b3c-4615-b55c-61ad489367de_2.fq.gz", 
-    "md5sum": "0b553a2255d43a80a79375ea63e1e18a", 
-    "internal_id": "E01175-L2_S13_L003_R2_001.fastq",
+    "path": "http://%s.s3.amazonaws.com/%s%s_R2.fastq.gz", 
+    "md5sum": "%s", 
+    "internal_id": "%s.fastq",
     "flowcell": "123FUAAXX",
     "lane": 1,
     "paired_end": 2
@@ -190,5 +287,50 @@ rule metadata:
   "technique": "WES",
   "comments": "second run"
 }
-''')
+''' % (uid, bucket, path, uuid, chksum1, name1, bucket, path, uuid, chksum2, name2)
+)
+        fout.close()
+
+        path = re.sub('fastq/', '', path)
+        tgt = path + output.out
+        cmd = "aws --profile saml s3api put-object --bucket %s --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (bucket, tgt, output.out)
+        print(cmd)
+        shell(cmd)
+
+rule sample_meta:
+    input: sample = lambda wildcards: get_sample_name(wildcards.uuid)
+    output: config['results']['sample_meta'] + "/{uuid}.json"
+    run:
+        fout = open(config['results']['sample_meta'] + '/' + uuid + '.json', "w")
+        fout.write('''{
+  "sample_type_id": null, 
+  "time_between_excision_and_freezing": null, 
+  "oct_embedded": null, 
+  "tumor_code_id": null, 
+  "submitter_id": null, 
+  "intermediate_dimension": null, 
+  "is_ffpe": null, 
+  "pathology_report_uuid": null, 
+  "tumor_descriptor": null, 
+  "sample_type": null, 
+  "project_id": null, 
+  "current_weight": null, 
+  "composition": null, 
+  "time_between_clamping_and_freezing": null, 
+  "shortest_dimension": null, 
+  "tumor_code": null, 
+  "tissue_type": null, 
+  "days_to_sample_procurement": null, 
+  "cases": {
+    "submitter_id": null
+  }, 
+  "freezing_method": null, 
+  "type": "sample", 
+  "preservation_method": null, 
+  "days_to_collection": null, 
+  "initial_weight": null, 
+  "longest_dimension": null
+}''')
+        fout.close()
+
 
