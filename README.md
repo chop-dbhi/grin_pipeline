@@ -23,7 +23,6 @@ source activate grinenv
 snakemake
 ```
 
-
 ### Setup on Respublica
 Set a TMPDIR in your `~/.bash_profile`:
 ```
@@ -41,10 +40,12 @@ cp configs/localconfig.sample.yaml localconfig.yaml
 ### Run on Respublica
 ```
 source activate grinenv
-snakemake -j 300 --cluster-config configs/cluster.yaml -c "qsub -V -l h_vmem={cluster.h_vmem} -l mem_free={cluster.mem_free} -l m_mem_free={cluster.m_mem_free} -pe smp {threads}"
+snakemake -j 300 --notemp --cluster-config configs/cluster.yaml -c "qsub -V -l h_vmem={cluster.h_vmem} -l mem_free={cluster.mem_free} -l m_mem_free={cluster.m_mem_free} -pe smp {threads}"
 ```
 
 ### Development
+It's best to run in dev with --notemp since intermediates can take a long time to produce
+
 To update the requirements file (after installing some new package):
 ```
 conda list --explicit > requirements.txt
@@ -56,5 +57,7 @@ conda install --name grinenv --file  requirements.txt
 ```
 You might find this will trigger Snakemake to want to remake downstream files, because executables are listed as input (this ensures they actually exist). To remedy this you can postdate any offending executables if you are confident their updates do not affect results.
 ```
-touch -d 20160101 `which novoalign`
+touch -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
+touch -h -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
+touch -d 20150101 tools/GenomeAnalysisTK-3.6.tar.bz2 
 ```

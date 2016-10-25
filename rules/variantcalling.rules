@@ -1,5 +1,5 @@
 #### Variant Calling ####
-rule make_gvcf:
+rule bam_to_gvcf:
     input:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
@@ -154,7 +154,7 @@ rule sample_table_to_pedfile:
     output:
         config['pedfile']
     run:
-        st = pandas.read_table("{0}".format(input))
+        st = pandas.read_table("{0}".format(input),dtype={'FamilyID': object,'Subject':object,'Mother':object,'Father':object,'Sex':object,'Affected_status':object,'Not_in_Varbank':object})
         complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
         trios = st.loc[complete_trios]
         trios['Sex']=trios['Sex'].replace(['M','F'],[1,2])
@@ -193,8 +193,7 @@ rule analysis_pedfile:
     output:
         config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.{hasheader,(headered|nohead)}.pedfile"
     run:
-        globalpedfile = pandas.read_table("{0}".format(input))
-        
+        globalpedfile = pandas.read_table("{0}".format(input),dtype={'FamilyID': object,'Subject':object,'Father':object,'Mother':object,'Sex':object,'Affected_status':object})
         probandrow = globalpedfile[(globalpedfile['FamilyID'] == wildcards.family) & (globalpedfile['Subject'] == wildcards.subject)]
         assert(len(probandrow)==1)
         parentalrows = globalpedfile[(globalpedfile['Subject'] == probandrow['Father'].item()) | (globalpedfile['Subject'] == probandrow['Mother'].item())]
@@ -302,8 +301,8 @@ rule gatk_hard_filtration_snps:
         -T VariantFiltration \
         -o {output.vcf} \
         --variant {input.vcf} \
-        --filterExpression "QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
-        --filterName "GATK3.5-hard-filter" \
+        --filterExpression "'QD < 2.0 || MQ < 30.0 || FS > 60.0 || HaplotypeScore > 13.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0'" \
+        --filterName "GATK3.6-hard-filter" \
         2> {log}
         """
 
@@ -326,14 +325,14 @@ rule gatk_hard_filtration_indels:
         -T VariantFiltration \
         -o {output.vcf} \
         --variant {input.vcf} \
-        --filterExpression "QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0" \
-        --filterName "GATK3.5-hard-filter" \
+        --filterExpression "'QD < 2.0 || ReadPosRankSum < -20.0 || FS > 200.0'" \
+        --filterName "GATK3.6-hard-filter" \
         2> {log}
         """
 
 rule select_passing:
     input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.hard.vcf",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type}.hard.vcf",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.{type,(snps|indels)}.filtered.vcf",

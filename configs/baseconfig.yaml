@@ -1,1 +1,266 @@
-config.respublica.yaml
+############# normally you should not need to change the settings in this file ################
+
+isilon: /mnt/isilon/cbmi/variome
+
+ped: ped.ped  # a PED pedigree file for PhaseByTransmission
+sample_table: metadata/sample_table.txt
+pedfile: metadata/samples.ped
+
+xbrowse: $isilon/bin/xbrowse  # directory, not binary
+vepdir: $isilon/vep
+
+annovardbdir: $isilon/annovar/humandb
+#annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
+annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a'] # removed 'genomicSuperDups',
+# specify operations for table_annovar.pl, correspoinding to above databases
+operations: "g,r,f,f,f,f,f,f,f,f,f,f" # g: gene-based
+                                        # r: region-based
+                                        # f: filter-based
+
+annovaropts:
+    hg37:
+        refGene: -downdb -webfrom annovar
+        esp6500siv2_all: -downdb -webfrom annovar
+        esp6500siv2_ea: -downdb -webfrom annovar
+        esp6500siv2_aa: -downdb -webfrom annovar
+        exac03: -downdb -webfrom annovar
+        kaviar_20150923: -downdb -webfrom annovar
+        exac03nontcga: -downdb -webfrom annovar
+        exac03nonpsych: -downdb -webfrom annovar
+        hrcr1: -downdb -webfrom annovar
+        dbnsfp30a: -downdb -webfrom annovar
+        1000g2014oct: -downdb -webfrom annovar
+        snp138: -downdb -webfrom annovar
+        cytoBand: -downdb
+        genomicSuperDups: -downdb
+    hg38:
+        refGene: -downdb -webfrom annovar
+        esp6500siv2_all: -downdb -webfrom annovar
+        esp6500siv2_ea: -downdb -webfrom annovar
+        esp6500siv2_aa: -downdb -webfrom annovar
+        exac03: -downdb -webfrom annovar
+        kaviar_20150923: -downdb -webfrom annovar
+        exac03nontcga: -downdb -webfrom annovar
+        exac03nonpsych: -downdb -webfrom annovar
+        hrcr1: -downdb -webfrom annovar
+        dbnsfp30a: -downdb -webfrom annovar
+        1000g2014oct: -downdb
+        snp138: -downdb
+        cytoBand: -downdb
+        genomicSuperDups: -downdb
+
+dbsnp:
+    hg37:
+        $isilon/reference/human/dbsnp137.vcf.gz
+    hg38:
+        $isilon/reference/human/GRCh38/dbSNP/All_20151104.vcf.gz
+
+
+known:
+    hg37:
+        $isilon/reference/human/Mills_and_1000G_gold_standard.indels.b37.sites.vcf
+    hg38:
+        $isilon/reference/human/GRCh38/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
+
+ref:
+    hg37:
+        $isilon/reference/human/g1k_v37/human_g1k_v37.fasta
+    hg38:
+        $isilon/reference/human/GRCh38/genome.fa
+  
+exon_interval_lists:
+    hg37:
+        $isilon/reference/human/g1k_v37/exons.grch37.interval_list
+    hg38:
+        $isilon/reference/human/GRCh38/exons.hg38.chronly.interval_list
+
+exon_bed:
+    hg37:
+        $isilon/reference/human/g1k_v37/exons.grch37.bed
+    hg38:
+        $isilon/reference/human/GRCh38/exons.hg38.bed
+
+lastctg:
+    hg37:
+        "^GL000192.1.*\n"
+    hg38:
+        "^chrEBV.*\n"
+
+refidx:
+    novoalign:
+        hg37:   # created with novoindex -k 14 -s 1 human_g1k_v37.fasta.idx human_g1k_v37.fasta
+            $isilon/reference/human/g1k_v37/human_g1k_v37.fasta.idx
+        hg38:
+            $isilon/reference/human/GRCh38/genome.idx
+    bwa:
+        hg37:   # bwa index genome.fa (creates .amb .ann .pac)
+            $isilon/reference/human/g1k_v37/human_g1k_v37.fasta
+        hg38:
+            $isilon/reference/human/GRCh38/genome.fa
+
+# parameter for running vep
+
+vepassembly:
+    hg37: GRCh37
+    hg38: GRCh38
+
+vepgenomes:
+    hg37:
+        $isilon/vep/homo_sapiens/84_GRCh37/Homo_sapiens.GRCh37.75.dna.primary_assembly.fa
+    hg38:
+        $isilon/vep/homo_sapiens/84_GRCh38/Homo_sapiens.GRCh38.dna.primary_assembly.fa
+
+# subdirectories relative to projdir
+datadirs:
+    multiqc:          multiqc
+    oldbams:          oldbams
+    fastq:            fastq
+    samples:          samples
+    fastqc:           fastqc
+    website:          site
+    log:              logs
+
+# high-speed disk for processing intermediate files
+process_dir:
+    hg37:             lustre/GRCh37/    # the traling slash is required
+    hg38:             lustre/GRCh38/
+
+# slower disk for end products
+landing_dir:
+    hg37:             GRCh37/           # the traling slash is required
+    hg38:             GRCh38/
+
+results:  # subdirectories in process_dir or landing_dir
+    sams:             sams
+    bams:             bams
+    docs:             docs
+    picard:           picard
+    realigned:        realigned
+    lists:            lists
+    recalibrated:     recalibrated
+    postrecalibrated: postrecalibrated
+    pdfs:             pdfs
+    gvcfs:            gvcfs
+    vep:              vep
+    vtmeta:           vtmeta
+    gemini:           gemini
+    vcfs:             vcfs
+    analysis:         analysis
+    GATKDoC:          GATKDoC
+    xhmmout:          xhmmOutput
+
+tools:
+    java:
+        java
+    # must be set separately from java because java will be treated as input
+    opts:
+        stratospheric:
+            '-Xmx80g -Xms40g'
+        veryhigh:
+            '-Xmx64g -Xms32g'
+        high:
+            '-Xmx48g -Xms24g'
+        med:
+            '-Xmx32g -Xms16g'
+        low:
+            '-Xmx16g -Xms8g'
+    seq2qc:
+        fastqc
+    samtools:
+        samtools
+    sortbam:
+        novosort
+    align:
+        bwa:
+            bwa
+        novoalign:
+            novoalign
+    vt:
+        vt
+    tabix:
+        tabix
+    bgzip:
+        bgzip
+    vcfanno:
+        path: vcfanno
+        lua: configs/vcfanno.lua
+        conf: 
+            hg37: configs/vcfanno_GRCh37.conf
+            hg38: configs/vcfanno_GRCh38.conf
+    vcf2db: $isilon/bin/vcf2db/vcf2db.py
+    gemini:
+        gemini_tool: $isilon/bin/gemini/tools/bin/gemini
+        gemini_python: $isilon/bin/gemini/tools/bin/gemini_python
+        gemini_anno: $isilon/bin/gemini/data/gemini_data
+    vep:
+        $isilon/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
+    multiqc:
+        multiqc
+    annotate_variation:
+        annotate_variation.pl
+    table_annovar:
+        table_annovar.pl
+    vcf2avinput:
+        convert2annovar.pl
+
+jars:
+    picard:
+        path:
+            picard
+        markdups:
+            MarkDuplicates
+        index:
+            BuildBamIndex
+        readgroups:
+            AddOrReplaceReadGroups
+        samtofastq:
+            SamToFastq
+    gatk:
+        path:
+            GenomeAnalysisTK
+    snpeff:
+        cnf:
+            hg37: configs/snpEff.GRCh37.config
+            hg38: configs/snpEff.GRCh38.config
+        path:
+            snpEff
+        hg38:
+                cnf:
+                        configs/snpEff.GRCh38.config
+                db:
+                        GRCh38.82
+        hg37:
+                cnf:
+                        configs/snpEff.GRCh37.config
+                db:
+                        GRCh37.75
+        ud:
+            '10'
+        format:
+            -classic
+
+bioc_sets:
+    bsgenome:
+        hg37: BSgenome.Hsapiens.UCSC.hg19
+        hg38: BSgenome.Hsapiens.UCSC.hg38
+    txdb:
+        hg37: TxDb.Hsapiens.UCSC.hg19.knownGene
+        hg38: TxDb.Hsapiens.UCSC.hg38.knownGene
+    snpdb:
+        hg37: SNPlocs.Hsapiens.dbSNP144.GRCh37
+        hg38: SNPlocs.Hsapiens.dbSNP144.GRCh38
+    esp:
+        hg37: MafDb.ESP6500SI.V2.SSA137
+        hg38: MafDb.ESP6500SI.V2.SSA137
+    exac:
+        hg37: MafDb.ExAC.r0.3.sites
+        hg38: MafDb.ExAC.r0.3.sites
+    sift:
+        hg37: SIFT.Hsapiens.dbSNP137
+        hg38: SIFT.Hsapiens.dbSNP137
+    phylo:
+        hg37: humanGenesPhylostrata
+        hg38: humanGenesPhylostrata
+
+# !!python/object/apply:os.path.join
+

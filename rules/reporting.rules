@@ -40,7 +40,7 @@ rule fastqc_summary:
         PROJECT_HOME<-"{params.projdir}";
         path.out<-"{params.projdir}/fastqc/summary";
         fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
-        knitr::knit("reports/summary_fastqc.Rmd")
+        ezknitr::ezknit(file="reports/summary_fastqc.Rmd",out_dir=PROJECT_HOME)
         rmarkdown::render('summary_fastqc.md', output_format='html_document')
         """)
 
@@ -85,23 +85,46 @@ and installed as &lt;isilon&gt;/bin/fastqc.
                out.write("\n\n")
                idx += 1
 
+def get_all_recals_bams(trio):
+    [family,subject]=trio.split('_')
+    rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family) & (SAMPLE_TABLE['Subject'] == subject)]
+    samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+    bams = []
+    for samplename in samples:
+        bams += [bam for bam in REBAMS if os.path.basename(bam).startswith(samplename) and bam.endswith(".bam")]
+    return(bams)
+
 rule siteindex:
     #input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
     output:
         config['datadirs']['website'] + "/index.md"
+    params:
+        analysisdir = config['landing_dir'][freeze] + config['results']['analysis']
     run:
         with open(output[0], 'w') as outfile:
             outfile.write("""
-#### De novo analysis reports
+#### Inheritance analysis reports
 """)
-            for s,p in zip(ANALYSES,COMPLETETRIOSFAMIDS):
-                outfile.write("> [`{0}`]({1}/{2})\n\n".format(p, SLINK, s))
+            for p in COMPLETETRIOSFAMIDS:
+                outfile.write("> {0} ".format(p))
+                outfile.write("<a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.denovo.html\"><button type=\"button\" class=\"btn btn-primary btn-sm\">denovo</button></a>".format(p, SLINK, params.analysisdir))
+                outfile.write(" <a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.arhomo.html\"><button type=\"button\" class=\"btn btn-primary btn-sm\">arhomo</button></a>".format(p, SLINK, params.analysisdir))
+                outfile.write(" <a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.cmpdhet.html\"><button type=\"button\" class=\"btn btn-primary btn-sm\">cmpdhet</button></a>".format(p, SLINK, params.analysisdir))
+                outfile.write("\n\n")
             outfile.write("""
 #### Annotated trio vcfs
 """)
-            for s in ANALYSISREADY:
-                outfile.write("> [`{0}`]({1}/{2})\n\n".format(s, SLINK, s))
-
+            for s,p in zip(ANALYSISREADY,COMPLETETRIOSFAMIDS):
+                outfile.write("> [`{0}.vcf.bgz`]({1}/{2})\n\n".format(p, SLINK, s))
+            outfile.write("""
+#### Recalibrated bams
+""")
+            for s in COMPLETETRIOSFAMIDS:
+                outfile.write("> {0} ".format(s))
+                bams = get_all_recals_bams(s)
+                for bam in bams:
+                    outfile.write(" [`{0}`]({1}/{2})".format(os.path.basename(bam), SLINK, bam))
+                outfile.write("\n\n")
             # this link won't be treated as a child page
             #outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
             # must add a child index to the mybic project admin page to treat this link as a child page

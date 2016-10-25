@@ -79,7 +79,7 @@ rule target_list: # create individual realign target list
         bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
-        samplelist = temp(config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list")
+        samplelist = config['process_dir'][freeze] + config['results']['lists'] + "/{sample}.list"
     log:
         config['datadirs']['log'] + "/{sample}.target_list.log"
     params:
@@ -318,7 +318,7 @@ rule mark_duplicates:
 
 # samtools index seems more reliable than picard
 # in terms of returning an exit code
-rule make_index:  # create bai files if needed
+rule index_bam:  # create bai files if needed
     input:
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sampleandext}.bam",
         samtools = ENV3 + config['tools']['samtools']
