@@ -104,7 +104,7 @@ rule map_uuid:
 TRIOGEMS = [config['landing_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
 # note we are leaving out the GATK phasing here
-ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.models.html" for trio in COMPLETETRIOSFAMIDS]
+ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff." + model + ".html" for model in ['denovo','arhomo','cmpdhet'] for trio in COMPLETETRIOSFAMIDS]
 rule analyses:
     input: ANALYSES
 

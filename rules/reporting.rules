@@ -98,13 +98,19 @@ rule siteindex:
     #input: ANALYSES,COMPLETETRIOSFAMIDS,ANALYSISREADY
     output:
         config['datadirs']['website'] + "/index.md"
+    params:
+        analysisdir = config['landing_dir'][freeze] + config['results']['analysis']
     run:
         with open(output[0], 'w') as outfile:
             outfile.write("""
-#### De novo analysis reports
+#### Inheritance analysis reports
 """)
-            for s,p in zip(ANALYSES,COMPLETETRIOSFAMIDS):
-                outfile.write("> [`{0}`]({1}/{2})\n\n".format(p, SLINK, s))
+            for p in COMPLETETRIOSFAMIDS:
+                outfile.write("> {0} ".format(p))
+                outfile.write("<a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.denovo.html\"><button type=\"button\" class=\"btn btn-primary btn-sm\">denovo</button></a>".format(p, SLINK, params.analysisdir))
+                outfile.write(" <a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.arhomo.html\"><button type=\"button\" class=\"btn btn-primary btn-sm\">arhomo</button></a>".format(p, SLINK, params.analysisdir))
+                outfile.write(" <a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.cmpdhet.html\"><button type=\"button\" class=\"btn btn-primary btn-sm\">cmpdhet</button></a>".format(p, SLINK, params.analysisdir))
+                outfile.write("\n\n")
             outfile.write("""
 #### Annotated trio vcfs
 """)
