@@ -1,11 +1,15 @@
 ---
-title: "GRIN Epilepsy Trio Analysis (Gemini)"
 date: "`r Sys.Date()`"
 output:
   html_document:
     toc: true
     lib_dir: libs
 css: styles.css
+params: 
+    title: "GRIN Epilepsy Trio Analysis!"
+---
+---
+title: `r params$title`
 ---
 ```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
 library(knitr)
@@ -27,8 +31,8 @@ thisnotinthat <- function(x.1,x.2,...){
 
 viewDataTable <- function(dat){
 
-  cols2hide <- grep('Description|Variants|Perc|chromosome|position|rsid|^ref$|^alt$|^gene$|
-                    impact_severity|rvis_score|depths|gt_quals|family_genotypes',
+  cols2hide <- grep('Description|Variants|Perc|chr|^pos$|rsid|^ref$|^alt$|^gene$|
+                    impact_severity|rvis_score|depths|gt_quals|family_genotypes|is_exonic|is_splicing',
                     colnames(dat), invert = TRUE)
 
   DT::datatable(dat,
@@ -101,10 +105,16 @@ if(length(cmpdhet) == 1 && cmpdhet == 0)
 }
 ```
 
+```{r cmpdhet_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+cmpdhet <- merge(cmpdhet, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
+colnames(cmpdhet)[grep('RVIS',colnames(cmpdhet))] <- "rvis_score"
+```
+
 ```{r cmpdhet_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 cmpdhet$start <- ifelse(cmpdhet$end-cmpdhet$start==1, cmpdhet$end, paste0(cmpdhet$start,'-',cmpdhet$end))
-colnames(cmpdhet)[grep('chr|start|vcf_id', colnames(cmpdhet))] <- c('chromosome','position','rsid')
+colnames(cmpdhet)[grep('chr|start|vcf_id', colnames(cmpdhet))] <- c('chr','pos','rsid')
 cmpdhet$end <- NULL
+cmpdhet <- cmpdhet[,c(2:16,1,17:ncol(cmpdhet))]
 ```
 
 ```{r cmpdhet_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}

@@ -1,11 +1,15 @@
 ---
-title: "GRIN Epilepsy Trio Analysis (Gemini)"
 date: "`r Sys.Date()`"
 output:
   html_document:
     toc: true
     lib_dir: libs
 css: styles.css
+params: 
+    title: "GRIN Epilepsy Trio Analysis!"
+---
+---
+title: `r params$title`
 ---
 ```{r libs, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
 library(knitr)
@@ -27,8 +31,8 @@ thisnotinthat <- function(x.1,x.2,...){
 
 viewDataTable <- function(dat){
 
-  cols2hide <- grep('Description|Variants|Perc|chromosome|position|rsid|^ref$|^alt$|^gene$|
-                    impact_severity|rvis_score|depths|gt_quals|family_genotypes',
+  cols2hide <- grep('Description|Variants|Perc|chr|^pos$|rsid|^ref$|^alt$|^gene$|
+                    impact_severity|rvis_score|depths|gt_quals|family_genotypes|is_exonic|is_splicing',
                     colnames(dat), invert = TRUE)
 
   DT::datatable(dat,
@@ -95,11 +99,16 @@ if(length(arhomo) == 1 && arhomo == 0)
 }
 ```
 
+```{r arhomo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+arhomo <- merge(arhomo, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
+colnames(arhomo)[grep('RVIS',colnames(arhomo))] <- "rvis_score"
+```
 
 ```{r arhomo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 arhomo$start <- ifelse(arhomo$end-arhomo$start==1, arhomo$end, paste0(arhomo$start,'-',arhomo$end))
-colnames(arhomo)[grep('chr|start|vcf_id', colnames(arhomo))] <- c('chromosome','position','rsid')
+colnames(arhomo)[grep('chr|start|vcf_id', colnames(arhomo))] <- c('chr','pos','rsid')
 arhomo$end <- NULL
+arhomo <- arhomo[,c(2:16,1,17:ncol(arhomo))]
 ```
 
 ```{r arhomo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
