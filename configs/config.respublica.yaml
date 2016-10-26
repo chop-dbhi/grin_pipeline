@@ -148,6 +148,11 @@ results:  # subdirectories in process_dir or landing_dir
     analysis:         analysis
     GATKDoC:          GATKDoC
     xhmmout:          xhmmOutput
+    mapped:           mapped     # mapped to UUIDs
+    uploaded:         uploaded   # uploaed to S3 buckets
+    sequence_meta:    sequence_meta
+    sample_meta:      sample_meta
+    pheno_meta:       pheno_meta
 
 tools:
     java:
