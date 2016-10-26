@@ -23,6 +23,18 @@ rule decompose_for_gemini:
         {input.vt} decompose -s -o {output} {input.vcf}
         """
 
+# decomposes block substitutions e.eg CA->TG into individual variants
+rule decompose_blocksub_for_gemini:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf",
+        vt = ENV3 + config['tools']['vt']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.db.vcf"
+    shell:
+        """
+        {input.vt} decompose_blocksub -o {output} {input.vcf}
+        """
+
 # normalize the variants
 rule normalize_for_gemini:
     input:
@@ -35,6 +47,19 @@ rule normalize_for_gemini:
     shell:
         """
         {input.vt} normalize -r {params.ref} -o {output} {input.vcf}
+        """
+
+# these are symbols in HGMD that can cause problems
+# https://raw.githubusercontent.com/samesense/format_hgmd/master/sf.py
+rule nonascii:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        vt = ENV3 + config['tools']['vt']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.noascii.vcf"
+    shell:
+        """
+        zcat {input} | tr -d '\\200-\\377' | bgzip -c > {output}
         """
 
 # summarize the variants in a VCF file
