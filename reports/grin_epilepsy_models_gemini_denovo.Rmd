@@ -32,7 +32,7 @@ thisnotinthat <- function(x.1,x.2,...){
 viewDataTable <- function(dat){
 
   cols2hide <- grep('Description|Variants|Perc|chr|^pos$|rsid|^ref$|^alt$|^gene$|
-                    impact_severity|rvis_score|depths|gt_quals|family_genotypes|denovo_prob|is_exonic|is_splicing|functiongvs|exac_an_all',
+                    impact_severity|rvis_score|depths|gt_quals|family_genotypes|denovo_prob|is_exonic|is_splicing|functiongvs|exac_ac_all',
                     colnames(dat), invert = TRUE)
 
   DT::datatable(dat,
@@ -156,7 +156,7 @@ if(varcount)
 These are all de novo variants that satisfy the following criteria:
 
 1. Variant function must be frameshift/missense/unknown.
-2. Adjusted chromosome count must be 0 or unknown.
+2. Adjusted allele count must be 0 or unknown.
 3. Denovogear posterior probability must be >=20%.
 4. Should be exonic and splicing.
 
@@ -164,7 +164,7 @@ These are all de novo variants that satisfy the following criteria:
 denovo.sub <- denovo
 denovo.sub <- denovo.sub[which(denovo.sub$is_exonic==1 & denovo.sub$is_splicing==1),]
 denovo.sub <- denovo.sub[which(denovo.sub$functiongvs == "frameshift" | denovo.sub$functiongvs == "missense" | denovo.sub$functiongvs == "None"),]
-denovo.sub <- denovo.sub[which(denovo.sub$exac_an_all == "None" | denovo.sub$exac_an_all == "0"),]
+denovo.sub <- denovo.sub[which(denovo.sub$exac_ac_all == "None" | denovo.sub$exac_ac_all == "0"),]
 denovo.sub <- denovo.sub[which(denovo.sub$denovo_prob >= 0.20),]
 
 varcount <- length(unique(denovo.sub$variant_id))
