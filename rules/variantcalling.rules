@@ -64,6 +64,19 @@ def gvcf_samples_in_family(family,subject):
         gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
         return [gvcfs, gvcfslist]
 
+def recalbams_samples_in_family(family,subject):
+    if subject == 'family':
+        rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family)]
+    else:
+        rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family) & (SAMPLE_TABLE['Subject'] == subject)]
+    samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+    assert(len(samples)>0)
+    if subject != 'family':
+        assert(len(samples)==3)
+    bams = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in set(samples)]
+    bamlist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in set(samples)])
+    return [bams, bamlist]
+        
 # make sure the family is done first
 # if family size is 3, then you're done, just copy
 # otherwise make both trios
@@ -103,6 +116,20 @@ rule trio_vcfs:
                 -o {output.vcf} 2> {log}
             """)
 
+rule trio_bcfs:
+    input:
+        bams = lambda wildcards: recalbams_samples_in_family(wildcards.family,wildcards.subject)[0]
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.bcf"
+    params:
+        ref = config['ref'][freeze],
+        bamlist = lambda wildcards: recalbams_samples_in_family(wildcards.family,wildcards.subject)[1],
+    run:
+        assert(len(input.bams)==3)
+        shell("""
+            samtools mpileup -gDf {params.ref} {params.bamlist} > {output}
+        """)
+        
 rule family_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
