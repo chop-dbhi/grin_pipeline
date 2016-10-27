@@ -64,6 +64,7 @@ def gvcf_samples_in_family(family,subject):
         gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
         return [gvcfs, gvcfslist]
 
+# the bamlist is just a string concatenation used by samtools mpileup
 def recalbams_samples_in_family(family,subject):
     if subject == 'family':
         rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family)]
@@ -74,7 +75,7 @@ def recalbams_samples_in_family(family,subject):
     if subject != 'family':
         assert(len(samples)==3)
     bams = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in set(samples)]
-    bamlist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in set(samples)])
+    bamlist = ' '.join([config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in set(samples)])
     return [bams, bamlist]
         
 # make sure the family is done first
@@ -127,7 +128,7 @@ rule trio_bcfs:
     run:
         assert(len(input.bams)==3)
         shell("""
-            samtools mpileup -gDf {params.ref} {params.bamlist} > {output}
+            samtools mpileup --BCF -f {params.ref} {params.bamlist} > {output}
         """)
         
 rule family_vcfs:

@@ -81,7 +81,7 @@ rule run_denovogear_from_bcf:
 rule variantAnalysisModels:
     input:
         x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt",
-        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt",
+        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.vcf.dnm_auto.txt",
         source = "reports/grin_epilepsy_models_gemini_{model}.Rmd",
         rvis = "annotations/rvis.RData"
     output:
