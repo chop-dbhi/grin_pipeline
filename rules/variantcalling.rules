@@ -185,8 +185,8 @@ rule sample_table_to_pedfile:
         ped = ped.append([momdf,daddf])
         ped = ped.drop_duplicates()
         ped = ped.sort_values(by=['FamilyID','Subject'])
-        ped.to_csv("{0}".format(output.headered), sep='\t',index=False,header=TRUE)
-        ped.to_csv("{0}".format(output.nohead), sep='\t',index=False,header=FALSE)
+        ped.to_csv("{0}".format(output.headered), sep='\t',index=False,header=True)
+        ped.to_csv("{0}".format(output.nohead), sep='\t',index=False,header=False)
 
 # R's Varia
 rule analysis_pedfile:
