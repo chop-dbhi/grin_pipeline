@@ -5,6 +5,7 @@ isilon: /mnt/isilon/cbmi/variome
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
 sample_table: metadata/sample_table.txt
 pedfile: metadata/samples.ped
+pedfile_nohead: metadata/samples.nohead.ped
 
 xbrowse: $isilon/bin/xbrowse  # directory, not binary
 vepdir: $isilon/vep

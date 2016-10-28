@@ -152,7 +152,8 @@ rule sample_table_to_pedfile:
     params:
         existingsamples = EXISTINGSAMPLES
     output:
-        config['pedfile']
+        headered=config['pedfile'],
+        nohead=config['pedfile_nohead']
     run:
         st = pandas.read_table("{0}".format(input),dtype={'FamilyID': object,'Subject':object,'Mother':object,'Father':object,'Sex':object,'Affected_status':object,'Not_in_Varbank':object})
         complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
@@ -184,7 +185,8 @@ rule sample_table_to_pedfile:
         ped = ped.append([momdf,daddf])
         ped = ped.drop_duplicates()
         ped = ped.sort_values(by=['FamilyID','Subject'])
-        ped.to_csv("{0}".format(output), sep='\t',index=False)
+        ped.to_csv("{0}".format(output.headered), sep='\t',index=False,header=TRUE)
+        ped.to_csv("{0}".format(output.nohead), sep='\t',index=False,header=FALSE)
 
 # R's Varia
 rule analysis_pedfile:

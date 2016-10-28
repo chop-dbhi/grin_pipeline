@@ -3,7 +3,7 @@ rule gemini_db:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.gz",
         gemini_python = config['tools']['gemini']['gemini_python'],
         vcf2db = config['tools']['vcf2db'],
-        pedfile = config['pedfile']
+        pedfile = config['pedfile_nohead']
     output:
         gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db"
     shell:
