@@ -101,7 +101,6 @@ if(length(arhomo) == 1 && arhomo == 0)
 
 ```{r arhomo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 arhomo <- merge(arhomo, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
-colnames(arhomo)[grep('RVIS',colnames(arhomo))] <- "rvis_score"
 ```
 
 ```{r arhomo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}

@@ -107,7 +107,6 @@ if(length(cmpdhet) == 1 && cmpdhet == 0)
 
 ```{r cmpdhet_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 cmpdhet <- merge(cmpdhet, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
-colnames(cmpdhet)[grep('RVIS',colnames(cmpdhet))] <- "rvis_score"
 ```
 
 ```{r cmpdhet_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
