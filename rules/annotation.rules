@@ -270,22 +270,21 @@ rule annotate_using_vcfanno:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.vcf.bgz",
         vcfanno = ENV3 + config['tools']['vcfanno']['path'],
-        lua = config['tools']['vcfanno']['lua'].split(),
+        lua = config['tools']['vcfanno']['lua'],
         conf = config['tools']['vcfanno']['conf'][freeze],
         bgzip = ENV3 + config['tools']['bgzip']
     log: 
         config['datadirs']['log'] + "/{file}.vcfanno.log"
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.bgz"
+    threads: 8
     params:
-        processes = 4,
-        base_path = config['tools']['gemini']['gemini_anno'],
-        lua = ' '.join(['-lua '+f for f in config['tools']['vcfanno']['lua'].split()]),
+        base_path = config['tools']['gemini']['gemini_anno']
     shell:
         """
-        {input.vcfanno} -p {params.processes} \
+        {input.vcfanno} -p {threads} \
         -base-path {params.base_path} \
-        {params.lua} \
+        -lua {input.lua} \
         {input.conf} \
         {input.vcf} | {input.bgzip} -c > {output.vcf}
         """
