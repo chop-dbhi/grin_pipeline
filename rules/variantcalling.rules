@@ -26,6 +26,21 @@ rule bam_to_gvcf:
         -o {output.gvcf}
         """
 
+rule compress_gvcf:
+    input:
+        gvcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf",
+        bgzip = ENV3 + config['tools']['bgzip'],
+        tabix = ENV3 + config['tools']['tabix']
+    output:
+        bgz = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.bgz",
+        tbi = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.bgz.tbi",
+    shell:
+        """
+        {input.bgzip} -c {input.gvcf} > {output}
+        {input.tabix} -p vcf {output.bgz}
+        """
+
+
 # sanity check on gvcf files
 def check_gvcfs(gvcfs):
     for file in gvcfs:
@@ -36,6 +51,18 @@ def check_gvcfs(gvcfs):
             line = output.decode()
             if not re.search(config['lastctg'][freeze], line):
                 print(file + ' is incomplete')
+                quit()
+                
+# sanity check on gvcf files
+def check_gvcfs_bgz(gvcfs):
+    for file in gvcfs:
+        if os.path.exists(file):
+            cmd = "tabix "+file+" GL000192.1"
+            # print(cmd)
+            (output, error) = call_command(cmd)
+            line = output.decode()
+            if not line:
+                print(file + ' is incomplete ' + line + ' not ' + config['lastctg'][freeze])
                 quit()
     
 def call_command(command):
@@ -60,8 +87,8 @@ def gvcf_samples_in_family(family,subject):
         assert(len(samples)>0)
         if subject != 'family':
             assert(len(samples)==3)
-        gvcfs = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
-        gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
+        gvcfs = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in set(samples)]
+        gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in set(samples)])
         return [gvcfs, gvcfslist]
 
 # make sure the family is done first
@@ -85,8 +112,8 @@ rule trio_vcfs:
     threads: 8
     run:
         assert(len(input.gvcfs)==3)
-        check_gvcfs(input.gvcfs) 
-        check_gvcfs(input.familygvcfs)
+        check_gvcfs_bgz(input.gvcfs) 
+        check_gvcfs_bgz(input.familygvcfs)
         # use the family count to determine course of action
         if len(input.familygvcfs)==3:
             shell("cp {input.family} {output.vcf}")
@@ -119,7 +146,7 @@ rule family_vcfs:
         db = config['dbsnp'][freeze]
     threads: 8
     run:
-        check_gvcfs(input.gvcfs) 
+        check_gvcfs_bgz(input.gvcfs) 
         shell("""
         {input.gatk} {params.opts} \
         -T GenotypeGVCFs \
