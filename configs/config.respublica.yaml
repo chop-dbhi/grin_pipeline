@@ -189,7 +189,7 @@ tools:
         bgzip
     vcfanno:
         path: vcfanno
-        lua: configs/vcfanno.lua
+        lua: configs/vcfanno.lua configs/rare-disease.lua
         conf: 
             hg37: configs/vcfanno_GRCh37.conf
             hg38: configs/vcfanno_GRCh38.conf
