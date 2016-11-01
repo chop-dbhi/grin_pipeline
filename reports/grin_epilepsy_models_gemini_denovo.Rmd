@@ -102,7 +102,6 @@ if(length(denovo) == 1 && denovo == 0)
 
 ```{r denovo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 denovo <- merge(denovo, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
-colnames(denovo)[grep('RVIS',colnames(denovo))] <- "rvis_score"
 ```
 
 ```{r denovo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
@@ -150,7 +149,7 @@ if(varcount)
 
 <div class="panel panel-default">
 <div class="panel-heading">
-<h3 class="panel-title">De novo variants for Ingo Heilbig</h3>
+<h3 class="panel-title">De novo variants for Ingo Helbig</h3>
 </div>
 <div class="panel-body">
 These are all de novo variants that satisfy the following criteria:
