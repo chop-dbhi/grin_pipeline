@@ -17,6 +17,8 @@ library(DT)
 library(plyr)
 library(dplyr)
 library(GenomicRanges)
+library(stringr)
+library(reshape2)
 options(digits = 2)
 options(width=1200)
 ```
@@ -150,13 +152,13 @@ if(varcount)
 
 <div class="panel panel-default">
 <div class="panel-heading">
-<h3 class="panel-title">De novo variants for Ingo Heilbig</h3>
+<h3 class="panel-title">De novo variants for Ingo Helbig</h3>
 </div>
 <div class="panel-body">
 These are all de novo variants that satisfy the following criteria:
 
 1. Variant function must be frameshift/missense/unknown.
-2. Adjusted allele count must be 0 or unknown.
+2. Exac Adjusted allele count must be 0 or unknown.
 3. Denovogear posterior probability must be >=20%.
 4. Should be exonic and splicing.
 
@@ -167,6 +169,45 @@ denovo.sub <- denovo.sub[which(denovo.sub$functiongvs == "frameshift" | denovo.s
 denovo.sub <- denovo.sub[which(denovo.sub$exac_ac_all == "None" | denovo.sub$exac_ac_all == "0"),]
 denovo.sub <- denovo.sub[which(denovo.sub$denovo_prob >= 0.20),]
 
+varcount <- length(unique(denovo.sub$variant_id))
+if(varcount)
+{
+  viewDataTable(dat = denovo.sub)
+}
+```
+**There are `r varcount` filtered variants**
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">De novo variants for Ingo Helbig (Enhanced)</h3>
+</div>
+<div class="panel-body">
+These are all de novo variants that satisfy the following criteria:
+
+1. Allelic ratio between 20%-80%.
+2. 0 DP in mom and dad.
+3. Genotyping quality filter: GQ > 20.
+4. Only chr 1-22, X, Y, MT.
+
+```{r denovo_filtered_enhancement, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+denovo.sub <- denovo
+chr <- c(1:22,'X','Y','MT')
+denovo.sub <- denovo.sub[which(denovo.sub$chr %in% chr),]
+denovo.sub$chr <- factor(denovo.sub$chr, levels = chr)
+denovo.sub <- denovo.sub[order(denovo.sub$chr),]
+
+denovo.sub$exac_ac_all[denovo.sub$exac_ac_all=="None"] <- "-1"
+denovo.sub$exac_ac_all <- as.numeric(denovo.sub$exac_ac_all)
+
+quals <- colsplit(gsub("\\s+"," ",stringr::str_trim(gsub('[[]|[]]|[.]',' ',denovo.sub$gt_quals)))," ",c('mom','dad','kid'))
+denovo.sub <- denovo.sub[which(apply(quals, MARGIN = 1, FUN = function(x) all(x>20))),]
+
+alt_depths <- colsplit(gsub("\\s+"," ", str_trim(gsub('[[]|[]]|[.]',' ',denovo.sub$gt_alt_depths)))," ",c('mom','dad','kid'))
+gt_depths <- colsplit(gsub("\\s+"," ", str_trim(gsub('[[]|[]]|[.]',' ',denovo.sub$gt_depths)))," ",c('mom','dad','kid'))
+dp <- data.frame(mom = alt_depths[,1]/gt_depths[,1], dad = alt_depths[,2]/gt_depths[,2], proband = alt_depths[,3]/gt_depths[,3])
+denovo.sub <- denovo.sub[which(dp$proband>0.20 & dp$proband<0.80 & dp$mom==0 & dp$dad==0),]
 varcount <- length(unique(denovo.sub$variant_id))
 if(varcount)
 {
