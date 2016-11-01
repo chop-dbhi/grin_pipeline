@@ -26,18 +26,29 @@ rule bam_to_gvcf:
         -o {output.gvcf}
         """
 
+
 rule compress_gvcf:
     input:
         gvcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf",
-        bgzip = ENV3 + config['tools']['bgzip'],
-        tabix = ENV3 + config['tools']['tabix']
+        bgzip = ENV3 + config['tools']['bgzip']
     output:
-        bgz = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.bgz",
-        tbi = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.bgz.tbi",
+        bgz = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.bgz"
+    threads:
+        4
     shell:
         """
-        {input.bgzip} -c {input.gvcf} > {output}
-        {input.tabix} -p vcf {output.bgz}
+        {input.bgzip} --threads {threads}-c {input.gvcf} > {output}
+        """
+
+rule tabix_gvcf:
+    input:
+        vcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{file}.gvcf.bgz",
+        tabix = ENV3 + config['tools']['tabix']
+    output:
+        vcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{file}.gvcf.bgz.tbi",
+    shell:
+        """
+        {input.tabix} -p vcf {input.vcf}
         """
 
 
