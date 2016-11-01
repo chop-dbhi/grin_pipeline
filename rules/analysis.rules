@@ -21,7 +21,7 @@ rule get_models:
     run:
         model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
         modelname = model_lut[wildcards.model]
-        shell("{input.gemini_tool} {modelname} -d 15 --filter \"impact_severity != 'LOW'\" {input.gemini_db} > {output.gemini_out}")
+        shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
 # get posterior probability from dnm
 rule run_denovogear:
