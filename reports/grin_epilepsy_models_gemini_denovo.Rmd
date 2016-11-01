@@ -66,6 +66,11 @@ We used the following filters to reduce the number of reported false positives:
 1. Spurious inherited variants can often appear due to insufficient sequence coverage so the **mininum sequence depth** was set to **15**.
 
 2. We are interested in mutations that are likely to have functional consequence so only variants with **Medium or High impact severity** were used.
+
+3. **Minimum genotyping quality** per sample in the trio was set to **20**.
+
+4. GL contigs were not used.
+
 </blockquote>
 
 ## De novo analysis
@@ -119,6 +124,12 @@ denovo$start <- ifelse(denovo$end-denovo$start==1, denovo$end, paste0(denovo$sta
 colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chr','pos','rsid')
 denovo$end <- NULL
 denovo <- denovo[,c(2:16,1,17:ncol(denovo))]
+
+chr <- c(1:22,'X','Y','MT')
+denovo <- denovo[which(denovo$chr %in% chr),]
+denovo$chr <- factor(denovo$chr, levels = chr)
+denovo$exac_ac_all[denovo$exac_ac_all=="None"] <- "-1"
+denovo$exac_ac_all <- as.numeric(denovo$exac_ac_all)
 ```
 
 ```{r denovo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
@@ -186,24 +197,11 @@ if(varcount)
 <div class="panel-body">
 These are all de novo variants that satisfy the following criteria:
 
-1. Allelic ratio between 20%-80%.
-2. 0 DP in mom and dad.
-3. Genotyping quality filter: GQ > 20.
-4. Only chr 1-22, X, Y, MT.
+1. Allelic ratio for proband between 0.20-0.80
+2. Allelic ratio for mom and dad: 0
 
 ```{r denovo_filtered_enhancement, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
 denovo.sub <- denovo
-chr <- c(1:22,'X','Y','MT')
-denovo.sub <- denovo.sub[which(denovo.sub$chr %in% chr),]
-denovo.sub$chr <- factor(denovo.sub$chr, levels = chr)
-denovo.sub <- denovo.sub[order(denovo.sub$chr),]
-
-denovo.sub$exac_ac_all[denovo.sub$exac_ac_all=="None"] <- "-1"
-denovo.sub$exac_ac_all <- as.numeric(denovo.sub$exac_ac_all)
-
-quals <- colsplit(gsub("\\s+"," ",stringr::str_trim(gsub('[[]|[]]|[.]',' ',denovo.sub$gt_quals)))," ",c('mom','dad','kid'))
-denovo.sub <- denovo.sub[which(apply(quals, MARGIN = 1, FUN = function(x) all(x>20))),]
-
 alt_depths <- colsplit(gsub("\\s+"," ", str_trim(gsub('[[]|[]]|[.]',' ',denovo.sub$gt_alt_depths)))," ",c('mom','dad','kid'))
 gt_depths <- colsplit(gsub("\\s+"," ", str_trim(gsub('[[]|[]]|[.]',' ',denovo.sub$gt_depths)))," ",c('mom','dad','kid'))
 dp <- data.frame(mom = alt_depths[,1]/gt_depths[,1], dad = alt_depths[,2]/gt_depths[,2], proband = alt_depths[,3]/gt_depths[,3])
