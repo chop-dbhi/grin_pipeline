@@ -21,7 +21,7 @@ rule get_models:
     run:
         model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
         modelname = model_lut[wildcards.model]
-        shell("{input.gemini_tool} {modelname} -d 15 --filter \"impact_severity != 'LOW'\" {input.gemini_db} > {output.gemini_out}")
+        shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
 # get posterior probability from dnm
 rule run_denovogear:
@@ -87,7 +87,7 @@ rule variantAnalysisModels:
         x <- sub('.*anno.','',x)
         trio <- sub('[.].*','',trio)
         trio <- sub('.*[/]','',trio)
-        title <- paste(toTitleCase(as.character(x)), toTitleCase(as.character(trio)), as.character("GRIN Epilepsy Trio Analysis"))
+        title <- paste0(toTitleCase(as.character(trio)), " | ", toTitleCase(as.character(x))," | ", as.character("GRIN Epilepsy Trio Analysis"))
         y <- tryCatch(expr = read.delim('{input.x}', stringsAsFactors = F), error = function(e) 0)
         assign(x, y)
         denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T), error = function(e) 0)
