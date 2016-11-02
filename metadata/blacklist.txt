@@ -1,0 +1,2 @@
+#put samples you don't want processed here
+badsample1

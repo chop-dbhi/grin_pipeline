@@ -17,12 +17,17 @@ library(DT)
 library(plyr)
 library(dplyr)
 library(GenomicRanges)
+library(SRAdb)
+library(stringr)
+library(reshape2)
 options(digits = 2)
 options(width=1200)
 ```
 
 ```{r functions, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
 ## http://www.r-bloggers.com/identifying-records-in-data-frame-a-that-are-not-contained-in-data-frame-b-%E2%80%93-a-comparison/
+commit <- system("git rev-parse --verify HEAD",intern=TRUE)
+
 thisnotinthat <- function(x.1,x.2,...){
   x.1p <- do.call("paste", x.1)
   x.2p <- do.call("paste", x.2)
@@ -32,7 +37,7 @@ thisnotinthat <- function(x.1,x.2,...){
 viewDataTable <- function(dat){
 
   cols2hide <- grep('Description|Variants|Perc|chr|^pos$|rsid|^ref$|^alt$|^gene$|
-                    impact_severity|rvis_score|depths|gt_quals|family_genotypes|denovo_prob|is_exonic|is_splicing',
+                    impact_severity|rvis_score|depths|gt_quals|family_genotypes|denovo_prob|is_exonic|is_splicing|functiongvs|exac_ac_all',
                     colnames(dat), invert = TRUE)
 
   DT::datatable(dat,
@@ -64,6 +69,11 @@ We used the following filters to reduce the number of reported false positives:
 1. Spurious inherited variants can often appear due to insufficient sequence coverage so the **mininum sequence depth** was set to **15**.
 
 2. We are interested in mutations that are likely to have functional consequence so only variants with **Medium or High impact severity** were used.
+
+3. **Minimum genotyping quality** per sample in the trio was set to **20**.
+
+4. GL contigs were not used.
+
 </blockquote>
 
 ## De novo analysis
@@ -102,7 +112,6 @@ if(length(denovo) == 1 && denovo == 0)
 
 ```{r denovo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 denovo <- merge(denovo, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
-colnames(denovo)[grep('RVIS',colnames(denovo))] <- "rvis_score"
 ```
 
 ```{r denovo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
@@ -117,7 +126,12 @@ denovo$start <- ifelse(denovo$end-denovo$start==1, denovo$end, paste0(denovo$sta
 colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chr','pos','rsid')
 denovo$end <- NULL
 denovo <- denovo[,c(2:16,1,17:ncol(denovo))]
-denovo <- denovo[which(denovo$denovo_prob>=0.20),]
+
+chr <- c(1:22,'X','Y','MT')
+denovo <- denovo[which(denovo$chr %in% chr),]
+denovo$chr <- factor(denovo$chr, levels = chr)
+denovo$exac_ac_all[denovo$exac_ac_all=="None"] <- "-1"
+denovo$exac_ac_all <- as.numeric(denovo$exac_ac_all)
 ```
 
 ```{r denovo_filtered_variants, warning = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
@@ -125,6 +139,82 @@ varcount <- length(unique(denovo$variant_id))
 ```
 
 **There are `r varcount` de novo variants.**
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">All de novo variants</h3>
+</div>
+<div class="panel-body">
+These are all de novo variants
+
+```{r denovo_all, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+denovo.all <- denovo
+
+varcount <- length(unique(denovo.all$variant_id))
+if(varcount)
+{
+  viewDataTable(dat = denovo.all)
+}
+```
+**There are a total of `r varcount` variants**
+</div>
+</div>
+
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">De novo variants for Ingo Helbig</h3>
+</div>
+<div class="panel-body">
+These are all de novo variants that satisfy the following criteria:
+
+1. Variant function must be frameshift/missense/unknown.
+2. Exac Adjusted allele count must be 0 or unknown.
+3. Denovogear posterior probability must be >=20%.
+4. Should be exonic and splicing.
+
+```{r denovo_filtered, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+denovo.sub <- denovo
+denovo.sub <- denovo.sub[which(denovo.sub$is_exonic==1 & denovo.sub$is_splicing==1),]
+denovo.sub <- denovo.sub[which(denovo.sub$functiongvs == "frameshift" | denovo.sub$functiongvs == "missense" | denovo.sub$functiongvs == "None"),]
+denovo.sub <- denovo.sub[which(denovo.sub$exac_ac_all == "-1" | denovo.sub$exac_ac_all == "0"),]
+denovo.sub <- denovo.sub[which(denovo.sub$denovo_prob >= 0.20),]
+
+varcount <- length(unique(denovo.sub$variant_id))
+if(varcount)
+{
+  viewDataTable(dat = denovo.sub)
+}
+```
+**There are `r varcount` filtered variants**
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">De novo variants for Ingo Helbig (Enhanced)</h3>
+</div>
+<div class="panel-body">
+These are all de novo variants that satisfy the following criteria:
+
+1. Allelic ratio for proband between 0.20-0.80
+2. Allelic ratio for mom and dad: 0
+
+```{r denovo_filtered_enhancement, eval=showChunk, warning = FALSE, echo=FALSE, message=FALSE, cache=FALSE,  fig.path='{{SLINK}}/'}
+denovo.sub <- denovo
+alt_depths <- colsplit(gsub("\\s+"," ", str_trim(gsub('[[]|[]]|[.]',' ',denovo.sub$gt_alt_depths)))," ",c('mom','dad','kid'))
+gt_depths <- colsplit(gsub("\\s+"," ", str_trim(gsub('[[]|[]]|[.]',' ',denovo.sub$gt_depths)))," ",c('mom','dad','kid'))
+dp <- data.frame(mom = alt_depths[,1]/gt_depths[,1], dad = alt_depths[,2]/gt_depths[,2], proband = alt_depths[,3]/gt_depths[,3])
+denovo.sub <- denovo.sub[which(dp$proband>0.20 & dp$proband<0.80 & dp$mom==0 & dp$dad==0),]
+varcount <- length(unique(denovo.sub$variant_id))
+if(varcount)
+{
+  viewDataTable(dat = denovo.sub)
+}
+```
+**There are `r varcount` filtered variants**
 </div>
 </div>
 
@@ -208,3 +298,11 @@ if(varcount)
 </div>
 </div>
 
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Meta</h3>
+</div>
+<div style="color:#003366;", class="panel-body">
+Git commit: **`r commit`**
+</div>
+</div>

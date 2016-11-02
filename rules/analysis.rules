@@ -1,9 +1,9 @@
 rule gemini_db:
     input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.gz",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.bgz",
         gemini_python = config['tools']['gemini']['gemini_python'],
         vcf2db = config['tools']['vcf2db'],
-        pedfile = config['pedfile']
+        pedfile = config['pedfile_nohead']
     output:
         gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db"
     shell:
@@ -21,7 +21,7 @@ rule get_models:
     run:
         model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
         modelname = model_lut[wildcards.model]
-        shell("{input.gemini_tool} {modelname} -d 15 --filter \"impact_severity != 'LOW'\" {input.gemini_db} > {output.gemini_out}")
+        shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
 # get posterior probability from dnm using vcfs
 rule run_denovogear_from_vcf:
@@ -100,7 +100,8 @@ rule variantAnalysisModels:
         x <- sub('.txt','',x)
         x <- sub('.*anno.','',x)
         trio <- sub('[.].*','',trio)
-        title <- paste(toTitleCase(as.character(x)), toTitleCase(as.character(trio)), as.character("GRIN Epilepsy Trio Analysis"))
+        trio <- sub('.*[/]','',trio)
+        title <- paste0(toTitleCase(as.character(trio)), " | ", toTitleCase(as.character(x))," | ", as.character("GRIN Epilepsy Trio Analysis"))
         y <- tryCatch(expr = read.delim('{input.x}', stringsAsFactors = F), error = function(e) 0)
         assign(x, y)
         denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T), error = function(e) 0)

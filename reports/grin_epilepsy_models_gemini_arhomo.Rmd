@@ -32,7 +32,7 @@ thisnotinthat <- function(x.1,x.2,...){
 viewDataTable <- function(dat){
 
   cols2hide <- grep('Description|Variants|Perc|chr|^pos$|rsid|^ref$|^alt$|^gene$|
-                    impact_severity|rvis_score|depths|gt_quals|family_genotypes|is_exonic|is_splicing',
+                    impact_severity|rvis_score|depths|gt_quals|family_genotypes',
                     colnames(dat), invert = TRUE)
 
   DT::datatable(dat,
@@ -101,7 +101,6 @@ if(length(arhomo) == 1 && arhomo == 0)
 
 ```{r arhomo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 arhomo <- merge(arhomo, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
-colnames(arhomo)[grep('RVIS',colnames(arhomo))] <- "rvis_score"
 ```
 
 ```{r arhomo_pp, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}

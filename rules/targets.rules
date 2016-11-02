@@ -58,8 +58,10 @@ rule make_recalibrated:
 ##############################
 ### Variant Calling
 ##############################
-GVCFS = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES] #used by gvcf_samples_in_family
-GVCFSLIST = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in EXISTINGSAMPLES]) #used by gvcf_samples_in_family
+GVCFS = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in EXISTINGSAMPLES] 
+TBIS = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz.tbi" for name in EXISTINGSAMPLES] 
+#used by gvcf_samples_in_family
+GVCFSLIST = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in EXISTINGSAMPLES]) #used by gvcf_samples_in_family
 rule make_gvcfs:
     input: GVCFS
 rule make_joint:
