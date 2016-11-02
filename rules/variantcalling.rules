@@ -88,7 +88,7 @@ def call_command(command):
 def gvcf_samples_in_family(family,subject):
     # joint means all existing samples
     if family == 'joint':
-        return [GVCFS,GVCFSLIST]
+        return [GVCFS,GVCFSLIST,TBIS]
     else:
         if subject == 'family':
             rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family)]
@@ -100,7 +100,8 @@ def gvcf_samples_in_family(family,subject):
             assert(len(samples)==3)
         gvcfs = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in set(samples)]
         gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in set(samples)])
-        return [gvcfs, gvcfslist]
+        tbis = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz.tbi" for name in set(samples)]
+        return [gvcfs, gvcfslist, tbis]
 
 # make sure the family is done first
 # if family size is 3, then you're done, just copy
@@ -108,6 +109,7 @@ def gvcf_samples_in_family(family,subject):
 rule trio_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
+        tbis = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[2],
         family = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
         familygvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
         gatk = ENV3 + config['jars']['gatk']['path']
@@ -144,6 +146,7 @@ rule trio_vcfs:
 rule family_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
+        tbis = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[2],
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
