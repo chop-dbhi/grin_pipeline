@@ -26,6 +26,8 @@ options(width=1200)
 
 ```{r functions, echo=FALSE, message=FALSE, cache=FALSE, warning=FALSE, results='hide', fig.path='{{SLINK}}/'}
 ## http://www.r-bloggers.com/identifying-records-in-data-frame-a-that-are-not-contained-in-data-frame-b-%E2%80%93-a-comparison/
+commit <- system("git rev-parse --verify HEAD",intern=TRUE)
+
 thisnotinthat <- function(x.1,x.2,...){
   x.1p <- do.call("paste", x.1)
   x.2p <- do.call("paste", x.2)
@@ -177,7 +179,7 @@ These are all de novo variants that satisfy the following criteria:
 denovo.sub <- denovo
 denovo.sub <- denovo.sub[which(denovo.sub$is_exonic==1 & denovo.sub$is_splicing==1),]
 denovo.sub <- denovo.sub[which(denovo.sub$functiongvs == "frameshift" | denovo.sub$functiongvs == "missense" | denovo.sub$functiongvs == "None"),]
-denovo.sub <- denovo.sub[which(denovo.sub$exac_ac_all == "None" | denovo.sub$exac_ac_all == "0"),]
+denovo.sub <- denovo.sub[which(denovo.sub$exac_ac_all == "-1" | denovo.sub$exac_ac_all == "0"),]
 denovo.sub <- denovo.sub[which(denovo.sub$denovo_prob >= 0.20),]
 
 varcount <- length(unique(denovo.sub$variant_id))
@@ -296,3 +298,11 @@ if(varcount)
 </div>
 </div>
 
+<div class="panel panel-default">
+<div class="panel-heading">
+<h3 class="panel-title">Meta</h3>
+</div>
+<div style="color:#003366;", class="panel-body">
+Git commit: **`r commit`**
+</div>
+</div>
