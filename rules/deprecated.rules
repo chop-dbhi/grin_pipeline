@@ -86,3 +86,18 @@ rule describeR:
         library(VariantFiltering)
         print(sessionInfo())
         """)
+        
+ruleorder: gz_to_bgz > compress_gvcf
+
+rule gz_to_bgz:
+    input:
+        sample = "{sample}vcf.gz",
+        bgzip = ENV3 + config['tools']['bgzip']
+    output:
+        "{sample}vcf.bgz"
+    threads:
+        4
+    shell:
+        """
+        gunzip -c {input.sample} | {input.bgzip} --threads {threads} > {output}
+        """

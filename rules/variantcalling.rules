@@ -27,6 +27,21 @@ rule bam_to_gvcf:
         """
 
 
+ruleorder: gz_to_bgz > compress_gvcf
+
+rule gz_to_bgz:
+    input:
+        sample = "{sample}vcf.gz",
+        bgzip = ENV3 + config['tools']['bgzip']
+    output:
+        "{sample}vcf.bgz"
+    threads:
+        4
+    shell:
+        """
+        gunzip -c {input.sample} | {input.bgzip} --threads {threads} > {output}
+        """
+
 rule compress_gvcf:
     input:
         gvcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf",
@@ -37,7 +52,7 @@ rule compress_gvcf:
         4
     shell:
         """
-        {input.bgzip} --threads {threads}-c {input.gvcf} > {output}
+        {input.bgzip} --threads {threads} -c {input.gvcf} > {output}
         """
 
 rule tabix_gvcf:
@@ -68,7 +83,7 @@ def check_gvcfs(gvcfs):
 def check_gvcfs_bgz(gvcfs):
     for file in gvcfs:
         if os.path.exists(file):
-            cmd = "tabix "+file+" GL000192.1"
+            cmd = "tabix "+file+" "+config['lastctg'][freeze]
             # print(cmd)
             (output, error) = call_command(cmd)
             line = output.decode()
