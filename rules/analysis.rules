@@ -23,18 +23,32 @@ rule get_models:
         modelname = model_lut[wildcards.model]
         shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
-# get posterior probability from dnm
-rule run_denovogear:
+# get posterior probability from dnm using vcfs
+rule run_denovogear_from_vcf:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
         ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.nohead.pedfile"
     output:
-        dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.trio.com.filtered.dnm_auto.txt"
+        dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.trio.com.filtered.vcf.dnm_auto.txt"
     shell:
         """
         echo "SNP_INDEL CHILD_ID chr pos ref alt maxlike_null pp_null tgt_null(child/mom/dad) snpcode code maxlike_dnm pp_dnm tgt_dnm lookup flag child_rd dad_rd mom_rd child_mq dad_mq mom_mq" > {output.dnm_auto}
         dng dnm auto --vcf {input.vcf} --ped {input.ped} | \
         sed 's/CHILD_ID: //g;s/chr: //g;s/pos: //g;s/ref: //g;s/alt: //g;s/maxlike_null: //g;s/pp_null: //g;s/tgt: //g;s/tgt_null(child\/mom\/dad): //g;s/snpcode: //g;s/code: //g;s/maxlike_dnm: //g;s/pp_dnm: //g;s/tgt_dnm(child\/mom\/dad): //g;s/lookup: //g;s/flag: //g;s/READ_DEPTH child: //g;s/dad: //g;s/mom: //g;s/MAPPING_QUALITY child: //g;s/dad: //g;s/mom: //g' >> {output.dnm_auto}
+        """
+
+# get posterior probability from dnm
+rule run_denovogear_from_bcf:
+    input:
+        bcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.bcf",
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.nohead.pedfile"
+    output:
+        dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.trio.com.filtered.bcf.dnm_auto.txt"
+    shell:
+        """
+        echo "SNP_INDEL CHILD_ID chr pos ref alt maxlike_null pp_null tgt_null(child/mom/dad) snpcode code maxlike_dnm pp_dnm tgt_dnm lookup flag child_rd dad_rd mom_rd child_mq dad_mq mom_mq" > {output.dnm_auto}
+        dng dnm auto --bcf {input.bcf} --ped {input.ped} > {output.dnm_auto}
+        #sed 's/CHILD_ID: //g;s/chr: //g;s/pos: //g;s/ref: //g;s/alt: //g;s/maxlike_null: //g;s/pp_null: //g;s/tgt: //g;s/tgt_null(child\/mom\/dad): //g;s/snpcode: //g;s/code: //g;s/maxlike_dnm: //g;s/pp_dnm: //g;s/tgt_dnm(child\/mom\/dad): //g;s/lookup: //g;s/flag: //g;s/READ_DEPTH child: //g;s/dad: //g;s/mom: //g;s/MAPPING_QUALITY child: //g;s/dad: //g;s/mom: //g' >> {output.dnm_auto}
         """
 
 # make gemini reports
@@ -67,7 +81,7 @@ rule run_denovogear:
 rule variantAnalysisModels:
     input:
         x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt",
-        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt",
+        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.vcf.dnm_auto.txt",
         source = "reports/grin_epilepsy_models_gemini_{model}.Rmd",
         rvis = "annotations/rvis.RData"
     output:
