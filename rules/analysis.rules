@@ -23,6 +23,16 @@ rule get_models:
         modelname = model_lut[wildcards.model]
         shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
+#get intervals for bamouts
+rule get_gatk_bamout_intervals:
+    input:
+        gemini = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt"
+    output:
+        intervals = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.intervals"
+    shell:
+        """
+        awk '{{print $2 ":" $3 "-" $4}}' {input} > {output}
+        """
 # get posterior probability from dnm using vcfs
 rule run_denovogear_from_vcf:
     input:
