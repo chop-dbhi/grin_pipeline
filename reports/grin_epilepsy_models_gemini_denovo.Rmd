@@ -111,6 +111,8 @@ if(length(denovo) == 1 && denovo == 0)
 ```
 
 ```{r denovo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+denovo$chrom <- sub('^chr','',denovo$chrom)
+denovogear$chr <- sub('^chr','',denovogear$chr)
 denovo <- merge(denovo, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
 ```
 
@@ -128,8 +130,8 @@ denovo$end <- NULL
 denovo <- denovo[,c(2:16,1,17:ncol(denovo))]
 
 chr <- c(1:22,'X','Y','MT')
-denovo <- denovo[which(denovo$chr %in% chr),]
 denovo$chr <- factor(denovo$chr, levels = chr)
+denovo <- denovo[order(denovo$chr),]
 denovo$exac_ac_all[denovo$exac_ac_all=="None"] <- "-1"
 denovo$exac_ac_all <- as.numeric(denovo$exac_ac_all)
 ```
