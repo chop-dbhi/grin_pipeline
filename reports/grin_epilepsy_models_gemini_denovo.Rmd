@@ -112,17 +112,17 @@ if(length(denovo) == 1 && denovo == 0)
 ```{r denovo_igv}
     #, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 sock <- IGVsocket()
+IGVclear(sock)
 print(paste(projdir,bamouts,sep="/"))
 IGVload(sock, paste(projdir,bamouts,sep="/"))
 igvsnapshot<-function(df){
     #str(df) #[['chr']],':',df[['start']],'-',df[['end']],sep="")
     #print(df[['chrom']])
     IGVgoto(sock, paste(df[['chrom']],':',df[['start']],'-',df[['end']],sep=""))
-    #IGVsnapshot(sock, dirname=getwd())
+    IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=paste(familyname,df[['variant_id']],'png',sep="."))
     #fname = paste(familyname,varid,sep="")
 }
-#denovo %>% dplyr::rowwise() %>% dplyr::do(igvsnapshot(data.frame(chr=.$chrom,start=.$start,end=.$end)))
-apply(denovo[1,],1,igvsnapshot)
+apply(denovo[1:10,],1,igvsnapshot)
 #,variant_id)
 
 ```{r denovo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}

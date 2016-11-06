@@ -69,8 +69,8 @@ def bamouts_in_family(family,subject,model):
         rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family) & (SAMPLE_TABLE['Subject'] == subject)]
         samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
         assert(len(samples)>0)
-        bamouts = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in set(samples)]
-        bamoutlist = 'c("'+'","'.join([config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in set(samples)])+'")'
+        bamouts = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in samples]
+        bamoutlist = 'c("'+'","'.join([config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in samples])+'")'
         return [bamouts,bamoutlist]
 
 # get posterior probability from dnm using vcfs
