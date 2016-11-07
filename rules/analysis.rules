@@ -61,6 +61,7 @@ rule get_bamout:
         -R {params.ref} \
         -I {input.bam} \
         -L {input.list} \
+        --activeRegionIn {input.list} \
         -o {output.hc_variants} \
         -forceActive \
         -disableOptimizations \
@@ -129,12 +130,51 @@ rule run_denovogear_from_bcf:
 #         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}")
 #         """)
 
+rule getScreeshots:
+    input:
+        geminiout = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
+        bamouts = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[0],
+    output:
+        screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
+    params:
+        projdir = config['projdir'],
+        dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
+        familyname = "{family}_{subject}",
+        bamoutlist = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[1],
+        freeze = config['freeze']
+    run:
+        R("""
+            library(SRAdb)
+            library(stringr)
+            familyname <- '{params.familyname}'
+            dirpath <- '{params.dirpath}'
+            projdir <- '{params.projdir}'
+            bamouts <- {params.bamoutlist}
+        
+            geminiout <- tryCatch(expr = read.delim('{input.geminiout}', stringsAsFactors = F), error = function(e) 0)
+            sock <- IGVsocket()
+            IGVclear(sock)
+            freezelookup<-c("hg37"="b37","hg38"="hg38")
+            IGVgenome(sock, genome=freezelookup["{params.freeze}"])
+            IGVload(sock, paste(projdir,bamouts,sep="/"))
+            igvsnapshot<-function(df){{
+                goto<-str_replace_all(paste(df[['chrom']],':',df[['start']],'-',df[['end']],sep=""),' ','')
+                IGVgoto(sock, goto)
+                fname<-str_replace_all(paste(familyname,df[['variant_id']],'png',sep="."),' ','')
+                IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
+            }}
+            apply(geminiout,1,igvsnapshot)
+        """)
+        import os
+        with open(output.screenshots, 'a'):
+            os.utime(output.screenshots, None)
+
 # split gemini reports
 rule variantAnalysisModels:
     input:
         x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
+        screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
         denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.dnm_auto.txt",
-        bamouts = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[0],
         source = "reports/grin_epilepsy_models_gemini_{model}.Rmd",
         rvis = "annotations/rvis.RData"
     output:
@@ -144,7 +184,6 @@ rule variantAnalysisModels:
         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
         familyname = "{family}_{subject}",
         outfile = "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.html",
-        bamoutlist = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[1],
     run:
         R("""
         library(rmarkdown)
