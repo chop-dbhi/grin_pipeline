@@ -35,6 +35,7 @@ thisnotinthat <- function(x.1,x.2,...){
 
 viewDataTable <- function(dat){
 
+  cols2crop <- grep('family_genotypes|ref|alt', colnames(dat))
   cols2hide <- grep('Description|Variants|Perc|chr|^pos$|rsid|^ref$|^alt$|^gene$|
                     impact_severity|rvis_score|depths|gt_quals|family_genotypes|denovo_prob|is_exonic|is_splicing|functiongvs|exac_ac_all',
                     colnames(dat), invert = TRUE)
@@ -44,7 +45,8 @@ viewDataTable <- function(dat){
                 selection = "single",
                 filter = "bottom",
                 options = list(
-                  columnDefs = list(list(visible = FALSE, targets = cols2hide)),
+                  columnDefs = list(list(visible = FALSE, targets = cols2hide),
+                                    list(targets = cols2crop, render = JS("function(data, type, row, meta) {", "return type === 'display' && data.length > 10 ?", "'<span title=\"' + data + '\">' + data.substr(0, 10) + '...</span>' : data;", "}"))),
                   dom = 'Bfrtip',
                   buttons = list('colvis','pageLength', 'copy','print',
                                  list(extend = "collection",
@@ -111,6 +113,7 @@ if(length(denovo) == 1 && denovo == 0)
 
 ```{r denovo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 denovo$chrom <- sub('^chr','',denovo$chrom)
+denovogear <- denovogear[-grep('^GL',denovogear$chr),]
 denovogear$chr <- sub('^chr','',denovogear$chr)
 denovo <- merge(denovo, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
 colnames(denovo)[grep('RVIS',colnames(denovo))] <- "rvis_score"
