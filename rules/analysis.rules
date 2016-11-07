@@ -62,6 +62,8 @@ rule get_bamout:
         -I {input.bam} \
         -L {input.list} \
         -o {output.hc_variants} \
+        -forceActive \
+        -disableOptimizations \
         -bamout {output.bamout} 2> {log}
         """
 

@@ -41,6 +41,7 @@ viewDataTable <- function(dat){
                     colnames(dat), invert = TRUE)
 
   DT::datatable(dat,
+                  escape = FALSE,
                 extensions = c('Buttons'),
                 selection = "single",
                 filter = "bottom",
@@ -109,21 +110,28 @@ if(length(denovo) == 1 && denovo == 0)
                                  Perc = round(prop.table(dt$freq)*100,2)))
 }
 ```
-```{r denovo_igv}
+
+```{r denovo_igv, warnings = FALSE, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
     #, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 sock <- IGVsocket()
 IGVclear(sock)
-print(paste(projdir,bamouts,sep="/"))
+#print(paste(projdir,bamouts,sep="/"))
 IGVload(sock, paste(projdir,bamouts,sep="/"))
 igvsnapshot<-function(df){
     #str(df) #[['chr']],':',df[['start']],'-',df[['end']],sep="")
     #print(df[['chrom']])
-    IGVgoto(sock, paste(df[['chrom']],':',df[['start']],'-',df[['end']],sep=""))
-    IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=paste(familyname,df[['variant_id']],'png',sep="."))
+    goto<-str_replace_all(paste(df[['chrom']],':',df[['start']],'-',df[['end']],sep=""),' ','')
+    IGVgoto(sock, goto)
+    fname<-str_replace_all(paste(familyname,df[['variant_id']],'png',sep="."),' ','')
+    IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
     #fname = paste(familyname,varid,sep="")
 }
-apply(denovo[1:10,],1,igvsnapshot)
+apply(denovo,1,igvsnapshot)
+#http://mybic.chop.edu/slink/helbig/grinpros/GRCh37/analysis/%7B%7BSLINK%7D%7D/GRCh37/analysis/EG0011_EG0011P.1641.png
+denovo$variant_id<-paste("<a href=\"",paste(paste(familyname,denovo$variant_id,'png',sep="."),sep="/"),"\">",denovo$variant_id,"</a>",sep="")
+#dirpath,
 #,variant_id)
+```
 
 ```{r denovo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
 denovo$orig_chrom<-denovo$chrom
