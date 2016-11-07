@@ -81,6 +81,10 @@ rule variantAnalysisModels:
         library(tools)
         # returns 0 if file is empty
         rvis <- get(load('{input.rvis}'))
+
+        # if x is EG0041_EG0041P.trio.com.filtered.ad.de.nm.snpeff.anno.denovo.txt, 
+        # trio = EG0041_EG0041P and model = denovo. 
+        # this is used to generate the title in the report.
         model <- '{input.x}'
         trio <- model
         model <- gsub('.txt|.*anno.','', model)
