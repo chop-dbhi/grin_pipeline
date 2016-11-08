@@ -42,6 +42,7 @@ viewDataTable <- function(dat){
                     colnames(dat), invert = TRUE)
 
   DT::datatable(dat,
+                  escape = FALSE,
                 extensions = c('Buttons'),
                 selection = "single",
                 filter = "bottom",
@@ -112,7 +113,12 @@ if(length(denovo) == 1 && denovo == 0)
 }
 ```
 
+```{r denovo_igv, warnings = FALSE, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+denovo$variant_id<-paste("<a href=\"",paste(paste("../screenshots",paste(familyname,denovo$variant_id,'png',sep="."),sep="/")),"\">",denovo$variant_id,"</a>",sep="")
+```
+
 ```{r denovo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+denovo$orig_chrom<-denovo$chrom
 denovo$chrom <- sub('^chr','',denovo$chrom)
 denovogear <- denovogear[-grep('^GL',denovogear$chr),]
 denovogear$chr <- sub('^chr','',denovogear$chr)

@@ -23,6 +23,59 @@ rule get_models:
         modelname = model_lut[wildcards.model]
         shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
+#get intervals for bamouts
+rule get_gatk_bamout_intervals:
+    input:
+        gemini = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt"
+    output:
+        intervals = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.intervals"
+    shell:
+        """
+        awk 'NR>1 {{print $2 ":" $3 "-" $4}}' {input} > {output}
+        """
+
+def get_family_from_member(member):
+    rows = SAMPLE_TABLE.loc[((SAMPLE_TABLE['Subject'] == member) | (SAMPLE_TABLE['Mother'] == member) | (SAMPLE_TABLE['Father'] == member)) & ((SAMPLE_TABLE['Mother'] != '') & (SAMPLE_TABLE['Father'] != ''))]
+    family = rows['FamilyID']+"_"+rows['Subject']
+    return family
+
+#        #java -jar GenomeAnalysisTK.jar -T HaplotypeCaller -R human_b37_20.fasta -I recalibrated.bam -o hc_variants.vcf -bamout bamout.bam        
+rule get_bamout:
+    input:
+        list = lambda wildcards: config['landing_dir'][freeze] + config['results']['analysis'] + "/" + get_family_from_member(wildcards.sample)+".trio.com.filtered.ad.de.nm.snpeff.anno."+wildcards.model+".intervals",
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
+        gatk = ENV3 + config['jars']['gatk']['path']
+    log:
+        config['datadirs']['log'] + "/{sample}.bamout.log"
+    output:
+        bamout = config['landing_dir'][freeze] + config['results']['analysis'] + "/{sample}.{model}.bamout.bam",
+        hc_variants = config['landing_dir'][freeze] + config['results']['analysis'] + "/{sample}.{model}.hcvariants.vcf",
+    params:
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze]
+    shell:
+        """
+        {input.gatk} {params.opts} \
+        -T HaplotypeCaller \
+        -R {params.ref} \
+        -I {input.bam} \
+        -L {input.list} \
+        --activeRegionIn {input.list} \
+        -o {output.hc_variants} \
+        -forceActive \
+        -disableOptimizations \
+        -bamout {output.bamout} 2> {log}
+        """
+
+def bamouts_in_family(family,subject,model):
+        rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family) & (SAMPLE_TABLE['Subject'] == subject)]
+        samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+        assert(len(samples)>0)
+        bamouts = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in samples]
+        bamoutlist = 'c("'+'","'.join([config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in samples])+'")'
+        return [bamouts,bamoutlist]
+
 # get posterior probability from dnm using vcfs
 rule run_denovogear_from_vcf:
     input:
@@ -77,25 +130,73 @@ rule run_denovogear_from_bcf:
 #         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}")
 #         """)
 
+rule getScreenshots:
+    input:
+        geminiout = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
+        bamouts = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[0],
+    output:
+        screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
+    params:
+        projdir = config['projdir'],
+        dirpath = config['landing_dir'][freeze] + config['results']['screenshots'],
+        familyname = "{family}_{subject}",
+        bamoutlist = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[1],
+        freeze = config['freeze']
+    run:
+        R("""
+            library(SRAdb)
+            library(stringr)
+            familyname <- '{params.familyname}'
+            dirpath <- '{params.dirpath}'
+            projdir <- '{params.projdir}'
+            bamouts <- {params.bamoutlist}
+        
+            geminiout <- tryCatch(expr = read.delim('{input.geminiout}', stringsAsFactors = F), error = function(e) 0)
+            #startIGV(memory = "hm", devel=FALSE)
+            sock <- IGVsocket()
+            IGVclear(sock)
+            freezelookup<-c("hg37"="b37","hg38"="hg38")
+            IGVgenome(sock, genome=freezelookup["{params.freeze}"])
+            IGVload(sock, paste(projdir,bamouts,sep="/"))
+            igvsnapshot<-function(df){{
+                goto<-str_replace_all(paste(df[['chrom']],':',df[['start']],'-',df[['end']],sep=""),' ','')
+                IGVgoto(sock, goto)
+                fname<-str_replace_all(paste(familyname,df[['variant_id']],'png',sep="."),' ','')
+                IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
+            }}
+            apply(geminiout,1,igvsnapshot)
+            IGVclear(sock)
+            close.socket(sock)
+        """)
+        import os
+        with open(output.screenshots, 'a'):
+            os.utime(output.screenshots, None)
+
 # split gemini reports
 rule variantAnalysisModels:
     input:
-        x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt",
-        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.vcf.dnm_auto.txt",
+        x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
+        screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
+        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.dnm_auto.txt",
         source = "reports/grin_epilepsy_models_gemini_{model}.Rmd",
         rvis = "annotations/rvis.RData"
     output:
-        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.{model}.html"
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.html",
     params:
+        projdir = config['projdir'],
         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
-        outfile = "/{file}.ad.de.nm.snpeff.{model}.html"
+        sspath = config['landing_dir'][freeze] + config['results']['screenshots'],
+        familyname = "{family}_{subject}",
+        outfile = "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.html",
     run:
         R("""
         library(rmarkdown)
         library(tools)
         # returns 0 if file is empty
         rvis <- get(load('{input.rvis}'))
-
+        projdir <- '{params.projdir}'
+        dirpath <- '{params.dirpath}'
+	familyname <- '{params.familyname}'
         # if x is EG0041_EG0041P.trio.com.filtered.ad.de.nm.snpeff.anno.denovo.txt, 
         # trio = EG0041_EG0041P and model = denovo. 
         # this is used to generate the title in the report.
