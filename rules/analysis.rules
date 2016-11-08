@@ -104,32 +104,6 @@ rule run_denovogear_from_bcf:
         #sed 's/CHILD_ID: //g;s/chr: //g;s/pos: //g;s/ref: //g;s/alt: //g;s/maxlike_null: //g;s/pp_null: //g;s/tgt: //g;s/tgt_null(child\/mom\/dad): //g;s/snpcode: //g;s/code: //g;s/maxlike_dnm: //g;s/pp_dnm: //g;s/tgt_dnm(child\/mom\/dad): //g;s/lookup: //g;s/flag: //g;s/READ_DEPTH child: //g;s/dad: //g;s/mom: //g;s/MAPPING_QUALITY child: //g;s/dad: //g;s/mom: //g' >> {output.dnm_auto}
         """
 
-# make gemini reports
-# rule variantAnalysisModels:
-#     input:
-#         denovo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.denovo.txt",
-#         denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt",
-#         arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.arhomo.txt",
-#         cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.cmpdhet.txt",
-#         xlinked = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.xlinked.txt",
-#         source = "reports/grin_epilepsy_models_gemini.Rmd"
-#     output:
-#         html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.models.html"
-#     params:
-#         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
-#         outfile = "/{file}.ad.de.nm.snpeff.models.html"
-#     run:
-#         R("""
-#         library(rmarkdown)
-#         # returns 0 if file is empty
-#         denovo <- tryCatch(expr = read.delim('{input.denovo}', stringsAsFactors = F), error = function(e) 0)
-#         denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T), error = function(e) 0)
-#         arhomo <- tryCatch(expr = read.delim('{input.arhomo}', stringsAsFactors = F), error = function(e) 0)
-#         cmpdhet <- tryCatch(expr = read.delim('{input.cmpdhet}', stringsAsFactors = F), error = function(e) 0)
-#         xlinked <- tryCatch(expr = read.delim('{input.xlinked}', stringsAsFactors = F), error = function(e) 0)
-#         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}")
-#         """)
-
 rule getScreenshots:
     input:
         geminiout = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
@@ -150,6 +124,7 @@ rule getScreenshots:
             dirpath <- '{params.dirpath}'
             projdir <- '{params.projdir}'
             bamouts <- {params.bamoutlist}
+            model <- '{wildcards.model}'
         
             geminiout <- tryCatch(expr = read.delim('{input.geminiout}', stringsAsFactors = F), error = function(e) 0)
             #startIGV(memory = "hm", devel=FALSE)
@@ -161,7 +136,7 @@ rule getScreenshots:
             igvsnapshot<-function(df){{
                 goto<-str_replace_all(paste(df[['chrom']],':',df[['start']],'-',df[['end']],sep=""),' ','')
                 IGVgoto(sock, goto)
-                fname<-str_replace_all(paste(familyname,df[['variant_id']],'png',sep="."),' ','')
+                fname<-str_replace_all(paste(familyname,model,df[['variant_id']],'png',sep="."),' ','')
                 IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
             }}
             apply(geminiout,1,igvsnapshot)
@@ -196,7 +171,7 @@ rule variantAnalysisModels:
         rvis <- get(load('{input.rvis}'))
         projdir <- '{params.projdir}'
         dirpath <- '{params.dirpath}'
-	familyname <- '{params.familyname}'
+        familyname <- '{params.familyname}'
         # if x is EG0041_EG0041P.trio.com.filtered.ad.de.nm.snpeff.anno.denovo.txt, 
         # trio = EG0041_EG0041P and model = denovo. 
         # this is used to generate the title in the report.
@@ -210,28 +185,4 @@ rule variantAnalysisModels:
         denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T, stringsAsFactors = F), error = function(e) 0)
         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}", params = list(title = title))
         """)
-
-# alter records that have a '*' in the ALT field - these are causing problems in VariantAnnotation
-# https://github.com/Bioconductor-mirror/VariantAnnotation/commit/837f1f0c9fdcdc9de7677a9a067963413dfe26e7
-rule noasterisk:
-    input:
-        vcf = "{file}.vcf"
-    output:
-        vcf = "{file}.noask.vcf"
-    shell:
-        """
-        cat {input} | sed -e 's/\*/N/g' > {output}
-        """
-
-def getGender(proband):
-    res = SAMPLE_TABLE.loc[SAMPLE_TABLE['Subject'] ==  proband,"Sex"]
-    sex = str(res.values[0])
-    return sex
-
-# boys only
-def xlinked(wildcards):
-    if getGender(wildcards.pro)=='M':
-        return config['landing_dir'][freeze] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
-    else:
-        return []
 
