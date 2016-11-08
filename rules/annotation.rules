@@ -243,29 +243,6 @@ rule install_annovar_db:
             shell("{input.annovar} -buildver {wildcards.freeze} {opts} {wildcards.db} {params.dbdir}")
         shell("touch {output}")
 
-rule compress_vcf:
-    input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
-        bgzip = ENV3 + config['tools']['bgzip']
-    output:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
-    shell:
-        """
-        {input.bgzip} -c {input.vcf} > {output}
-        """
-
-rule tabix_vcf:
-    input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
-        tabix = ENV3 + config['tools']['tabix']
-    output:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi"
-    threads:
-        4
-    shell:
-        """
-        {input.tabix} --threads {threads} -p vcf {input.vcf}
-        """
 
 # annotate using vcfanno and a config file with required annotations and fields.
 rule annotate_using_vcfanno:

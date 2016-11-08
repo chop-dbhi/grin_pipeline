@@ -101,3 +101,15 @@ rule gz_to_bgz:
         """
         gunzip -c {input.sample} | {input.bgzip} --threads {threads} > {output}
         """
+
+# alter records that have a '*' in the ALT field - these are causing problems in VariantAnnotation
+# https://github.com/Bioconductor-mirror/VariantAnnotation/commit/837f1f0c9fdcdc9de7677a9a067963413dfe26e7
+rule noasterisk:
+    input:
+        vcf = "{file}.vcf"
+    output:
+        vcf = "{file}.noask.vcf"
+    shell:
+        """
+        cat {input} | sed -e 's/\*/N/g' > {output}
+        """
