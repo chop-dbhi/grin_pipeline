@@ -37,7 +37,7 @@ thisnotinthat <- function(x.1,x.2,...){
 viewDataTable <- function(dat){
 
   cols2crop <- grep('family_genotypes|ref|alt', colnames(dat))
-  cols2hide <- grep('Description|Variants|Perc|chr|^pos$|rsid|^ref$|^alt$|^gene$|
+  cols2hide <- grep('Description|Variants|Perc|^chr$|^pos$|rsid|^ref$|^alt$|^gene$|
                     impact_severity|rvis_score|depths|gt_quals|family_genotypes|denovo_prob|is_exonic|is_splicing|functiongvs|exac_ac_all',
                     colnames(dat), invert = TRUE)
 
@@ -134,7 +134,7 @@ denovo[queryHits(type1),'denovo_prob'] <- denovogear[subjectHits(type1),'pp_dnm'
 denovo <- denovo[order(denovo$denovo_prob, decreasing = TRUE),]
 
 denovo$start <- ifelse(denovo$end-denovo$start==1, denovo$end, paste0(denovo$start,'-',denovo$end))
-colnames(denovo)[grep('chr|start|vcf_id', colnames(denovo))] <- c('chr','pos','rsid')
+colnames(denovo)[grep('^chrom$|start|vcf_id', colnames(denovo))] <- c('chr','pos','rsid')
 denovo$end <- NULL
 denovo <- denovo[,c(2:16,1,17:ncol(denovo))]
 
