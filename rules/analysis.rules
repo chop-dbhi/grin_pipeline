@@ -196,17 +196,17 @@ rule variantAnalysisModels:
         rvis <- get(load('{input.rvis}'))
         projdir <- '{params.projdir}'
         dirpath <- '{params.dirpath}'
-        x <- '{input.x}'
-        familyname <- '{params.familyname}'
-        trio <- x
-        x <- sub('.txt','',x)
-        x <- sub('.*anno.','',x)
-        trio <- sub('[.].*','',trio)
-        trio <- sub('.*[/]','',trio)
-        title <- paste0(toTitleCase(as.character(trio)), " | ", toTitleCase(as.character(x))," | ", as.character("GRIN Epilepsy Trio Analysis"))
-        y <- tryCatch(expr = read.delim('{input.x}', stringsAsFactors = F), error = function(e) 0)
-        assign(x, y)
-        denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T), error = function(e) 0)
+        # if x is EG0041_EG0041P.trio.com.filtered.ad.de.nm.snpeff.anno.denovo.txt, 
+        # trio = EG0041_EG0041P and model = denovo. 
+        # this is used to generate the title in the report.
+        model <- '{input.x}'
+        trio <- model
+        model <- gsub('.txt|.*anno.','', model)
+        trio <- gsub('[.].*|.*[/]','', trio)
+        title <- paste0(toTitleCase(as.character(trio)), ' | ', toTitleCase(as.character(model)),' | ', as.character("GRIN Epilepsy Trio Analysis"))
+        dat <- tryCatch(expr = read.delim('{input.x}', stringsAsFactors = F), error = function(e) 0)
+        assign(model, dat)
+        denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T, stringsAsFactors = F), error = function(e) 0)
         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}", params = list(title = title))
         """)
 
