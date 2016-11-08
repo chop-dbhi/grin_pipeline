@@ -134,7 +134,10 @@ rule getScreenshots:
             IGVgenome(sock, genome=freezelookup["{params.freeze}"])
             IGVload(sock, paste(projdir,bamouts,sep="/"))
             igvsnapshot<-function(df){{
-                goto<-str_replace_all(paste(df[['chrom']],':',df[['start']],'-',df[['end']],sep=""),' ','')
+                midpoint<-round((df[['start']]+df[['end']])/2)
+                startpos<-midpoint-74
+                endpos<-midpoint+75
+                goto<-str_replace_all(paste(df[['chrom']],':',startpos,'-',endpos,sep=""),' ','')
                 IGVgoto(sock, goto)
                 fname<-str_replace_all(paste(familyname,model,df[['variant_id']],'png',sep="."),' ','')
                 IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
