@@ -146,6 +146,7 @@ results:  # subdirectories in process_dir or landing_dir
     vtmeta:           vtmeta
     gemini:           gemini
     vcfs:             vcfs
+    screenshots:      screenshots
     analysis:         analysis
     GATKDoC:          GATKDoC
     xhmmout:          xhmmOutput
