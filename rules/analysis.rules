@@ -130,7 +130,7 @@ rule run_denovogear_from_bcf:
 #         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}")
 #         """)
 
-rule getScreeshots:
+rule getScreenshots:
     input:
         geminiout = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
         bamouts = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[0],
@@ -138,7 +138,7 @@ rule getScreeshots:
         screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
     params:
         projdir = config['projdir'],
-        dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
+        dirpath = config['landing_dir'][freeze] + config['results']['screenshots'],
         familyname = "{family}_{subject}",
         bamoutlist = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[1],
         freeze = config['freeze']
@@ -152,6 +152,7 @@ rule getScreeshots:
             bamouts <- {params.bamoutlist}
         
             geminiout <- tryCatch(expr = read.delim('{input.geminiout}', stringsAsFactors = F), error = function(e) 0)
+            #startIGV(memory = "hm", devel=FALSE)
             sock <- IGVsocket()
             IGVclear(sock)
             freezelookup<-c("hg37"="b37","hg38"="hg38")
@@ -164,6 +165,8 @@ rule getScreeshots:
                 IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
             }}
             apply(geminiout,1,igvsnapshot)
+            IGVclear(sock)
+            close.socket(sock)
         """)
         import os
         with open(output.screenshots, 'a'):
@@ -182,6 +185,7 @@ rule variantAnalysisModels:
     params:
         projdir = config['projdir'],
         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
+        sspath = config['landing_dir'][freeze] + config['results']['screenshots'],
         familyname = "{family}_{subject}",
         outfile = "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.html",
     run:
@@ -192,7 +196,6 @@ rule variantAnalysisModels:
         rvis <- get(load('{input.rvis}'))
         projdir <- '{params.projdir}'
         dirpath <- '{params.dirpath}'
-        bamouts <- {params.bamoutlist}
         x <- '{input.x}'
         familyname <- '{params.familyname}'
         trio <- x
