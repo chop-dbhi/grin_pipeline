@@ -113,8 +113,8 @@ if(length(denovo) == 1 && denovo == 0)
 }
 ```
 
-```{r denovo_igv, warnings = FALSE, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
-denovo$variant_id<-paste("<a href=\"",paste(paste("../screenshots",paste(familyname,denovo$variant_id,'png',sep="."),sep="/")),"\">",denovo$variant_id,"</a>",sep="")
+```{r denovo_igv, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
+denovo$variant_id<-paste("<a href=\"",paste(paste("../screenshots",paste(familyname,'denovo',denovo$variant_id,'png',sep="."),sep="/")),"\">",denovo$variant_id,"</a>",sep="")
 ```
 
 ```{r denovo_rvis, warnings = FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE,fig.path='{{SLINK}}/'}
