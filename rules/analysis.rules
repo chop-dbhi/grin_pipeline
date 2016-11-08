@@ -196,6 +196,7 @@ rule variantAnalysisModels:
         rvis <- get(load('{input.rvis}'))
         projdir <- '{params.projdir}'
         dirpath <- '{params.dirpath}'
+	familyname <- '{params.familyname}'
         # if x is EG0041_EG0041P.trio.com.filtered.ad.de.nm.snpeff.anno.denovo.txt, 
         # trio = EG0041_EG0041P and model = denovo. 
         # this is used to generate the title in the report.
