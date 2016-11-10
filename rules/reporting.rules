@@ -105,7 +105,7 @@ rule siteindex:
             outfile.write("""
 #### Inheritance analysis reports
 <table class="table table-striped">
-<tr><td>Trio</td><td>reports</td><td>Annotated VCFs</td><td>Recalibrated BAMs</td><td>IGV Screenshots</td></tr>
+<tr><td>Trio</td><td>reports</td><td>Annotated VCFs</td><td>Recalibrated BAMs</td></tr>
 """)
             for s,p in zip(ANALYSISREADY,COMPLETETRIOSFAMIDS):
                 outfile.write("<tr><td>{0}</td>".format(p))
@@ -118,7 +118,6 @@ rule siteindex:
                 for bam in bams:
                     outfile.write("<a href=\"{1}/{2}\">{0}</a> ".format(os.path.basename(bam), SLINK, bam))
                 outfile.write("</td>")
-                outfile.write("<td></td>")
                 outfile.write("</tr>\n\n")
             outfile.write("""
 </table>
