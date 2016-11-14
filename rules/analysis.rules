@@ -152,7 +152,7 @@ rule variantAnalysisModels:
     input:
         x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
         screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
-        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.dnm_auto.txt",
+        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.vcf.dnm_auto.txt",
         source = "reports/grin_epilepsy_models_gemini_{model}.Rmd",
         rvis = "annotations/rvis.RData"
     output:
