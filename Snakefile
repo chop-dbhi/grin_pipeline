@@ -74,7 +74,7 @@ rule all:
     input: 
         trios = TRIOVCFS,
         analysis = ANALYSES,
-        phased = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
+        family = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
 
 #### Internal
 onsuccess:

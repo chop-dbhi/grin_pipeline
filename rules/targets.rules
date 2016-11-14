@@ -40,19 +40,27 @@ rule make_sams:
     input: [config['process_dir'][freeze] + config['results']['sams'] + "/" + name + ".sam" for name in SAMPLELANES]
 rule make_bams:
     input: [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".bam" for name in SAMPLELANES]
+rule make_sorted:
+    input: [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.bam" for name in EXISTINGSAMPLES]
 rule make_merged:
     input: [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.merged.bam" for name in EXISTINGSAMPLES]
-rule make_bais:
-    input: [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".rmdup.bai" for name in EXISTINGSAMPLES]
+rule make_rmdups:
+    input: [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.rmdup.bam','.txt','.rmdup.bai']]
 rule make_group:
-    input: [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bai" for name in EXISTINGSAMPLES]
+    input: [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group" + ext for name in EXISTINGSAMPLES for ext in ['.bam','.bai']]
 rule make_realigned:
-    input: [config['process_dir'][freeze] + config['results']['realigned'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
+    input: [config['process_dir'][freeze] + config['results']['realigned'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.bam','.bai']]
 rule make_combine_indels:
     input: INDELS
 rule make_target_lists:
     input: LISTS
 rule make_recalibrated:
+    input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.recal.bam']]
+rule make_leftaligned:
+    input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.recal.la.bam']]
+rule make_recalibrated_tables:
+    input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
+rule make_post_recalibrated_tables:
     input: [config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
 
 ##############################
