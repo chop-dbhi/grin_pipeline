@@ -221,6 +221,9 @@ rule left_align_indels:
     output:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai"
+    params:
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze]
     log:
         config['datadirs']['log'] + "/{sample}.left_align.log"
     threads:
