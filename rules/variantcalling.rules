@@ -1,8 +1,8 @@
 #### Variant Calling ####
 rule bam_to_gvcf:
     input:
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.la.bam",
-        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.la.bai",
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
         doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
@@ -89,8 +89,8 @@ def recalbams_samples_in_family(family,subject):
     assert(len(samples)>0)
     if subject != 'family':
         assert(len(samples)==3)
-    bams = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".la.bam" for name in set(samples)]
-    bamlist = ' '.join([config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".la.bam" for name in set(samples)])
+    bams = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".recal.la.bam" for name in set(samples)]
+    bamlist = ' '.join([config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".recal.la.bam" for name in set(samples)])
     return [bams, bamlist]
         
 # make sure the family is done first
