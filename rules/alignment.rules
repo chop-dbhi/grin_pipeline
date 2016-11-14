@@ -213,6 +213,26 @@ rule post_recalibrated_table:
         -o {output.table}
         """
 
+#https://www.biostars.org/p/90352/
+rule left_align_indels:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
+        gatk = ENV3 + config['jars']['gatk']['path']
+    output:
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.la.bam"
+    log:
+        config['datadirs']['log'] + "/{sample}.left_align.log"
+    threads:
+        1
+    shell:
+        """
+        {input.gatk} {params.opts} \
+        -T LeftAlignIndels \
+        -R {params.ref} \
+        -I {input.bam} \
+        -o {output.bam} 2> {log}
+        """
+
 # https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_bqsr_AnalyzeCovariates.php
 # generates plots for visualizing the quality of a recalibration run
 rule analyze_bqsr:
