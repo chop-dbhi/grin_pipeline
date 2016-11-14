@@ -150,11 +150,12 @@ rule getScreenshots:
 # split gemini reports
 rule variantAnalysisModels:
     input:
-        x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
+        inheritancemodel = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
         screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
         denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.vcf.dnm_auto.txt",
         source = "reports/grin_epilepsy_models_gemini_{model}.Rmd",
-        rvis = "annotations/rvis.RData"
+        rvis = "annotations/rvis.RData",
+        rfuncs = "reports/accessoryFuncs.R"
     output:
         html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.html",
     params:
@@ -162,26 +163,22 @@ rule variantAnalysisModels:
         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
         sspath = config['landing_dir'][freeze] + config['results']['screenshots'],
         familyname = "{family}_{subject}",
+        model = "{model}",
         outfile = "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.html",
     run:
         R("""
         library(rmarkdown)
         library(tools)
-        # returns 0 if file is empty
+        # source accessory functions
+        source('{input.rfuncs}')
         rvis <- get(load('{input.rvis}'))
         projdir <- '{params.projdir}'
         dirpath <- '{params.dirpath}'
         familyname <- '{params.familyname}'
-        # if x is EG0041_EG0041P.trio.com.filtered.ad.de.nm.snpeff.anno.denovo.txt, 
-        # trio = EG0041_EG0041P and model = denovo. 
-        # this is used to generate the title in the report.
-        model <- '{input.x}'
-        trio <- model
-        model <- gsub('.txt|.*anno.','', model)
-        trio <- gsub('[.].*|.*[/]','', trio)
-        title <- paste0(toTitleCase(as.character(trio)), ' | ', toTitleCase(as.character(model)),' | ', as.character("GRIN Epilepsy Trio Analysis"))
-        dat <- tryCatch(expr = read.delim('{input.x}', stringsAsFactors = F), error = function(e) 0)
-        assign(model, dat)
+        model <- '{params.model}'
+        title <- paste0(toTitleCase(as.character(familyname)), ' | ', toTitleCase(as.character(model)),' | ', as.character("GRIN Epilepsy Trio Analysis"))
+        # returns 0 if file is empty
+        var.df <- tryCatch(expr = read.delim('{input.inheritancemodel}', stringsAsFactors = F), error = function(e) 0)
         denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T, stringsAsFactors = F), error = function(e) 0)
         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}", params = list(title = title))
         """)

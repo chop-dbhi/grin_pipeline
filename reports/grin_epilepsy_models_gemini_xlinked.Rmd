@@ -37,14 +37,14 @@ We used the following filters to reduce the number of reported false positives:
 4. GL contigs were not used.
 </blockquote>
 
-## Autosomal recessive homozygous
+## X-linked recessive
 <blockquote>
 Genotype Requirements:
   
-1. all affected must be HOM_ALT
-2. no unaffected can be HOM_ALT (can be unknown)
-3. if parents exist they must be unaffected and het for all affected kids
-4. if there are no affecteds that have a parent, a warning is issued.
+1. Affected females must be HOM_ALT
+2. Unaffected females are HET or HOM_REF
+3. Affected males are not HOM_REF
+4. Unaffected males are HOM_REF
 </blockquote>
 
 <div class="panel panel-default">
