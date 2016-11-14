@@ -7,7 +7,7 @@ FASTQCS = [config['datadirs']['fastqc'] + "/" + re.sub("\.fastq.gz$", "_fastqc.z
 #Trio_SL        C2952   C2953   C2954   f       EOEE
 #ISR_#45        E08320                          f       Focal Epilepsy  x
 SAMPLE_TABLE = pandas.read_table(config['sample_table'],dtype={'FamilyID': object,'Subject':object,'Mother':object,'Father':object,'Sex':object,'Affected_status':object,'Not_in_Varbank':object})
-BLACKLIST= pandas.read_table("metadata/blacklist.txt")
+#BLACKLIST= pandas.read_table("metadata/blacklist.txt")
 MANIFESTSAMPLES = list(set(list(SAMPLE_TABLE['Subject'])+list(SAMPLE_TABLE['Mother'].dropna())+list(SAMPLE_TABLE['Father'].dropna())))
 # ['E0974_GCTACGC_L006_R1', 'E0975_CGAGGCT_L006_R1', 'E0977_GTAGAGG_L006_R1', 'E0975_CGAGGCT_L006_R2', 'E0977_GTAGAGG_L006_R2', 'E0974_GCTACGC_L006_R2']
 ALLPAIRNAMES = set([os.path.basename(name).split(os.extsep)[0] for name in FASTQS])
@@ -96,7 +96,7 @@ rule make_upload_files:
     run:
         upload_mapfile()
 
-rule map_uuid:
+rule make_uuid_mapping:
     input: [config['results']['mapped'] + '/' + name for name in get_uuids()]
 
 ##############################
