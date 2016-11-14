@@ -29,10 +29,22 @@ Set a TMPDIR in your `~/.bash_profile`:
 export TMPDIR=/mnt/lustre/users/YOURUSERNAME/scratch
 ```
 
-Use an appropriate config:
+Develop an appropriate config:
 ```
 ln -s configs/config.respublica.yaml configs/config.yaml
 cp configs/localconfig.sample.yaml localconfig.yaml
+```
+
+Choose a sample_table.txt
+```
+cd metadata
+ln -s sample_table_full.txt sample_table.txt
+```
+
+Get some files:
+```
+mkdir fastq
+cp /mnt/isilon/cbmi/variome/leipzig/GRIN/fastq/NA*gz fastq
 ```
 
 - `--drmaa` is not allowed on Respublica yet, use `-c qsub`

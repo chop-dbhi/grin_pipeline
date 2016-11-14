@@ -62,3 +62,27 @@ target/
 # Fuse
 .fuse_hidden*
 .nfs*
+
+# Mac
+.DS_Store
+
+# GRIN
+.THISISGRINPROSPECTIVE
+.snakemake
+GRCh37
+GRCh38
+fastq
+fastqc
+lustre
+samples.ped
+samples.nohead.ped
+localconfig.yaml
+summary_fastqc*
+snpEff*
+unmanifestedpairs.txt
+samplesondisk.txt
+incompletefamilies.txt
+missingsamples.txt
+metadata/sample_table.txt
+.Rplots
+site/

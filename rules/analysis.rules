@@ -1,9 +1,9 @@
 rule gemini_db:
     input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.gz",
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.bgz",
         gemini_python = config['tools']['gemini']['gemini_python'],
         vcf2db = config['tools']['vcf2db'],
-        pedfile = config['pedfile']
+        pedfile = config['pedfile_nohead']
     output:
         gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db"
     shell:
@@ -21,15 +21,68 @@ rule get_models:
     run:
         model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
         modelname = model_lut[wildcards.model]
-        shell("{input.gemini_tool} {modelname} -d 15 --filter \"impact_severity != 'LOW'\" {input.gemini_db} > {output.gemini_out}")
+        shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
-# get posterior probability from dnm
-rule run_denovogear:
+#get intervals for bamouts
+rule get_gatk_bamout_intervals:
+    input:
+        gemini = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt"
+    output:
+        intervals = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.intervals"
+    shell:
+        """
+        awk 'NR>1 {{print $2 ":" $3 "-" $4}}' {input} > {output}
+        """
+
+def get_family_from_member(member):
+    rows = SAMPLE_TABLE.loc[((SAMPLE_TABLE['Subject'] == member) | (SAMPLE_TABLE['Mother'] == member) | (SAMPLE_TABLE['Father'] == member)) & ((SAMPLE_TABLE['Mother'] != '') & (SAMPLE_TABLE['Father'] != ''))]
+    family = rows['FamilyID']+"_"+rows['Subject']
+    return family
+
+#        #java -jar GenomeAnalysisTK.jar -T HaplotypeCaller -R human_b37_20.fasta -I recalibrated.bam -o hc_variants.vcf -bamout bamout.bam        
+rule get_bamout:
+    input:
+        list = lambda wildcards: config['landing_dir'][freeze] + config['results']['analysis'] + "/" + get_family_from_member(wildcards.sample)+".trio.com.filtered.ad.de.nm.snpeff.anno."+wildcards.model+".intervals",
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
+        gatk = ENV3 + config['jars']['gatk']['path']
+    log:
+        config['datadirs']['log'] + "/{sample}.bamout.log"
+    output:
+        bamout = config['landing_dir'][freeze] + config['results']['analysis'] + "/{sample}.{model}.bamout.bam",
+        hc_variants = config['landing_dir'][freeze] + config['results']['analysis'] + "/{sample}.{model}.hcvariants.vcf",
+    params:
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        ref = config['ref'][freeze]
+    shell:
+        """
+        {input.gatk} {params.opts} \
+        -T HaplotypeCaller \
+        -R {params.ref} \
+        -I {input.bam} \
+        -L {input.list} \
+        --activeRegionIn {input.list} \
+        -o {output.hc_variants} \
+        -forceActive \
+        -disableOptimizations \
+        -bamout {output.bamout} 2> {log}
+        """
+
+def bamouts_in_family(family,subject,model):
+        rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family) & (SAMPLE_TABLE['Subject'] == subject)]
+        samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+        assert(len(samples)>0)
+        bamouts = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in samples]
+        bamoutlist = 'c("'+'","'.join([config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in samples])+'")'
+        return [bamouts,bamoutlist]
+
+# get posterior probability from dnm using vcfs
+rule run_denovogear_from_vcf:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",
         ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.nohead.pedfile"
     output:
-        dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.trio.com.filtered.dnm_auto.txt"
+        dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.trio.com.filtered.vcf.dnm_auto.txt"
     shell:
         """
         echo "SNP_INDEL CHILD_ID chr pos ref alt maxlike_null pp_null tgt_null(child/mom/dad) snpcode code maxlike_dnm pp_dnm tgt_dnm lookup flag child_rd dad_rd mom_rd child_mq dad_mq mom_mq" > {output.dnm_auto}
@@ -37,83 +90,99 @@ rule run_denovogear:
         sed 's/CHILD_ID: //g;s/chr: //g;s/pos: //g;s/ref: //g;s/alt: //g;s/maxlike_null: //g;s/pp_null: //g;s/tgt: //g;s/tgt_null(child\/mom\/dad): //g;s/snpcode: //g;s/code: //g;s/maxlike_dnm: //g;s/pp_dnm: //g;s/tgt_dnm(child\/mom\/dad): //g;s/lookup: //g;s/flag: //g;s/READ_DEPTH child: //g;s/dad: //g;s/mom: //g;s/MAPPING_QUALITY child: //g;s/dad: //g;s/mom: //g' >> {output.dnm_auto}
         """
 
-# make gemini reports
-# rule variantAnalysisModels:
-#     input:
-#         denovo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.denovo.txt",
-#         denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt",
-#         arhomo = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.arhomo.txt",
-#         cmpdhet = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.cmpdhet.txt",
-#         xlinked = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.xlinked.txt",
-#         source = "reports/grin_epilepsy_models_gemini.Rmd"
-#     output:
-#         html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.models.html"
-#     params:
-#         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
-#         outfile = "/{file}.ad.de.nm.snpeff.models.html"
-#     run:
-#         R("""
-#         library(rmarkdown)
-#         # returns 0 if file is empty
-#         denovo <- tryCatch(expr = read.delim('{input.denovo}', stringsAsFactors = F), error = function(e) 0)
-#         denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T), error = function(e) 0)
-#         arhomo <- tryCatch(expr = read.delim('{input.arhomo}', stringsAsFactors = F), error = function(e) 0)
-#         cmpdhet <- tryCatch(expr = read.delim('{input.cmpdhet}', stringsAsFactors = F), error = function(e) 0)
-#         xlinked <- tryCatch(expr = read.delim('{input.xlinked}', stringsAsFactors = F), error = function(e) 0)
-#         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}")
-#         """)
+# get posterior probability from dnm
+rule run_denovogear_from_bcf:
+    input:
+        bcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.bcf",
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.nohead.pedfile"
+    output:
+        dnm_auto = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.trio.com.filtered.bcf.dnm_auto.txt"
+    shell:
+        """
+        echo "SNP_INDEL CHILD_ID chr pos ref alt maxlike_null pp_null tgt_null(child/mom/dad) snpcode code maxlike_dnm pp_dnm tgt_dnm lookup flag child_rd dad_rd mom_rd child_mq dad_mq mom_mq" > {output.dnm_auto}
+        dng dnm auto --bcf {input.bcf} --ped {input.ped} > {output.dnm_auto}
+        #sed 's/CHILD_ID: //g;s/chr: //g;s/pos: //g;s/ref: //g;s/alt: //g;s/maxlike_null: //g;s/pp_null: //g;s/tgt: //g;s/tgt_null(child\/mom\/dad): //g;s/snpcode: //g;s/code: //g;s/maxlike_dnm: //g;s/pp_dnm: //g;s/tgt_dnm(child\/mom\/dad): //g;s/lookup: //g;s/flag: //g;s/READ_DEPTH child: //g;s/dad: //g;s/mom: //g;s/MAPPING_QUALITY child: //g;s/dad: //g;s/mom: //g' >> {output.dnm_auto}
+        """
+
+rule getScreenshots:
+    input:
+        geminiout = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
+        bamouts = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[0],
+    output:
+        screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
+    params:
+        projdir = config['projdir'],
+        dirpath = config['landing_dir'][freeze] + config['results']['screenshots'],
+        familyname = "{family}_{subject}",
+        bamoutlist = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[1],
+        freeze = config['freeze']
+    run:
+        R("""
+            library(SRAdb)
+            library(stringr)
+            familyname <- '{params.familyname}'
+            dirpath <- '{params.dirpath}'
+            projdir <- '{params.projdir}'
+            bamouts <- {params.bamoutlist}
+            model <- '{wildcards.model}'
+        
+            geminiout <- tryCatch(expr = read.delim('{input.geminiout}', stringsAsFactors = F), error = function(e) 0)
+            #startIGV(memory = "hm", devel=FALSE)
+            sock <- IGVsocket()
+            IGVclear(sock)
+            freezelookup<-c("hg37"="b37","hg38"="hg38")
+            IGVgenome(sock, genome=freezelookup["{params.freeze}"])
+            IGVload(sock, paste(projdir,bamouts,sep="/"))
+            igvsnapshot<-function(df){{
+                midpoint<-round((df[['start']]+df[['end']])/2)
+                startpos<-midpoint-74
+                endpos<-midpoint+75
+                goto<-str_replace_all(paste(df[['chrom']],':',startpos,'-',endpos,sep=""),' ','')
+                IGVgoto(sock, goto)
+                fname<-str_replace_all(paste(familyname,model,df[['variant_id']],'png',sep="."),' ','')
+                IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
+            }}
+            apply(geminiout,1,igvsnapshot)
+            IGVclear(sock)
+            close.socket(sock)
+        """)
+        import os
+        with open(output.screenshots, 'a'):
+            os.utime(output.screenshots, None)
 
 # split gemini reports
 rule variantAnalysisModels:
     input:
-        x = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt",
-        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.dnm_auto.txt",
+        inheritancemodel = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.txt",
+        screenshots = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.ss",
+        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.vcf.dnm_auto.txt",
         source = "reports/grin_epilepsy_models_gemini_{model}.Rmd",
-        rvis = "annotations/rvis.RData"
+        rvis = "annotations/rvis.RData",
+        rfuncs = "reports/accessoryFuncs.R"
     output:
-        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.{model}.html"
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.html",
     params:
+        projdir = config['projdir'],
         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
-        outfile = "/{file}.ad.de.nm.snpeff.{model}.html"
+        sspath = config['landing_dir'][freeze] + config['results']['screenshots'],
+        familyname = "{family}_{subject}",
+        model = "{model}",
+        outfile = "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.{model}.html",
     run:
         R("""
         library(rmarkdown)
         library(tools)
-        # returns 0 if file is empty
+        # source accessory functions
+        source('{input.rfuncs}')
         rvis <- get(load('{input.rvis}'))
-        x <- '{input.x}'
-        trio <- x
-        x <- sub('.txt','',x)
-        x <- sub('.*anno.','',x)
-        trio <- sub('[.].*','',trio)
-        title <- paste(toTitleCase(as.character(x)), toTitleCase(as.character(trio)), as.character("GRIN Epilepsy Trio Analysis"))
-        y <- tryCatch(expr = read.delim('{input.x}', stringsAsFactors = F), error = function(e) 0)
-        assign(x, y)
-        denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T), error = function(e) 0)
+        projdir <- '{params.projdir}'
+        dirpath <- '{params.dirpath}'
+        familyname <- '{params.familyname}'
+        model <- '{params.model}'
+        title <- paste0(toTitleCase(as.character(familyname)), ' | ', toTitleCase(as.character(model)),' | ', as.character("GRIN Epilepsy Trio Analysis"))
+        # returns 0 if file is empty
+        var.df <- tryCatch(expr = read.delim('{input.inheritancemodel}', stringsAsFactors = F), error = function(e) 0)
+        denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T, stringsAsFactors = F), error = function(e) 0)
         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}", params = list(title = title))
         """)
-
-# alter records that have a '*' in the ALT field - these are causing problems in VariantAnnotation
-# https://github.com/Bioconductor-mirror/VariantAnnotation/commit/837f1f0c9fdcdc9de7677a9a067963413dfe26e7
-rule noasterisk:
-    input:
-        vcf = "{file}.vcf"
-    output:
-        vcf = "{file}.noask.vcf"
-    shell:
-        """
-        cat {input} | sed -e 's/\*/N/g' > {output}
-        """
-
-def getGender(proband):
-    res = SAMPLE_TABLE.loc[SAMPLE_TABLE['Subject'] ==  proband,"Sex"]
-    sex = str(res.values[0])
-    return sex
-
-# boys only
-def xlinked(wildcards):
-    if getGender(wildcards.pro)=='M':
-        return config['landing_dir'][freeze] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
-    else:
-        return []
 

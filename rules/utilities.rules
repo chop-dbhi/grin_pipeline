@@ -140,3 +140,64 @@ rule printtrios:
         print(EXISTINGSAMPLES)
         print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
         print("gems: {0}".format(TRIOGEMS))
+
+def getGender(proband):
+    res = SAMPLE_TABLE.loc[SAMPLE_TABLE['Subject'] ==  proband,"Sex"]
+    sex = str(res.values[0])
+    return sex
+
+# boys only
+def xlinked(wildcards):
+    if getGender(wildcards.pro)=='M':
+        return config['landing_dir'][freeze] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
+    else:
+        return []
+
+## TODO: consolidate
+rule compress_gvcf:
+    input:
+        gvcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf",
+        bgzip = ENV3 + config['tools']['bgzip']
+    output:
+        bgz = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{sample}.gvcf.bgz"
+    threads:
+        4
+    shell:
+        """
+        {input.bgzip} --threads {threads} -c {input.gvcf} > {output}
+        """
+
+rule tabix_gvcf:
+    input:
+        vcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{file}.gvcf.bgz",
+        tabix = ENV3 + config['tools']['tabix']
+    output:
+        vcf = config['process_dir'][freeze] + config['results']['gvcfs'] + "/{file}.gvcf.bgz.tbi",
+    shell:
+        """
+        {input.tabix} -p vcf {input.vcf}
+        """
+
+rule compress_vcf:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        bgzip = ENV3 + config['tools']['bgzip']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
+    shell:
+        """
+        {input.bgzip} -c {input.vcf} > {output}
+        """
+
+rule tabix_vcf:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
+        tabix = ENV3 + config['tools']['tabix']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi"
+    threads:
+        4
+    shell:
+        """
+        {input.tabix} --threads {threads} -p vcf {input.vcf}
+        """

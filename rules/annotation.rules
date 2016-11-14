@@ -23,6 +23,18 @@ rule decompose_for_gemini:
         {input.vt} decompose -s -o {output} {input.vcf}
         """
 
+# decomposes block substitutions e.eg CA->TG into individual variants
+rule decompose_blocksub_for_gemini:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.vcf",
+        vt = ENV3 + config['tools']['vt']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.db.vcf"
+    shell:
+        """
+        {input.vt} decompose_blocksub -o {output} {input.vcf}
+        """
+
 # normalize the variants
 rule normalize_for_gemini:
     input:
@@ -35,6 +47,19 @@ rule normalize_for_gemini:
     shell:
         """
         {input.vt} normalize -r {params.ref} -o {output} {input.vcf}
+        """
+
+# these are symbols in HGMD that can cause problems
+# https://raw.githubusercontent.com/samesense/format_hgmd/master/sf.py
+rule nonascii:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
+        vt = ENV3 + config['tools']['vt']
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.noascii.vcf"
+    shell:
+        """
+        zcat {input} | tr -d '\\200-\\377' | bgzip -c > {output}
         """
 
 # summarize the variants in a VCF file
@@ -218,27 +243,6 @@ rule install_annovar_db:
             shell("{input.annovar} -buildver {wildcards.freeze} {opts} {wildcards.db} {params.dbdir}")
         shell("touch {output}")
 
-rule compress_vcf:
-    input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf",
-        bgzip = ENV3 + config['tools']['bgzip']
-    output:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
-    shell:
-        """
-        {input.bgzip} -c {input.vcf} > {output}
-        """
-
-rule tabix:
-    input:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz",
-        tabix = ENV3 + config['tools']['tabix']
-    output:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi",
-    shell:
-        """
-        {input.tabix} -p vcf {input.vcf}
-        """
 
 # annotate using vcfanno and a config file with required annotations and fields.
 rule annotate_using_vcfanno:
@@ -248,14 +252,16 @@ rule annotate_using_vcfanno:
         lua = config['tools']['vcfanno']['lua'],
         conf = config['tools']['vcfanno']['conf'][freeze],
         bgzip = ENV3 + config['tools']['bgzip']
+    log: 
+        config['datadirs']['log'] + "/{file}.vcfanno.log"
     output:
-        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.gz"
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.bgz"
+    threads: 8
     params:
-        processes = 4,
         base_path = config['tools']['gemini']['gemini_anno']
     shell:
         """
-        {input.vcfanno} -p {params.processes} \
+        {input.vcfanno} -p {threads} \
         -base-path {params.base_path} \
         -lua {input.lua} \
         {input.conf} \

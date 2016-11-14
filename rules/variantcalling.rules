@@ -1,8 +1,8 @@
 #### Variant Calling ####
 rule bam_to_gvcf:
     input:
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
-        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
         doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
@@ -26,6 +26,8 @@ rule bam_to_gvcf:
         -o {output.gvcf}
         """
 
+
+
 # sanity check on gvcf files
 def check_gvcfs(gvcfs):
     for file in gvcfs:
@@ -36,6 +38,18 @@ def check_gvcfs(gvcfs):
             line = output.decode()
             if not re.search(config['lastctg'][freeze], line):
                 print(file + ' is incomplete')
+                quit()
+                
+# sanity check on gvcf files
+def check_gvcfs_bgz(gvcfs):
+    for file in gvcfs:
+        if os.path.exists(file):
+            cmd = "tabix "+file+" "+config['lastctg'][freeze]
+            # print(cmd)
+            (output, error) = call_command(cmd)
+            line = output.decode()
+            if not line:
+                print(file + ' is incomplete ' + line + ' not ' + config['lastctg'][freeze])
                 quit()
     
 def call_command(command):
@@ -50,7 +64,7 @@ def call_command(command):
 def gvcf_samples_in_family(family,subject):
     # joint means all existing samples
     if family == 'joint':
-        return [GVCFS,GVCFSLIST]
+        return [GVCFS,GVCFSLIST,TBIS]
     else:
         if subject == 'family':
             rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family)]
@@ -60,16 +74,32 @@ def gvcf_samples_in_family(family,subject):
         assert(len(samples)>0)
         if subject != 'family':
             assert(len(samples)==3)
-        gvcfs = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)]
-        gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf" for name in set(samples)])
-        return [gvcfs, gvcfslist]
+        gvcfs = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in set(samples)]
+        gvcfslist = ' '.join(["--variant " + config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in set(samples)])
+        tbis = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz.tbi" for name in set(samples)]
+        return [gvcfs, gvcfslist, tbis]
 
+# the bamlist is just a string concatenation used by samtools mpileup
+def recalbams_samples_in_family(family,subject):
+    if subject == 'family':
+        rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family)]
+    else:
+        rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family) & (SAMPLE_TABLE['Subject'] == subject)]
+    samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
+    assert(len(samples)>0)
+    if subject != 'family':
+        assert(len(samples)==3)
+    bams = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".recal.la.bam" for name in set(samples)]
+    bamlist = ' '.join([config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".recal.la.bam" for name in set(samples)])
+    return [bams, bamlist]
+        
 # make sure the family is done first
 # if family size is 3, then you're done, just copy
 # otherwise make both trios
 rule trio_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[0],
+        tbis = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[2],
         family = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
         familygvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
         gatk = ENV3 + config['jars']['gatk']['path']
@@ -85,8 +115,8 @@ rule trio_vcfs:
     threads: 8
     run:
         assert(len(input.gvcfs)==3)
-        check_gvcfs(input.gvcfs) 
-        check_gvcfs(input.familygvcfs)
+        check_gvcfs_bgz(input.gvcfs) 
+        check_gvcfs_bgz(input.familygvcfs)
         # use the family count to determine course of action
         if len(input.familygvcfs)==3:
             shell("cp {input.family} {output.vcf}")
@@ -103,9 +133,24 @@ rule trio_vcfs:
                 -o {output.vcf} 2> {log}
             """)
 
+rule trio_bcfs:
+    input:
+        bams = lambda wildcards: recalbams_samples_in_family(wildcards.family,wildcards.subject)[0]
+    output:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.bcf"
+    params:
+        ref = config['ref'][freeze],
+        bamlist = lambda wildcards: recalbams_samples_in_family(wildcards.family,wildcards.subject)[1],
+    run:
+        assert(len(input.bams)==3)
+        shell("""
+            samtools mpileup --BCF -f {params.ref} {params.bamlist} > {output}
+        """)
+        
 rule family_vcfs:
     input:
         gvcfs = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[0],
+        tbis = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[2],
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}.family.vcf",
@@ -119,7 +164,7 @@ rule family_vcfs:
         db = config['dbsnp'][freeze]
     threads: 8
     run:
-        check_gvcfs(input.gvcfs) 
+        check_gvcfs_bgz(input.gvcfs) 
         shell("""
         {input.gatk} {params.opts} \
         -T GenotypeGVCFs \
@@ -152,7 +197,8 @@ rule sample_table_to_pedfile:
     params:
         existingsamples = EXISTINGSAMPLES
     output:
-        config['pedfile']
+        headered=config['pedfile'],
+        nohead=config['pedfile_nohead']
     run:
         st = pandas.read_table("{0}".format(input),dtype={'FamilyID': object,'Subject':object,'Mother':object,'Father':object,'Sex':object,'Affected_status':object,'Not_in_Varbank':object})
         complete_trios = [index for index, row in st.iterrows() if all([row[member] in params.existingsamples for member in ['Mother','Father','Subject']])]
@@ -184,7 +230,8 @@ rule sample_table_to_pedfile:
         ped = ped.append([momdf,daddf])
         ped = ped.drop_duplicates()
         ped = ped.sort_values(by=['FamilyID','Subject'])
-        ped.to_csv("{0}".format(output), sep='\t',index=False)
+        ped.to_csv("{0}".format(output.headered), sep='\t',index=False,header=True)
+        ped.to_csv("{0}".format(output.nohead), sep='\t',index=False,header=False)
 
 # R's Varia
 rule analysis_pedfile:
