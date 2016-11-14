@@ -3,7 +3,7 @@
 isilon: /mnt/isilon/cbmi/variome
 
 ped: ped.ped  # a PED pedigree file for PhaseByTransmission
-sample_table: metadata/sample_table.txt
+sample_table: metadata/sample_table_full.txt
 pedfile: metadata/samples.ped
 pedfile_nohead: metadata/samples.nohead.ped
 
@@ -200,7 +200,8 @@ tools:
         gemini_python: $isilon/bin/gemini/tools/bin/gemini_python
         gemini_anno: $isilon/bin/gemini/data/gemini_data
     vep:
-        $isilon/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
+        # $isilon/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
+        variant_effect_predictor.pl
     multiqc:
         multiqc
     annotate_variation:

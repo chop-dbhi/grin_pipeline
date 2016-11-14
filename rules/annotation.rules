@@ -160,7 +160,7 @@ rule run_vep:
         vepgen = config['vepgenomes'][freeze],
         asmgen = config['vepassembly'][freeze],
     run:
-        cmd = "perl " + input.vep + " \
+        cmd = input.vep + " \
           --everything --vcf --allele_number --no_stats --cache --offline \
           --force_overwrite --cache_version 84 \
           --dir " + params.vepdir + " \
