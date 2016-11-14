@@ -91,7 +91,7 @@ def get_all_recals_bams(trio):
     samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
     bams = []
     for samplename in samples:
-        bams += [bam for bam in REBAMS if os.path.basename(bam).startswith(samplename) and bam.endswith(".bam")]
+        bams += [bam for bam in REBAMS if os.path.basename(bam).startswith(samplename) and bam.endswith(".la.bam")]
     return(bams)
 
 rule siteindex:

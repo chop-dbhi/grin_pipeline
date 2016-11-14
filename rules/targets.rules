@@ -31,7 +31,7 @@ rule extract:
 ##############################
 SBAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.bam" for name in SAMPLELANES] #used by mergelanes
 GBAMS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bam" for name in EXISTINGSAMPLES]  #used by multiqc
-REBAMS = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".bam" for name in EXISTINGSAMPLES]
+REBAMS = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".la.bam" for name in EXISTINGSAMPLES]
 INDELS = config['process_dir'][freeze] + config['results']['realigned'] + "/indels.list" #used by combinelists
 LISTS = [config['process_dir'][freeze] + config['results']['lists'] + "/" + name + ".list" for name in EXISTINGSAMPLES] #used by combine
 
