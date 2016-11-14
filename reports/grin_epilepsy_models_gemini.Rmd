@@ -28,7 +28,7 @@ thisnotinthat <- function(x.1,x.2,...){
 viewDataTable <- function(dat){
 
   cols2hide <- grep('Description|Variants|Perc|chromosome|position|rsid|^ref$|^alt$|^gene$|
-                    impact_severity|rvis_score|depths|gt_quals|family_genotypes',
+                    impact_severity|rvis_perc|depths|gt_quals|family_genotypes',
                     colnames(dat), invert = TRUE)
 
   DT::datatable(dat,
