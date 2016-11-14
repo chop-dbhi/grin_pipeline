@@ -219,7 +219,8 @@ rule left_align_indels:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.bam",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam"
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai"
     log:
         config['datadirs']['log'] + "/{sample}.left_align.log"
     threads:
