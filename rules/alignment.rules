@@ -169,8 +169,8 @@ rule recalibrate_bam:
         bai = config['process_dir'][freeze] + config['results']['realigned'] + "/{sample}.bai",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
-        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai"
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.bai"
     log:
         config['datadirs']['log'] + "/{sample}.recalibrate_bam.log"
     params:
@@ -216,10 +216,10 @@ rule post_recalibrated_table:
 #https://www.biostars.org/p/90352/
 rule left_align_indels:
     input:
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.bam",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.la.bam"
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam"
     log:
         config['datadirs']['log'] + "/{sample}.left_align.log"
     threads:
