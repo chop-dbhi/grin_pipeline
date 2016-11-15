@@ -55,6 +55,9 @@ source activate grinenv
 snakemake -j 300 --notemp --cluster-config configs/cluster.yaml -c "qsub -V -l h_vmem={cluster.h_vmem} -l mem_free={cluster.mem_free} -l m_mem_free={cluster.m_mem_free} -pe smp {threads}"
 ```
 
+#### Screenshots
+IGV screenshots are generated for each variant identified in the inheritance models. Unfortunately IGV cannot run in headless mode, and will require an X-window session to be started and IGV to be running on that machine. Each screenshot take 2-3 seconds to generate.
+
 ### Development
 It's best to run in dev with --notemp since intermediates can take a long time to produce
 
