@@ -73,7 +73,7 @@ def gvcf_samples_in_family(family,subject):
         else:
             rows = SAMPLE_TABLE.loc[(SAMPLE_TABLE['FamilyID'] == family) & (SAMPLE_TABLE['Subject'] == subject)]
         samples = list(rows['Subject'].dropna())+list(rows['Mother'].dropna())+list(rows['Father'].dropna())
-        assert(len(samples)>0)
+        assert len(samples)>0, "no samples"
         if subject != 'family':
             assert(len(samples)==3)
         gvcfs = [config['process_dir'][freeze] + config['results']['gvcfs'] + "/" + name + ".gvcf.bgz" for name in set(samples)]
@@ -116,7 +116,7 @@ rule trio_vcfs:
         db = config['dbsnp'][freeze]
     threads: 8
     run:
-        assert(len(input.gvcfs)==3)
+        assert len(input.gvcfs)==3, "{0} is not length 3".format(input.gvcfs)
         check_gvcfs_bgz(input.gvcfs) 
         check_gvcfs_bgz(input.familygvcfs)
         # use the family count to determine course of action
