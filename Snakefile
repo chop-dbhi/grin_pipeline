@@ -11,6 +11,7 @@ from functools import cmp_to_key
 from util.varsub import varsub
 from util.dirs import updir, makedir
 from util.lists import combine
+from util.gender import gender
 """
 run on respublica
 
@@ -74,7 +75,7 @@ rule all:
     input: 
         trios = TRIOVCFS,
         analysis = ANALYSES,
-        phased = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
+        family = config['landing_dir'][freeze] + config['results']['vcfs'] + "/joint.family.vcf"
 
 #### Internal
 onsuccess:

@@ -222,7 +222,7 @@ rule left_align_indels:
         bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai"
     params:
-        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        opts = config['tools']['opts']['low'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze]
     log:
         config['datadirs']['log'] + "/{sample}.left_align.log"
@@ -278,8 +278,8 @@ rule merge_lanes:
 
 rule depth_of_coverage:
     input:
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bam",
-        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.bai",
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
+        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
         sample_summary = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_summary",
@@ -359,7 +359,7 @@ rule add_readgroup:
         bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bam",
         bai = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.rmdup.bai",
     output:
-        bam = config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam", # needed by run_multiqc
+        bam = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bam"), # needed by run_multiqc
         #bai = temp(config['process_dir'][freeze] + config['results']['picard'] + "/{sample}.group.bai")
     log:
         config['datadirs']['log'] + "/{sample}.add_readgroup.log"

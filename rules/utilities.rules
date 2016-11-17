@@ -141,17 +141,8 @@ rule printtrios:
         print("complete trios {0}".format(COMPLETETRIOSFAMIDS))
         print("gems: {0}".format(TRIOGEMS))
 
-def getGender(proband):
-    res = SAMPLE_TABLE.loc[SAMPLE_TABLE['Subject'] ==  proband,"Sex"]
-    sex = str(res.values[0])
-    return sex
 
-# boys only
-def xlinked(wildcards):
-    if getGender(wildcards.pro)=='M':
-        return config['landing_dir'][freeze] + config['results']['analysis'] + "/{0}_{1}.{2}.xlinked.RData".format(wildcards.family,wildcards.pro,wildcards.ext)
-    else:
-        return []
+
 
 ## TODO: consolidate
 rule compress_gvcf:
