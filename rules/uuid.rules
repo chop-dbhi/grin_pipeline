@@ -2,6 +2,8 @@ import uuid
 import hashlib
 import boto3
 import datetime
+samples = []
+sample_metadata = {}
 seq_mapping = {}
 spl_mapping = {}  # name to uuid
 names = {}
@@ -12,11 +14,20 @@ all_uuids = {}
 pcornetids = {}
 chksums = {}
 buckets = {}
-seq_map = 'sequence_mapping.txt'
+seq_map_file = 'sequence_mapping.txt'
 seq_json = 'sequence_mapping.json'
-spl_map = 'sample_mapping.txt'
-fastq_list = 'fastq_files.txt'
+spl_map_file = 'sample_mapping.txt'
 sample_names = 'sample_names.txt'
+subject_meta = 'subject_meta'
+fastq_list = 'fastq_files.txt'
+sample_metafile = 'sample_metadata.csv'
+indexes = [0, 1, 2, 3, 4, 7, 9, 10, 11, 12, 29]
+sample_headers = []
+contact = "zhangs3@email.chop.edu"
+
+def now():
+    now = datetime.datetime.now()
+    return "%s-%02d-%02d:%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
 
 def get_md5(file, block_size=2**20):
 # http://stackoverflow.com/questions/1131220/get-md5-hash-of-big-files-in-python
@@ -33,8 +44,8 @@ def get_mapped():
     global all_uuids
     global uid2name
 
-    if os.path.exists(seq_map):
-        fmap = open(seq_map, "r")
+    if os.path.exists(seq_map_file):
+        fmap = open(seq_map_file, "r")
         for line in fmap.readlines():
             (uid, name, chksum, bucket) = line.strip().split()
 
@@ -103,8 +114,6 @@ def get_uuids():      # uuids for fastq files
 
     has_new = False
 
-    get_mapped()
-
     for line in get_fastq_files():
         # <bucket>:<s3_path>/<sample_file_name>
         name = re.sub('.*/', '', line)
@@ -125,32 +134,32 @@ def get_uuids():      # uuids for fastq files
             seq_uuids[uid] = root
             all_uuids[uid] = 1
      
-    keys = sorted(list(names.keys()))
     if has_new:
-        with open(seq_map, "w") as fmap:
+        keys = sorted(list(names.keys()))
+        with open(seq_map_file, "w") as fmap:
             for name in keys:
                # print(name)
                uid = names[name]
                fmap.write(uid + ".fastq.gz " + name + ".fastq.gz " + chksums[name] + " " + buckets[uid] + "\n")
 
-    with open(seq_json, "w") as fmap:
-        fmap.write("[\n");
-        uid = ''
-        for name in keys:
-            # print(name)
-            if uid:
-                fmap.write(",\n")
-            uid = names[name]
-            (bucket, path) = buckets[uid].split(':')
-            path = re.sub('/$', '', path)
-            fmap.write("  {\n")
-            fmap.write('    "file_name": "' + uid + '.fastq.gz",' + "\n")
-            fmap.write('    "original_name": "' + name + '.fastq.gz",' + "\n")
-            fmap.write('    "checksum": "' + chksums[name] + '",' + "\n")
-            fmap.write('    "s3_bucket": "' + bucket + '",' + "\n")
-            fmap.write('    "s3_path": "' + path + '"' + "\n")
-            fmap.write('  }')
-        fmap.write("\n]\n")
+        with open(seq_json, "w") as fmap:
+            fmap.write("[\n");
+            uid = ''
+            for name in keys:
+                # print(name)
+                if uid:
+                    fmap.write(",\n")
+                uid = names[name]
+                (bucket, path) = buckets[uid].split(':')
+                path = re.sub('/$', '', path)
+                fmap.write("  {\n")
+                fmap.write('    "file_name": "' + uid + '.fastq.gz",' + "\n")
+                fmap.write('    "original_name": "' + name + '.fastq.gz",' + "\n")
+                fmap.write('    "checksum": "' + chksums[name] + '",' + "\n")
+                fmap.write('    "s3_bucket": "' + bucket + '",' + "\n")
+                fmap.write('    "s3_path": "' + path + '"' + "\n")
+                fmap.write('  }')
+            fmap.write("\n]\n")
 
     # return [name + '.fastq.gz' for name in names]
     # print(names.values())
@@ -165,8 +174,8 @@ def get_sample_mapping():
     global spl_uuids
     global all_uuids
 
-    if os.path.exists(spl_map):
-        with open(spl_map, "r") as fmap:
+    if os.path.exists(spl_map_file):
+        with open(spl_map_file, "r") as fmap:
             for line in fmap.readlines():
                 (uid, name) = line.strip().split()
                 spl_mapping[name] = uid
@@ -175,7 +184,7 @@ def get_sample_mapping():
             
 def get_sample_names():
     global pcornetids
-    samples = []
+    global samples
     if os.path.exists(sample_names):
         with open(sample_names, "r") as fin:
             for line in fin.readlines():
@@ -193,11 +202,11 @@ def get_sample_names():
  
 
     # print(pcornetids)
-    return samples
+    # return samples
 
 def upload_mapfile():
-    tgt = seq_map
-    cmd = "aws --profile risaws s3api put-object --bucket chopgrin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, seq_map)
+    tgt = seq_map_file
+    cmd = "aws --profile risaws s3api put-object --bucket chopgrin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, seq_map_file)
     print(cmd)
     # shell(cmd)
 
@@ -218,11 +227,10 @@ def get_sample_meta_files():
 def get_sample_uuids():
     global spl_mapping
     global spl_uuids
+    global samples
     has_new = False
 
-    get_sample_mapping()
-
-    for sample in get_sample_names():
+    for sample in samples:
         if not sample in spl_mapping:
             has_new = True
             uid = new_uuid()
@@ -231,7 +239,7 @@ def get_sample_uuids():
 
     if has_new:
         keys = sorted(list(spl_mapping.keys()))
-        with open(spl_map, "w") as fmap:
+        with open(spl_map_file, "w") as fmap:
             for name in keys:
                # print(name)
                uid = spl_mapping[name]
@@ -242,13 +250,58 @@ def get_sample_uuids():
     # print(spl_mapping)
     return spl_uuids.keys()
 
+def get_sample_metadata():
+    global sample_metadata
+    global sample_headers
+    global indexes
+    import csv
+    csvfile = open(sample_metafile)
+    reader = csv.DictReader(csvfile)
+    # print(reader.fieldnames)
+
+    for idx in indexes:
+        sample_headers.append(re.sub('Patient', 'Subject', reader.fieldnames[idx]))
+    # 0 "InstitutionalName": "CHOP",
+    # 1 "PatientEthnicity": "Not Hispanic/Latino",
+    # 2 "PatientRace": "White",
+    # 3 "PatientSex": "M",
+    # 4 "PatientBirthYear": "1956",
+    # 5 "InstitutionalPatientIdentifier": "",
+    # 6 "ProjectSubjectIdentifier": "EG0004F",
+    # 7 "PatientPrimaryLanguage": "English",
+    # 8 "InstitutionalSampleIdentifier": "",
+    # 9 "ProjectName": "Epilepsy",
+    # 10 "SampleCategory": "Fluid",
+    # 11 "SampleType": "Whole Blood",
+    # 12 "SampleSource": "Human",
+    # 29 "PatientICD10Code
+
+    for row in reader:
+        if row[reader.fieldnames[6]]:
+            name = row[reader.fieldnames[6]]
+            sample_metadata[name] = []
+            for idx in indexes:
+                key = reader.fieldnames[idx]
+                sample_metadata[name].append(row[key])
+    csvfile.close()
+
 def get_sample_file(uuid):
      return 'samples/'+ spl_uuids[uuid] + '.csv'
 
 def sample_meta_file(name):
     return config['results']['sample_meta'] + '/' + spl_mapping[name] + '.json'
 
+# must call first
+get_sample_names()
+get_mapped()
+get_sample_mapping()
 sample_uuids = get_sample_uuids() # to have spl_mapping and spl_uuids available
+
+#rule sample_mapping:  # not working yet
+#    input: sample_names
+#    output: spl_map_file
+#    run:
+#         get_sample_uuids()
 
 rule mapping:
     # input: fastq = "fastq/{name}.fastq.gz", filelist = fastq_list
@@ -291,11 +344,17 @@ rule uploading:  # should also upload metadata
 #print(files)
 #quit()
 
+rule make_subject_meta:
+    input: subject_meta + '.json', subject_meta + '.csv'
+
 rule make_seq_meta:
      input: get_meta_files()
 
 rule make_sample_meta:
      input: get_sample_meta_files()
+     #output: spl_map_file
+     #run:
+          # the output must be created here?
 
 rule sequence_meta:
     #input: pair1 = config['results']['uploaded'] + "/{uuid}_R1.fastq.gz", pair2 = config['results']['uploaded'] + "/{uuid}_R2.fastq.gz", sample = lambda wildcards: sample_meta_file(seq_uuids[wildcards.uuid])
@@ -308,20 +367,21 @@ rule sequence_meta:
         uuid  = wildcards.uuid
         name1 = uid2name[uuid+'_R1']
         name2 = uid2name[uuid+'_R2']
+        name = re.sub('_R.$', '', name1)
         (bucket, path) = buckets[uuid+'_R1'].split(':')
         chksum1 = chksums[name1]
         chksum2 = chksums[name2]
-        now = datetime.datetime.now()
-        now = "%s-%02d-%02d:%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
         fout = open(output.out, "w")
         fout.write('''{
+  "uuid": "%s",
   "submission_type": "sequence", 
   "submission_status": "active",
   "submitter_id": "CHOP",
-  "contact": "zhangs3@email.chop.edu",
+  "contact": "%s",
   "last_updated": "%s",
   "data_type": "fastq",
-  "sample": "%s",
+  "sample_id": "%s",
+  "sample_uuid": "%s",
   "reads": [{
     "path": "http://%s.s3.amazonaws.com/%s%s_R1.fastq.gz", 
     "md5sum": "%s", 
@@ -344,7 +404,7 @@ rule sequence_meta:
   "technique": "WES",
   "comments": "second run"
 }
-''' % (now, uid, bucket, path, uuid, chksum1, name1, bucket, path, uuid, chksum2, name2)
+''' % (uuid, contact, now(), name, uid, bucket, path, uuid, chksum1, name1, bucket, path, uuid, chksum2, name2)
 )
         fout.close()
 
@@ -357,8 +417,8 @@ rule sequence_meta:
 
 rule sample_meta:
     #input: sample = lambda wildcards: uuid2name(wildcards.uuid)
-    # input: spl_map
-    input: sample_names
+    # input: spl_map_file
+    input: sample_names   # supplied
     output: config['results']['sample_meta'] + "/{uuid}.json"
     run:
         fout = open(config['results']['sample_meta'] + '/' + wildcards.uuid + '.json', "w")
@@ -401,3 +461,83 @@ rule sample_meta:
 #  "initial_weight": null, 
 #  "longest_dimension": null
 
+rule subject_meta:
+    input: spl_map_file, sample_metafile
+    output: json=subject_meta + '.json', csv=subject_meta + '.csv'
+    run:
+        # print(spl_mapping)
+        # print("=========")
+        # print(spl_uuids)
+        # print(pcornetids)
+
+        # keys = sorted(list(spl_mapping.keys()))
+        # [config['results']['sample_meta'] + '/' + name + '.json' for name in sample_uuids]
+
+        get_sample_metadata()
+
+        date = now()
+        parents = {}
+        for key in [name for name in samples if re.search('P$', name)]:
+            father = re.sub('P$', 'F', key) 
+            mother = re.sub('P$', 'M', key) 
+            parents[key] = [father, mother]
+ 
+        fjson = open(output.json, "w")
+        fcsv = open(output.csv, "w")
+
+        # print(parents)
+
+        # print(indexes)
+        # print(sample_headers) 
+        keys = sorted(list(parents.keys()))
+        headers = ['SubjectUUID','FatherUUID','MotherUUID','SubjectId','FatherId','MotherId','PcornetId']
+        rng1 = range(1, len(headers))
+        rng2 = range(len(sample_headers))
+        print(rng1)
+        print(rng2)
+        # fcsv.write("subject_uuid,father_uuid,mother_uuid,subject_id,father_id,mother_id,pcornet_id")
+
+        fcsv.write(headers[0])
+        for idx in rng1:
+            fcsv.write(',' + headers[idx])
+        fcsv.write(',SubjectType')
+        for idx in rng2:
+            fcsv.write(',' + sample_headers[idx])
+        fcsv.write('Contact,LastUpdated')
+        fcsv.write("\n")
+        fjson.write("[\n")
+        uuid = ''
+        for key in keys:
+            if uuid:
+                fjson.write(",\n")
+            uuid = spl_mapping[key]
+            father = parents[key][0]
+            mother = parents[key][1]
+            fuuid = spl_mapping[father]
+            muuid = spl_mapping[mother]
+            vals = [uuid,fuuid,muuid,key,spl_uuids[fuuid],spl_uuids[muuid],pcornetids[key]]
+            fcsv.write(uuid)
+            fjson.write("  {\n")
+            fjson.write('    "' + headers[0] + '": "' + vals[0] +'",' + "\n")
+            for idx in rng1:
+                fcsv.write(',' + vals[idx])
+                fjson.write('    "' + headers[idx] + '": "' + vals[idx] +'",' + "\n")
+
+            fcsv.write(',proband')
+            fjson.write('    "SubjectType": "proband",' + "\n")
+            for idx in rng2:
+                if re.search(',', sample_metadata[key][idx]):
+                    fcsv.write(',"' + sample_metadata[key][idx]+'"')
+                else:
+                    fcsv.write(',' + sample_metadata[key][idx])
+                fjson.write('    "' + sample_headers[idx] + '": "' + sample_metadata[key][idx] + '",' + "\n")
+
+            fcsv.write(',' + contact)
+            fcsv.write(',' + date)
+            fcsv.write("\n")
+            fjson.write('    "Contact": "' + contact + '",' + "\n")
+            fjson.write('    "LastUpdated": "' + date + '"' + "\n")
+            fjson.write("  }")
+        fjson.write("\n]\n")
+        fcsv.close()
+        fjson.close()
