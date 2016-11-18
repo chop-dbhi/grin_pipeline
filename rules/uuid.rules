@@ -264,9 +264,11 @@ def get_trios():
         for line in fin.readlines():
             vals = re.split('\s+', line.lstrip())
             if vals[1] in samples:
-                mothers[vals[2]] = 1
-                fathers[vals[3]] = 1
-                trios[vals[1]] = [vals[2], vals[3]] 
+                if vals[2]:
+                    mothers[vals[2]] = 1
+                if vals[3]:
+                    fathers[vals[3]] = 1
+                trios[vals[1]] = [vals[2], vals[3]] # either mother or father may be empty!
 
 def get_sample_metadata():
     """
@@ -525,9 +527,19 @@ rule subject_meta:
             uuid = spl_mapping[subject]
             mother = trios[subject][0]
             father = trios[subject][1]
-            fuuid = spl_mapping[father]
-            muuid = spl_mapping[mother]
-            vals = [uuid,fuuid,muuid,subject,spl_uuids[fuuid],spl_uuids[muuid],pcornetids[subject]]
+            if mother:
+                muuid = spl_mapping[mother]
+                mspl_id = spl_uuids[muuid]
+            else:
+                muuid = ''
+                mspl_id = ''
+            if father:
+                fuuid = spl_mapping[father]
+                fspl_id = spl_uuids[fuuid]
+            else:
+                fuuid = ''
+                fspl_id = ''
+            vals = [uuid,fuuid,muuid,subject,fspl_id,mspl_id,pcornetids[subject]]
             fcsv.write(uuid)
             fjson.write("  {\n")
             fjson.write('    "' + headers[0] + '": "' + vals[0] +'",' + "\n")
@@ -536,7 +548,7 @@ rule subject_meta:
                 fjson.write('    "' + headers[idx] + '": "' + vals[idx] +'",' + "\n")
 
             # attempt to handle both proband and parents, may need be revised
-            if subject in trios:
+            if mother and father:  # have both mother and father
                 fcsv.write(',proband') 
                 fjson.write('    "SubjectType": "proband",' + "\n")
             elif subject in mothers:
