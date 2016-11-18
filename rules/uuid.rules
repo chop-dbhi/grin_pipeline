@@ -3,6 +3,9 @@ import hashlib
 import boto3
 import datetime
 samples = []
+trios = {}
+fathers = {}
+mothers = {}
 sample_metadata = {}
 seq_mapping = {}
 spl_mapping = {}  # name to uuid
@@ -20,9 +23,9 @@ spl_map_file = 'sample_mapping.txt'
 sample_names = 'sample_names.txt'
 subject_meta = 'subject_meta'
 fastq_list = 'fastq_files.txt'
-sample_metafile = 'sample_metadata.csv'
-indexes = [0, 1, 2, 3, 4, 7, 9, 10, 11, 12, 29]
-sample_headers = []
+sample_metafile = 'sample_metadata.csv'  # from Casey's excel file
+indexes = [0, 1, 2, 3, 4, 7, 9, 10, 11, 12, 29] # into sample_metadata.csv
+sample_headers = []  # extracted from sample_metadata.csv
 contact = "zhangs3@email.chop.edu"
 
 def now():
@@ -250,20 +253,27 @@ def get_sample_uuids():
     # print(spl_mapping)
     return spl_uuids.keys()
 
-def get_parents():
+def get_trios():
     global samples
+    global fathers
+    global mothers
+    global trios
 
-    parents = {}
     table_file = config['sample_table']
     with open(table_file) as fin:
         for line in fin.readlines():
             vals = re.split('\s+', line.lstrip())
             if vals[1] in samples:
-                parents[vals[1]] = [vals[2], vals[3]] 
-
-    return parents
+                mothers[vals[2]] = 1
+                fathers[vals[3]] = 1
+                trios[vals[1]] = [vals[2], vals[3]] 
 
 def get_sample_metadata():
+    """
+    based on Casey's excel file and may need be revised
+    if data are available for other fields or the file structure's changed,
+    for example, to include parents
+    """
     global sample_metadata
     global sample_headers
     global indexes
@@ -287,7 +297,7 @@ def get_sample_metadata():
     # 10 "SampleCategory": "Fluid",
     # 11 "SampleType": "Whole Blood",
     # 12 "SampleSource": "Human",
-    # 29 "PatientICD10Code
+    # 29 "SubjectICD10Code1": "Early onset epileptic encephalopathy,..."
 
     for row in reader:
         if row[reader.fieldnames[6]]:
@@ -485,12 +495,8 @@ rule subject_meta:
 
         get_sample_metadata()
 
-        parents = get_parents()
-        # print(parents)
-
-        keys = []
-        for key in [name for name in samples if name in parents]:
-            keys.append(key)
+        get_trios()
+        # print(trios)
 
         date = now()
  
@@ -498,7 +504,7 @@ rule subject_meta:
         fcsv = open(output.csv, "w")
 
         # may need an explicit list of probands to import
-        probands = sorted(list(parents.keys()))
+        subjects = sorted(list(trios.keys()))
         headers = ['SubjectUUID','FatherUUID','MotherUUID','SubjectId','FatherId','MotherId','PcornetId']
         rng1 = range(1, len(headers))
         rng2 = range(len(sample_headers))
@@ -513,15 +519,15 @@ rule subject_meta:
         fcsv.write("\n")
         fjson.write("[\n")
         uuid = ''
-        for proband in probands:
+        for subject in subjects:
             if uuid:
                 fjson.write(",\n")
-            uuid = spl_mapping[proband]
-            mother = parents[proband][0]
-            father = parents[proband][1]
+            uuid = spl_mapping[subject]
+            mother = trios[subject][0]
+            father = trios[subject][1]
             fuuid = spl_mapping[father]
             muuid = spl_mapping[mother]
-            vals = [uuid,fuuid,muuid,proband,spl_uuids[fuuid],spl_uuids[muuid],pcornetids[proband]]
+            vals = [uuid,fuuid,muuid,subject,spl_uuids[fuuid],spl_uuids[muuid],pcornetids[subject]]
             fcsv.write(uuid)
             fjson.write("  {\n")
             fjson.write('    "' + headers[0] + '": "' + vals[0] +'",' + "\n")
@@ -529,16 +535,26 @@ rule subject_meta:
                 fcsv.write(',' + vals[idx])
                 fjson.write('    "' + headers[idx] + '": "' + vals[idx] +'",' + "\n")
 
-            # need be revised to handle both proband and parents
-            fcsv.write(',proband') 
-            fjson.write('    "SubjectType": "proband",' + "\n")
+            # attempt to handle both proband and parents, may need be revised
+            if subject in trios:
+                fcsv.write(',proband') 
+                fjson.write('    "SubjectType": "proband",' + "\n")
+            elif subject in mothers:
+                fcsv.write(',mother') 
+                fjson.write('    "SubjectType": "mother",' + "\n")
+            elif subject in fathers:
+                fcsv.write(',father') 
+                fjson.write('    "SubjectType": "father",' + "\n")
+            else:
+                fcsv.write(',unknown') 
+                fjson.write('    "SubjectType": "unknown",' + "\n")
 
             for idx in rng2:
-                if re.search(',', sample_metadata[proband][idx]):
-                    fcsv.write(',"' + sample_metadata[proband][idx]+'"')
+                if re.search(',', sample_metadata[subject][idx]):
+                    fcsv.write(',"' + sample_metadata[subject][idx]+'"')
                 else:
-                    fcsv.write(',' + sample_metadata[proband][idx])
-                fjson.write('    "' + sample_headers[idx] + '": "' + sample_metadata[proband][idx] + '",' + "\n")
+                    fcsv.write(',' + sample_metadata[subject][idx])
+                fjson.write('    "' + sample_headers[idx] + '": "' + sample_metadata[subject][idx] + '",' + "\n")
 
             fcsv.write(',' + contact)
             fcsv.write(',' + date)
