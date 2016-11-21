@@ -1,15 +1,14 @@
 rule run_multiqc:
     input:
-        gbams = GBAMS,
+        gbams = REBAMS,
         multiqc = ENV3 + config['tools']['multiqc']
     output: config['datadirs']['multiqc'] + '/multiqc_report.html'
     params:
-        dirs = config['process_dir'][freeze] + config['results']['picard'],
+        dirs = config['process_dir'][freeze] + config['results']['recalibrated'],
         outdir = config['datadirs']['multiqc'] 
     shell:
         """
-        {input.multiqc} -o {params.outdir} {params.dirs} fastqc # will detect input file types?
-        rm {input.gbams}
+        {input.multiqc} -f -o {params.outdir} {params.dirs} fastqc # will detect input file types?
         """
 
 # create YAML file used in meta-FastQC report
@@ -128,5 +127,52 @@ rule siteindex:
             # must add a child index to the mybic project admin page to treat this link as a child page
             outfile.write('<a href="summary_fastqc.html">fastqc summary</a>' + "\n")
             outfile.write("<p>\n")
-            #outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
-            outfile.write('<a href="multiqc_report.html">multiqc report</a>' + "\n")
+            outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
+            #outfile.write('<a href="multiqc/multiqc_report.html">multiqc report</a>' + "\n")
+
+rule mybic:
+    output:
+        config['datadirs']['website'] + "/mybic.json"
+    params:
+        analysisdir = config['landing_dir'][freeze] + config['results']['analysis']
+    run:
+        with open(output[0], 'w') as outfile:
+            outfile.write("""
+[
+    {{
+        "fields": {{
+            "static_dir": "{projdir}", 
+            "description": "GRIN prospective samples", 
+            "de_dir": null, 
+            "created": "{created}", 
+            "lab": "helbig", 
+            "public": false, 
+            "tagsNames": [
+                1
+            ], 
+            "index_page": "{projdir}/{site}/index.md", 
+            "git_branch": "master", 
+            "owner": "leipzigj", 
+            "git_repo": "https://github.com/hms-dbmi/GRIN-genomics", 
+            "autoflank": true, 
+            "slug": "grinprosfixture", 
+            "name": "GRIN Prospective"
+        }}, 
+        "model": "labs.project"
+    }}, 
+    {{
+        "fields": {{
+""".format(projdir=config['projdir'],site=config['datadirs']['website'],created=datetime.datetime.utcnow().isoformat() + 'Z'))
+            for s,trio in zip(ANALYSISREADY,COMPLETETRIOSFAMIDS):
+                for model in reports_by_sex[gendertools.trioGender(trio)]:
+                    outfile.write("""
+            "page": "{projdir}/{analysis}/{trio}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.html", 
+            "parent": [
+                "helbig", 
+                "grinpros"
+            ]
+        }}, 
+        "model": "labs.childindex"
+    }}
+]
+""".format(projdir=config['projdir'],analysis=params.analysisdir,trio=trio,model=model))
