@@ -109,9 +109,10 @@ rule siteindex:
 """)
             for s,p in zip(ANALYSISREADY,COMPLETETRIOSFAMIDS):
                 outfile.write("<tr><td>{0}</td>".format(p))
-                outfile.write("<td><a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.denovo.html\"><button type=\"button\" class=\"btn btn-default btn-sm\"><img src=\"{1}/assets/img/denovo.png\"/>denovo</button></a>".format(p, SLINK, params.analysisdir))
-                outfile.write("<a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.arhomo.html\"><button type=\"button\" class=\"btn btn-default btn-sm\"><img src=\"{1}/assets/img/arhomo.png\"/>arhomo</button></a>".format(p, SLINK, params.analysisdir))
-                outfile.write("<a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.cmpdhet.html\"><button type=\"button\" class=\"btn btn-default btn-sm\"><img src=\"{1}/assets/img/cmpdhet.png\"/>cmpdhet</button></a></td>".format(p, SLINK, params.analysisdir))
+                outfile.write("<td>")
+                for r in reports_by_sex[gendertools.trioGender(p)]:
+                    outfile.write("<a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.anno.{3}.html\"><button type=\"button\" class=\"btn btn-default btn-sm\"><img src=\"{1}/assets/img/{3}.png\"/> {3}</button></a><br/>".format(p, SLINK, params.analysisdir,r))
+                outfile.write("</td>")
                 outfile.write("<td><a href=\"{1}/{2}\">{0}.vcf.bgz</a></td>".format(p, SLINK, s))
                 outfile.write("<td>")
                 bams = get_all_recals_bams(p)
