@@ -28,6 +28,117 @@ indexes = [0, 1, 2, 3, 4, 7, 9, 10, 11, 12, 29] # into sample_metadata.csv
 sample_headers = []  # extracted from sample_metadata.csv
 contact = "zhangs3@email.chop.edu"
 
+# for uploading to s3 bucket
+AWS_ACCESS_KEY_ID = ''
+AWS_SECRET_ACCESS_KEY = ''
+AWS_SECURITY_TOKEN = ''
+
+sizelimit = config['sizelimit']   # to use multipart for uploading
+readsize = config['readsize']   # size of each part to upload
+bucket = config['bucket']   # s3 bucket
+home = os.path.expanduser("~")
+
+def set_key():
+    global AWS_ACCESS_KEY_ID
+    global AWS_SECRET_ACCESS_KEY
+    global AWS_SECURITY_TOKEN
+    envs = {}
+
+    # initiates the required entries first
+    envs['AWS_ACCESS_KEY_ID'] = ''
+    envs['AWS_SECRET_ACCESS_KEY'] = ''
+    envs['AWS_SECURITY_TOKEN'] = ''
+
+    # the user has to make sure the keys are not expired
+    fin = open(home + '/.bash_profile', "r")
+    for line in fin.readlines():
+        if re.search('^export AWS_', line):
+             line = re.sub('^export ', '', line).strip()
+             kv = line.split('=')
+             envs[kv[0]] = kv[1]
+             # os.environ[envs[0]] = envs[1]
+             # print(envs)
+             # print(os.environ)
+    fin.close()
+    # print(envs)
+
+    AWS_ACCESS_KEY_ID = envs['AWS_ACCESS_KEY_ID']
+    AWS_SECRET_ACCESS_KEY = envs['AWS_SECRET_ACCESS_KEY']
+    AWS_SECURITY_TOKEN = envs['AWS_SECURITY_TOKEN']
+
+def s3client():
+    return boto3.client('s3',
+                  aws_access_key_id=AWS_ACCESS_KEY_ID,
+                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                  aws_session_token=AWS_SECURITY_TOKEN
+     )
+
+def s3start(s3, file):
+    return s3.create_multipart_upload(Bucket=bucket,
+                                      Key=file,
+                                      ServerSideEncryption='AES256',
+                                      RequestPayer='requester'
+                                      )
+
+def s3upload(s3, src, tgt):
+    st = os.stat(src)  # for real file if symlink, os.lstat(file) for link
+    status = ''
+    # print(st)
+    fin = open(src, "rb")
+    if st.st_size > sizelimit:
+        uploadid = s3start(s3, tgt)['UploadId']
+        try:
+            partnum = 0
+            parts = []
+            data = fin.read(readsize)
+            while data:
+                partnum += 1
+                # print(partnum)
+                res = s3.upload_part(Bucket=bucket,
+                                     Body=data,
+                                     ContentLength=len(data),
+                                     Key=tgt,
+                                     UploadId=uploadid,
+                                     RequestPayer='requester',
+                                     PartNumber=partnum
+                                     )
+                # print(res)
+                parts.append({'ETag':res['ETag'], 'PartNumber': partnum})
+                data = fin.read(readsize)
+
+            res = s3.complete_multipart_upload(Bucket=bucket,
+                                         Key=tgt,
+                                         MultipartUpload={'Parts':parts},#needed
+                                         UploadId=uploadid,
+                                         RequestPayer='requester')
+            print(res)
+        except:
+            res = s3.abort_multipart_upload(Bucket=bucket,
+                                                Key=tgt,
+                                                UploadId=uploadid,
+                                                RequestPayer='requester'
+                                            )
+            # print(src + ":")
+            # print(str(os.sys.exc_info()[1]))
+            status = str(os.sys.exc_info()[1])
+    else:
+        try:
+            res = s3.put_object(Bucket=bucket,
+                                Body=fin,
+                                Key=tgt,
+                                RequestPayer='requester',
+                                ServerSideEncryption='AES256')
+
+            print(res)
+        except:
+            # print(src + ":")
+            # print(str(os.sys.exc_info()[1]))
+            # quit()
+            status = str(os.sys.exc_info()[1])
+    fin.close()
+
+    return status
+
 def now():
     now = datetime.datetime.now()
     return "%s-%02d-%02d:%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
@@ -208,10 +319,17 @@ def get_sample_names():
     # return samples
 
 def upload_mapfile():
-    tgt = seq_map_file
-    cmd = "aws --profile risaws s3api put-object --bucket chopgrin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, seq_map_file)
-    print(cmd)
+    tgt = 'epilepsy/prospective/' + seq_map_file + '2'
+    # cmd = "aws --profile risaws s3api put-object --bucket chopgrin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, seq_map_file)
+    # print(cmd)
     # shell(cmd)
+    set_key()
+    s3 = s3client()
+    status = s3upload(s3, seq_map_file, tgt)
+    if status:
+        print(status)
+        quit()
+
 
 def getname(uuid):
     return 'fastq/' + uid2name[uuid] + '.fastq.gz'
@@ -328,6 +446,52 @@ sample_uuids = get_sample_uuids() # to have spl_mapping and spl_uuids available
 #    run:
 #         get_sample_uuids()
 
+
+rule upload_sample_meta:
+    run:
+        files = glob.glob(config['results']['sample_meta'] + "/*.json")
+        path = config['buckets']['chopgrin']['prospective']['sample_meta']
+        set_key()
+        s3 = s3client()
+        for file in files:
+            tgt = path + re.sub('.*\/', '', file)
+            print(file)
+            print(tgt)
+            status = s3upload(s3, file, tgt)
+            if status:
+                print(status)
+                quit()
+
+rule upload_sequence_meta:
+    run:
+        files = glob.glob(config['results']['sequence_meta'] + "/*.json")
+        path = config['buckets']['chopgrin']['prospective']['sequence_meta']
+        set_key()
+        s3 = s3client()
+        for file in files:
+            tgt = path + re.sub('.*\/', '', file)
+            print(file)
+            print(tgt)
+            status = s3upload(s3, file, tgt)
+            if status:
+                print(status)
+                quit()
+
+rule upload_fastq:
+    run:
+        files = glob.glob(config['datadirs']['fastq'] + "/*.fastq.gz")
+        path = config['buckets']['chopgrin']['prospective']['fastq']
+        set_key()
+        s3 = s3client()
+        for file in files:
+            tgt = path + re.sub('.*\/', '', file)
+            print(file)
+            print(tgt)
+            status = s3upload(s3, file, tgt)
+            if status:
+                print(status)
+                quit()
+
 rule mapping:
     # input: fastq = "fastq/{name}.fastq.gz", filelist = fastq_list
     input: fastq = lambda wildcards: getname(wildcards.name), filelist = fastq_list
@@ -348,22 +512,17 @@ rule uploading:  # should also upload metadata
         # name = names[wildcards.uuid] + '.fastq.gz'
         tgt = path + wildcards.uuid + '.fastq.gz' # path should have a trailing slash (/)
         src = 'fastq/' + uid2name[wildcards.uuid] + '.fastq.gz'
+        set_key()
+        s3 = s3client()
+        status = s3upload(s3, src,tgt)
+        if status:
+             print(status)
+             quit()
 
-        # will upload the files outside the pipeline for the time being
-        # cmd = "saml -z 0 go"
-        # requires a default entry in ~/.aws/credentials
-        # s3 = boto3.client('s3')
-        # data = open(src, "rb")
-        # res = s3.put_object(Bucket=bucket,
-        #                     Body=data,
-        #                     Key=tgt,
-        #                     RequestPayer='requester',
-        #                     ServerSideEncryption='AES256')
-        # data.close()
-
-        cmd = "ln -s ../%s %s" % (src, output)  # so we know what to upload
-        print(cmd)
-        shell(cmd)
+        if not os.path.exist(ouput):
+            cmd = "ln -s ../%s %s" % (src, output)  # so we know what to upload
+            print(cmd)
+            shell(cmd)
 
 #files = get_meta_files()
 #print(files)
@@ -548,15 +707,15 @@ rule subject_meta:
                 fjson.write('    "' + headers[idx] + '": "' + vals[idx] +'",' + "\n")
 
             # attempt to handle both proband and parents, may need be revised
-            if mother and father:  # have both mother and father
+            if mother and father:  # have both mother and father. should consider cases of single parent?
                 fcsv.write(',proband') 
                 fjson.write('    "SubjectType": "proband",' + "\n")
             elif subject in mothers:
                 fcsv.write(',mother') 
-                fjson.write('    "SubjectType": "mother",' + "\n")
+                fjson.write('    "SubjectType": "mother",' + "\n")  # right now no consideration of childs
             elif subject in fathers:
                 fcsv.write(',father') 
-                fjson.write('    "SubjectType": "father",' + "\n")
+                fjson.write('    "SubjectType": "father",' + "\n")  # right now no consideration of childs
             else:
                 fcsv.write(',unknown') 
                 fjson.write('    "SubjectType": "unknown",' + "\n")

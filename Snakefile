@@ -6,6 +6,7 @@ import yaml
 import subprocess
 import configparser
 import shutil
+import boto3
 from snakemake.utils import R
 from functools import cmp_to_key
 from util.varsub import varsub
