@@ -10,7 +10,7 @@ viewDataTable <- function(dat){
   
   cols2crop <- grep('family_genotypes|ref|alt', colnames(dat))
   cols2hide <- grep('Description|Variants|Perc|^chr$|^pos$|rsid|^ref$|^alt$|^gene$|
-                    impact_severity|rvis_score|depths|gt_quals|family_genotypes|denovo_prob|is_exonic|is_splicing|functiongvs|exac_ac_all',
+                    impact_severity|rvis|depths|gt_quals|family_genotypes|denovo_prob|is_exonic|is_splicing|functiongvs|exac_ac_all',
                     colnames(dat), invert = TRUE)
   
   DT::datatable(dat,
