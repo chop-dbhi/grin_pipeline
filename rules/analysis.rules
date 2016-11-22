@@ -21,7 +21,10 @@ rule get_models:
     run:
         model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
         modelname = model_lut[wildcards.model]
-        shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
+        if modelname == "comp_hets":
+            shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
+        else:
+            shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
 #get intervals for bamouts
 rule get_gatk_bamout_intervals:
