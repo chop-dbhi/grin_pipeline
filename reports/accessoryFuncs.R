@@ -29,7 +29,7 @@ viewDataTable <- function(dat){
                   dom = 'Bfrtip',
                   buttons = list(list(extend = "colvis", 
                                       collectionLayout = "fixed four-column", 
-                                      postfixButtons = list('colvisRestore')),
+                                      prefixButtons = list('colvisRestore')),
                                  'pageLength', 'copy', 'print',
                                  list(extend = "collection",
                                       buttons = c('csv', 'excel', 'pdf'),
