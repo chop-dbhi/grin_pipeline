@@ -3,6 +3,7 @@ import hashlib
 import boto3
 import datetime
 samples = []
+fastqs = []
 all_subjects = {}
 fathers = {}
 mothers = {}
@@ -29,9 +30,9 @@ sample_headers = []  # extracted from sample_metadata.csv
 contact = "zhangs3@email.chop.edu"
 
 # for uploading to s3 bucket
-AWS_ACCESS_KEY_ID = ''
-AWS_SECRET_ACCESS_KEY = ''
-AWS_SECURITY_TOKEN = ''
+# AWS_ACCESS_KEY_ID = ''
+# AWS_SECRET_ACCESS_KEY = ''
+# AWS_SECURITY_TOKEN = ''
 
 sizelimit = config['sizelimit']   # to use multipart for uploading
 readsize = config['readsize']   # size of each part to upload
@@ -39,9 +40,9 @@ bucket = config['bucket']   # s3 bucket
 home = os.path.expanduser("~")
 
 def set_key():
-    global AWS_ACCESS_KEY_ID
-    global AWS_SECRET_ACCESS_KEY
-    global AWS_SECURITY_TOKEN
+    # global AWS_ACCESS_KEY_ID
+    # global AWS_SECRET_ACCESS_KEY
+    # global AWS_SECURITY_TOKEN
     envs = {}
 
     # initiates the required entries first
@@ -62,15 +63,15 @@ def set_key():
     fin.close()
     # print(envs)
 
-    AWS_ACCESS_KEY_ID = envs['AWS_ACCESS_KEY_ID']
-    AWS_SECRET_ACCESS_KEY = envs['AWS_SECRET_ACCESS_KEY']
-    AWS_SECURITY_TOKEN = envs['AWS_SECURITY_TOKEN']
+    os.environ['AWS_ACCESS_KEY_ID'] = envs['AWS_ACCESS_KEY_ID']
+    os.environ['AWS_SECRET_ACCESS_KEY'] = envs['AWS_SECRET_ACCESS_KEY']
+    os.environ['AWS_SECURITY_TOKEN'] = envs['AWS_SECURITY_TOKEN']
 
 def s3client():
     return boto3.client('s3',
-                  aws_access_key_id=AWS_ACCESS_KEY_ID,
-                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-                  aws_session_token=AWS_SECURITY_TOKEN
+                  aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID'],
+                  aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY'],
+                  aws_session_token = os.environ['AWS_SECURITY_TOKEN']
      )
 
 def s3start(s3, file):
@@ -80,7 +81,20 @@ def s3start(s3, file):
                                       RequestPayer='requester'
                                       )
 
-def s3upload(s3, src, tgt):
+def upload_files(bucket, path, files):
+    set_key()
+    s3 = s3client()
+    for file in files:
+        # should/would add a check on the key and update it if needed
+        tgt = path + re.sub('.*\/', '', file)
+        print(file)
+        print(tgt)
+        status = s3upload(s3, bucket, file, tgt)
+        if status:
+            print(status)
+            quit()
+
+def s3upload(s3, bucket, src, tgt):
     st = os.stat(src)  # for real file if symlink, os.lstat(file) for link
     status = ''
     # print(st)
@@ -177,7 +191,7 @@ def get_mapped():
         fmap.close()
 
 def get_fastq_files():
-    fastqs = []
+    global fastqs
     
     if os.path.exists(fastq_list):
         fin = open(fastq_list, "r")
@@ -191,8 +205,6 @@ def get_fastq_files():
         fin.close()
     #else:
         #print(fastq_list + " doesn't exist!")
-
-    return(fastqs)
 
 def new_uuid():
     uid = str(uuid.uuid4())
@@ -225,10 +237,11 @@ def get_uuids():      # uuids for fastq files
     global names
     global uid2name
     global seq_mapping
+    global fastqs
 
     has_new = False
 
-    for line in get_fastq_files():
+    for line in fastqs:
         # <bucket>:<s3_path>/<sample_file_name>
         name = re.sub('.*/', '', line)
         name = re.sub('\.fastq.gz$', '', name)
@@ -325,7 +338,7 @@ def upload_mapfile():
     # shell(cmd)
     set_key()
     s3 = s3client()
-    status = s3upload(s3, seq_map_file, tgt)
+    status = s3upload(s3, bucket, seq_map_file, tgt)
     if status:
         print(status)
         quit()
@@ -439,6 +452,7 @@ get_sample_names()
 get_mapped()
 get_sample_mapping()
 sample_uuids = get_sample_uuids() # to have spl_mapping and spl_uuids available
+get_fastq_files()
 
 #rule sample_mapping:  # not working yet
 #    input: sample_names
@@ -451,46 +465,25 @@ rule upload_sample_meta:
     run:
         files = glob.glob(config['results']['sample_meta'] + "/*.json")
         path = config['buckets']['chopgrin']['prospective']['sample_meta']
-        set_key()
-        s3 = s3client()
-        for file in files:
-            tgt = path + re.sub('.*\/', '', file)
-            print(file)
-            print(tgt)
-            status = s3upload(s3, file, tgt)
-            if status:
-                print(status)
-                quit()
+
+        upload_files(bucket, path, files)
 
 rule upload_sequence_meta:
     run:
         files = glob.glob(config['results']['sequence_meta'] + "/*.json")
         path = config['buckets']['chopgrin']['prospective']['sequence_meta']
-        set_key()
-        s3 = s3client()
-        for file in files:
-            tgt = path + re.sub('.*\/', '', file)
-            print(file)
-            print(tgt)
-            status = s3upload(s3, file, tgt)
-            if status:
-                print(status)
-                quit()
+
+        upload_files(bucket, path, files)
 
 rule upload_fastq:
     run:
-        files = glob.glob(config['datadirs']['fastq'] + "/*.fastq.gz")
+        names = {}
+        for name in fastqs:
+            names[re.sub('.*/', '', name)] = 1
+        files = [name for name in glob.glob(config['datadirs']['fastq'] + "/*.fastq.gz") if re.sub('.*[:/]', '', name) in names]
         path = config['buckets']['chopgrin']['prospective']['fastq']
-        set_key()
-        s3 = s3client()
-        for file in files:
-            tgt = path + re.sub('.*\/', '', file)
-            print(file)
-            print(tgt)
-            status = s3upload(s3, file, tgt)
-            if status:
-                print(status)
-                quit()
+
+        upload_files(bucket, path, files)
 
 rule mapping:
     # input: fastq = "fastq/{name}.fastq.gz", filelist = fastq_list
@@ -514,7 +507,7 @@ rule uploading:  # should also upload metadata
         src = 'fastq/' + uid2name[wildcards.uuid] + '.fastq.gz'
         set_key()
         s3 = s3client()
-        status = s3upload(s3, src,tgt)
+        status = s3upload(s3, bucket, src,tgt)
         if status:
              print(status)
              quit()
