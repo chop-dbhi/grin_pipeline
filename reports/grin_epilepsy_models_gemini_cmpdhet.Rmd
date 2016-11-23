@@ -131,15 +131,13 @@ if(varcount)
 <div class="panel-body">
 These are all variants that satisfy the following criteria:
 
-1. Allelic ratio for proband between 0.20-0.80
-2. Allelic ratio for mom and dad: 0
+1. RVIS < 90%.
+2. EXAC frequency <= 1% (or Unknown) only if both variants in the cmpd het are common.
+3. Annotated by gene instances frequency.
 
 ```{r var_filtered_enhancement, eval=showChunk, warning=FALSE, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
 var.df.sub <- var.df
-alt_depths <- colsplit(gsub("\\s+"," ", str_trim(gsub('[[]|[]]|[.]',' ',var.df.sub$gt_alt_depths)))," ",c('mom','dad','kid'))
-gt_depths <- colsplit(gsub("\\s+"," ", str_trim(gsub('[[]|[]]|[.]',' ',var.df.sub$gt_depths)))," ",c('mom','dad','kid'))
-dp <- data.frame(mom = alt_depths[,1]/gt_depths[,1], dad = alt_depths[,2]/gt_depths[,2], proband = alt_depths[,3]/gt_depths[,3])
-var.df.sub <- var.df.sub[which(dp$proband>0.20 & dp$proband<0.80 & dp$mom==0 & dp$dad==0),]
+var.df.sub <- var.df.sub %>% filter(rvis_perc < 90) %>% group_by(comp_het_id) %>% filter(any(exac_af_all <= 0.1) | any(exac_af_all=="None")) %>% group_by(gene) %>% mutate(gene_freq = n())
 varcount <- length(unique(var.df.sub$variant_id))
 if(varcount)
 {
