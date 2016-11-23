@@ -160,7 +160,7 @@ results:  # subdirectories in process_dir or landing_dir
     uploaded:         uploaded   # uploaed to S3 buckets
     sequence_meta:    sequence_meta
     sample_meta:      sample_meta
-    pheno_meta:       pheno_meta
+    phenotypics:      phenotypics
 
 buckets:
     chopgrin:

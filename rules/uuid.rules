@@ -21,7 +21,9 @@ buckets = {}
 seq_map_file = 'sequence_mapping.txt'
 seq_json = 'sequence_mapping.json'
 spl_map_file = 'sample_mapping.txt'
+id_mapping = 'id_mapping'  # just uuids to seq and pcornet ids
 sample_names = 'sample_names.txt'
+phenotype_files = 'phenotype_files.txt'
 subject_meta = 'subject_meta'
 fastq_list = 'fastq_files.txt'
 sample_metafile = 'sample_metadata.csv'  # from Casey's excel file
@@ -447,6 +449,10 @@ def get_sample_file(uuid):
 def sample_meta_file(name):
     return config['results']['sample_meta'] + '/' + spl_mapping[name] + '.json'
 
+def sortid(v):
+    (a,b) = v.split('-')
+    return int(a)*1000 + int(b)
+
 # must call first
 get_sample_names()
 get_mapped()
@@ -454,12 +460,100 @@ get_sample_mapping()
 sample_uuids = get_sample_uuids() # to have spl_mapping and spl_uuids available
 get_fastq_files()
 
-#rule sample_mapping:  # not working yet
-#    input: sample_names
-#    output: spl_map_file
-#    run:
-#         get_sample_uuids()
+rule phenotype_mapping:  # not working yet
+    input: name=sample_names, map=spl_map_file, pheno=phenotype_files
+    # output: phenotype_mapping # may already exist, just need be updated
+    run:
+        names = {}
+        uuids = {}
+        fin = open(input.name)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            vals = re.split('\s+', line.strip()) # seq_id pcornet_id
+            if len(vals) > 1:
+                names[vals[1]] = vals[0]
+        fin.close()
 
+        fin = open(input.map)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            (uuid, name)= re.split('\s+', line.strip())
+            uuids[name] = uuid
+        fin.close()
+
+        phenotypics = config['results']['phenotypics'] + '/'
+        fcsv = open(phenotypics + id_mapping + '.csv', "w")
+        fjson = open(phenotypics + id_mapping + '.json', "w")
+
+        fcsv.write("pcornet_id,subject_id,uuid\n")
+        fjson.write("[\n")
+        pcornetids = sorted(names.keys(), key=sortid)
+        idx = 0
+        for pcornetid in pcornetids:
+            subjectid = names[pcornetid]
+            uuid = uuids[subjectid]
+            fcsv.write(pcornetid + ',' + subjectid + ',' + uuid + "\n")
+            if idx:
+                fjson.write(",\n")
+            idx += 1
+            fjson.write("  {\n")
+            fjson.write('    "pcornet_id": "' + pcornetid + '",' + "\n")
+            fjson.write('    "subject_id": "' + subjectid + '",' + "\n")
+            fjson.write('    "uuid": "' + uuid + '"' + "\n")
+            fjson.write("  }")
+        fjson.write("\n]\n")
+        fcsv.close()
+        fjson.close()
+
+        import csv
+        fin = open(input.pheno)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            (file, path) = re.split('\s+', line.strip())
+            dir = re.sub('\.csv$', '/', file)
+            print(dir)
+            if not os.path.exists(dir):
+                os.makedirs(dir) 
+            csvfile = open(file)
+            reader = csv.DictReader(csvfile)
+            # print(reader.fieldnames)
+
+            for row in reader:
+                pcornetid = row[reader.fieldnames[0]]
+                if not pcornetid in names:
+                     continue
+                uuid = uuids[names[pcornetid]]
+                with open(dir + uuid + '.csv', "w") as w:
+                    w.write(','.join(reader.fieldnames) + "\n")
+                    idx = 0;
+                    for name in reader.fieldnames:
+                        if idx:
+                            w.write(',')
+                        w.write(row[name])
+                        idx += 1
+                    w.write("\n")
+                with open(dir + uuid + '.json', "w") as w:
+                    w.write("{\n")
+                    idx = 0;
+                    for name in reader.fieldnames:
+                        if idx:
+                            w.write(",\n")
+                        w.write('    "' + name + '": "' + row[name] + '"')
+                        idx += 1
+                    w.write("\n}\n")
+                # for idx in indexes:
+                #    key = reader.fieldnames[idx]
+                #    sample_metadata[name].append(row[key])
+            csvfile.close()
 
 rule upload_sample_meta:
     run:
