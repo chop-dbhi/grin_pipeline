@@ -32,9 +32,8 @@ commit <- system("git rev-parse --verify HEAD",intern=TRUE)
 We used the following filters to reduce the number of reported false positives:
 
 1. Spurious inherited variants can often appear due to insufficient sequence coverage so the **mininum sequence depth** was set to **15**.
-2. We are interested in mutations that are likely to have functional consequence so only variants with **Medium or High impact severity** were used.
-3. **Minimum genotyping quality** per sample in the trio was set to **20**.
-4. GL contigs were not used.
+2. **Minimum genotyping quality** per sample in the trio was set to **20**.
+3. GL contigs were not used.
 </blockquote>
 
 ## Compound Heterozygotes
