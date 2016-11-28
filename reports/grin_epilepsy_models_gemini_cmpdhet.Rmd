@@ -139,12 +139,13 @@ These are all variants that satisfy the following criteria:
 var.df.sub <- var.df
 var.df.sub <- var.df.sub %>% filter(rvis_perc < 90) %>% group_by(comp_het_id) %>% filter(any(exac_af_all <= 0.1) | any(exac_af_all=="None")) %>% group_by(gene) %>% mutate(gene_freq = n())
 varcount <- length(unique(var.df.sub$variant_id))
+cmpdcount <- length(unique(var.df.sub$comp_het_id))
 if(varcount)
 {
   viewDataTable(dat = var.df.sub)
 }
 ```
-**There are `r varcount` filtered variants**
+**There are `r varcount` filtered variants and `r cmpdcount` putative compound events**
 </div>
 </div>
 
