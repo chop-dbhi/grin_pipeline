@@ -139,7 +139,7 @@ rule getScreenshots:
             IGVgenome(sock, genome=freezelookup["{params.freeze}"])
             IGVload(sock, paste(projdir,bamouts,sep="/"))
             igvsnapshot<-function(df){{
-                midpoint<-round((df[['start']]+df[['end']])/2)
+                midpoint<-round((as.numeric(df[['start']])+as.numeric(df[['end']]))/2)
                 startpos<-midpoint-74
                 endpos<-midpoint+75
                 goto<-str_replace_all(paste(df[['chrom']],':',startpos,'-',endpos,sep=""),' ','')

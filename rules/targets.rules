@@ -131,6 +131,10 @@ rule make_bamouts:
     input: BAMOUTS
 #GRCh37/analysis/EG0011M.denovo.bamout.bam
 
+SNAPSHOTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.anno."+ model + ".ss" for trio in COMPLETETRIOSFAMIDS for model in reports_by_sex[gendertools.trioGender(trio)] ]
+rule make_snapshots:
+    input: SNAPSHOTS
+
 # note we are leaving out the GATK phasing here
 ANALYSES      = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.anno." + model + ".html" for trio in COMPLETETRIOSFAMIDS for model in reports_by_sex[gendertools.trioGender(trio)] ]
 rule analyses:
