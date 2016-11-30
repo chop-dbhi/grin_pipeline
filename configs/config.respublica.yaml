@@ -210,6 +210,8 @@ tools:
         table_annovar.pl
     vcf2avinput:
         convert2annovar.pl
+    peddy:
+        peddy
 
 jars:
     picard:

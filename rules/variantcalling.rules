@@ -256,6 +256,26 @@ rule analysis_pedfile:
         else:
             ped.to_csv("{0}".format(output),sep='\t',index=False,header=False)
 
+rule peddy:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf.bgz",
+        tbi = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf.bgz.tbi",
+        ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.nohead.pedfile"
+    params:
+        prefix = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}",
+        peddy = ENV2 + 'python -m peddy',
+    threads:
+        4
+    output:
+        het_check = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.het_check.csv",
+        #pca_check_csv = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pca_check.csv",
+        pca_check_png = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pca_check.png",
+        sex_check_png = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.sex_check.png"
+    shell:
+        """
+        {params.peddy} -p {threads} --plot --prefix {params.prefix} {input.vcf} {input.ped}
+        """
+
 rule run_phase_by_transmission:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.trio.vcf",

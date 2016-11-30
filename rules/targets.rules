@@ -85,6 +85,9 @@ COMPLETETRIOSFAMIDS = sorted(list(set([row['FamilyID']+'_'+row['Subject'] for in
 TRIOVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
 rule make_triovcfs:
     input: TRIOVCFS
+PEDDYS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".het_check.csv" for trio in COMPLETETRIOSFAMIDS]
+rule peddys:
+    input: PEDDYS
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in SAMPLE_TABLE.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]) # quads are one family
 FAMILYVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
 COMVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.com.filtered.vcf" for trio in COMPLETEFAMILYFAMIDS]
