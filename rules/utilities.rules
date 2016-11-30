@@ -189,9 +189,7 @@ rule tabix_vcf:
         tabix = ENV3 + config['tools']['tabix']
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.vcf.bgz.tbi"
-    threads:
-        4
     shell:
         """
-        {input.tabix} --threads {threads} -p vcf {input.vcf}
+        {input.tabix} -p vcf {input.vcf}
         """
