@@ -262,15 +262,16 @@ rule peddy:
         tbi = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf.bgz.tbi",
         ped = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.nohead.pedfile"
     params:
-        prefix = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}",
+        prefix = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}",
         peddy = ENV2 + 'python -m peddy',
     threads:
         4
     output:
-        het_check = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.het_check.csv",
+        het_check = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.het_check.csv",
         #pca_check_csv = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pca_check.csv",
-        pca_check_png = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pca_check.png",
-        sex_check_png = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.sex_check.png"
+        pca_check_png = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.pca_check.png",
+        sex_check_png = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.sex_check.png",
+        sex_check_csv = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.sex_check.csv"
     shell:
         """
         {params.peddy} -p {threads} --plot --prefix {params.prefix} {input.vcf} {input.ped}

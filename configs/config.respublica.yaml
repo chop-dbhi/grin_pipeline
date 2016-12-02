@@ -148,6 +148,7 @@ results:  # subdirectories in process_dir or landing_dir
     vcfs:             vcfs
     screenshots:      screenshots
     analysis:         analysis
+    peddy:            qc/peddy
     GATKDoC:          GATKDoC
     xhmmout:          xhmmOutput
     mapped:           mapped     # mapped to UUIDs
