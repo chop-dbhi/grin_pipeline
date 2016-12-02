@@ -32,9 +32,8 @@ commit <- system("git rev-parse --verify HEAD",intern=TRUE)
 We used the following filters to reduce the number of reported false positives:
 
 1. Spurious inherited variants can often appear due to insufficient sequence coverage so the **mininum sequence depth** was set to **15**.
-2. We are interested in mutations that are likely to have functional consequence so only variants with **Medium or High impact severity** were used.
-3. **Minimum genotyping quality** per sample in the trio was set to **20**.
-4. GL contigs were not used.
+2. **Minimum genotyping quality** per sample in the trio was set to **20**.
+3. GL contigs were not used.
 </blockquote>
 
 ## Compound Heterozygotes
@@ -139,12 +138,13 @@ These are all variants that satisfy the following criteria:
 var.df.sub <- var.df
 var.df.sub <- var.df.sub %>% filter(rvis_perc < 90) %>% group_by(comp_het_id) %>% filter(any(exac_af_all <= 0.1) | any(exac_af_all=="None")) %>% group_by(gene) %>% mutate(gene_freq = n())
 varcount <- length(unique(var.df.sub$variant_id))
+cmpdcount <- length(unique(var.df.sub$comp_het_id))
 if(varcount)
 {
   viewDataTable(dat = var.df.sub)
 }
 ```
-**There are `r varcount` filtered variants**
+**There are `r varcount` distinct filtered variants and `r cmpdcount` putative compound events**
 </div>
 </div>
 
