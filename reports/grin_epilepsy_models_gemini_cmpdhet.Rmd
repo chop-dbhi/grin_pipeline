@@ -144,7 +144,7 @@ if(varcount)
   viewDataTable(dat = var.df.sub)
 }
 ```
-**There are `r varcount` filtered variants and `r cmpdcount` putative compound events**
+**There are `r varcount` distinct filtered variants and `r cmpdcount` putative compound events**
 </div>
 </div>
 
