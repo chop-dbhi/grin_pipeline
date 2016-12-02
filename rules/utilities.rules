@@ -9,9 +9,12 @@ rule mkdirs:
 # this is the bioconda workaround for GATK licensing
 rule getgatk:
     output: ENV3 + config['jars']['gatk']['path']
+    params:
+        projdir = config['projdir']
     shell:
         """
-        gatk-register tools/GenomeAnalysisTK-3.6.tar.bz2
+        rm -rf /tmp/gatk/
+        gatk-register {params.projdir}/tools/GenomeAnalysisTK-3.6.tar.bz2
         """
 
 rule Rdeps:

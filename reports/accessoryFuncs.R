@@ -15,15 +15,22 @@ viewDataTable <- function(dat){
                     colnames(dat), invert = TRUE)
   
   DT::datatable(dat,
+                rownames = FALSE,
                 escape = FALSE,
                 extensions = c('Buttons'),
                 selection = "single",
                 filter = "bottom",
                 options = list(
                   columnDefs = list(list(visible = FALSE, targets = cols2hide),
-                                    list(targets = cols2crop, render = JS("function(data, type, row, meta) {", "return type === 'display' && data.length > 10 ?", "'<span title=\"' + data + '\">' + data.substr(0, 10) + '...</span>' : data;", "}"))),
+                                    list(targets = cols2crop, render = JS("function(data, type, row, meta) {", 
+                                                                          "return type === 'display' && data.length > 10 ?", 
+                                                                          "'<span title=\"' + data + '\">' + data.substr(0, 10) + '...</span>' : data;", 
+                                                                          "}"))),
                   dom = 'Bfrtip',
-                  buttons = list('colvis','pageLength', 'copy','print',
+                  buttons = list(list(extend = "colvis", 
+                                      collectionLayout = "fixed four-column", 
+                                      prefixButtons = list('colvisRestore')),
+                                 'pageLength', 'copy', 'print',
                                  list(extend = "collection",
                                       buttons = c('csv', 'excel', 'pdf'),
                                       text = 'Download'
