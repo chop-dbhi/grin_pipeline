@@ -1,14 +1,18 @@
 rule run_multiqc:
     input:
         gbams = REBAMS,
+        vcfs = VCFSTATS,
         multiqc = ENV3 + config['tools']['multiqc']
     output: config['datadirs']['multiqc'] + '/multiqc_report.html'
     params:
-        dirs = config['process_dir'][freeze] + config['results']['recalibrated'],
-        outdir = config['datadirs']['multiqc'] 
+        bams = config['process_dir'][freeze] + config['results']['recalibrated'],
+        fastqcdir = config['datadirs']['fastqc'],
+        vcfstatsdir = config['landing_dir'][freeze] + config['results']['vcfstats'],
+        outdir = config['datadirs']['multiqc'],
+        hsmetricsdir = config['landing_dir'][freeze] + config['results']['hsmetrics']
     shell:
         """
-        {input.multiqc} -f -o {params.outdir} {params.dirs} fastqc # will detect input file types?
+        {input.multiqc} -f -o {params.outdir} {params.bams} {params.fastqcdir} {params.vcfstatsdir} {params.hsmetricsdir}
         """
 
 # create YAML file used in meta-FastQC report
@@ -104,21 +108,22 @@ rule siteindex:
             outfile.write("""
 #### Inheritance analysis reports
 <table class="table table-striped">
-<tr><td>Trio</td><td>reports</td><td>Annotated VCFs</td><td>Recalibrated BAMs</td><td>Peddy</td></tr>
+<tr><td>Trio</td><td>reports</td><td>Annotated VCFs & QC</td><td>Recalibrated BAMs</td></tr>
 """)
-            for s,p in zip(ANALYSISREADY,COMPLETETRIOSFAMIDS):
+            for s,p,q in zip(ANALYSISREADY,COMPLETETRIOSFAMIDS,PEDDYS):
                 outfile.write("<tr><td>{0}</td>".format(p))
                 outfile.write("<td>")
                 for r in reports_by_sex[gendertools.trioGender(p)]:
                     outfile.write("<a href=\"{1}/{2}/{0}.trio.com.filtered.ad.de.nm.snpeff.anno.{3}.html\"><button type=\"button\" class=\"btn btn-default btn-sm\"><img src=\"{1}/assets/img/{3}.png\"/> {3}</button></a><br/>".format(p, SLINK, params.analysisdir,r))
-                outfile.write("</td>")
-                outfile.write("<td><a href=\"{1}/{2}\">{0}.vcf.bgz</a></td>".format(p, SLINK, s))
-                outfile.write("<td>")
+                outfile.write("</td><td>")
+                outfile.write("<a href=\"{1}/{2}\">{0}.vcf.bgz</a>".format(p, SLINK, s))
+                outfile.write("<br/><a href=\"{1}/{2}\">PeddyQC</a>".format(p, SLINK, q))
+                outfile.write("</td><td>")
                 bams = get_all_recals_bams(p)
                 for bam in bams:
-                    outfile.write("<a href=\"{1}/{2}\">{0}</a> ".format(os.path.basename(bam), SLINK, bam))
+                    outfile.write("<a href=\"{1}/{2}\">{0}</a><br/>".format(os.path.basename(bam), SLINK, bam))
                 outfile.write("</td>")
-                outfile.write("<td><a href=\"{1}/qc/peddy/{0}\">{0}.vcf.bgz</a></td>".format(p, SLINK, s))
+                
                 outfile.write("</tr>\n\n")
             outfile.write("""
 </table>
@@ -126,8 +131,12 @@ rule siteindex:
             # this link won't be treated as a child page
             #outfile.write("[fastqc summary]({{SLINK}}/summary_fastqc.html)\n")
             # must add a child index to the mybic project admin page to treat this link as a child page
-            outfile.write('<a href="summary_fastqc.html">fastqc summary</a>' + "\n")
-            outfile.write("<p>\n")
+            
+            #this is kinda brittle
+            #outfile.write('<a href="summary_fastqc.html">fastqc summary</a>' + "\n")
+            #outfile.write("<p>\n")
+            
+            outfile.write("### Cohort QC\n")
             outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
             #outfile.write('<a href="multiqc/multiqc_report.html">multiqc report</a>' + "\n")
 

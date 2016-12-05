@@ -271,10 +271,22 @@ rule peddy:
         #pca_check_csv = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.pca_check.csv",
         pca_check_png = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.pca_check.png",
         sex_check_png = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.sex_check.png",
-        sex_check_csv = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.sex_check.csv"
+        sex_check_csv = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.sex_check.csv",
+        html = config['landing_dir'][freeze] + config['results']['peddy'] + "/{family}_{subject}.html"
     shell:
         """
         {params.peddy} -p {threads} --plot --prefix {params.prefix} {input.vcf} {input.ped}
+        """
+
+rule bcfstats:
+    input:
+        vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{family}_{subject}.trio.vcf.bgz",
+        bcftools = ENV3 + config['tools']['bcftools']
+    output:
+        stats = config['landing_dir'][freeze] + config['results']['vcfstats'] + "/{family}_{subject}.trio.vcf.stats",
+    shell:
+        """
+        {input.bcftools} stats {input.vcf} > {output}
         """
 
 rule run_phase_by_transmission:
