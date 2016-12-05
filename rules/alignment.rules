@@ -69,6 +69,13 @@ rule novosortbam:
         {input.sort} -m 14g -t {params.tmpdir} --threads {threads} --removeduplicates --keeptags -i -o {output.sorted} {input.bam} 2> {log}
         """
 
+
+
+
+
+
+
+
 #### NOTE: The combined target list routine is not actually used due to N+1 issues ####
 ## here we create individual realign target lists, one from each bam file
 ## later, the individual lists will be combined into a single list
@@ -258,6 +265,37 @@ rule analyze_bqsr:
         -after {input.after} \
         -plots {output.pdf}
         """
+
+#https://www.biostars.org/p/154362/
+#https://www.biostars.org/p/89317/
+#https://www.biostars.org/p/71545/
+rule hsMetrics:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
+        bam_probe_intervals = "annotations/NexteraRapidCapture_Exome_Probes_v1.2.interval_list",
+        bam_target_intervals = "annotations/nexterarapidcapture_exome_targetedregions_v1.2.no_chr.MT.interval_list",
+    output:
+        hs = config['landing_dir'][freeze] + config['results']['hsmetrics'] + "/{sample}.hsmetrics",
+    params:
+        picard = config['jars']['picard']['path'],
+        md = "CalculateHsMetrics",
+        opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
+        metrics = config['process_dir'][freeze] + config['results']['picard']
+    log:
+        config['datadirs']['log'] + "/{sample}.hsmetrics.log"
+    shell:
+        """
+        {params.picard} {params.opts} \
+        CalculateHsMetrics \
+        BAIT_INTERVALS={input.bam_probe_intervals} \
+        TARGET_INTERVALS={input.bam_target_intervals} \
+        INPUT={input.bam} \
+        OUTPUT={output.hs} \
+        METRIC_ACCUMULATION_LEVEL=ALL_READS \
+        QUIET=true  \
+        VALIDATION_STRINGENCY=SILENT 2> {log}
+        """
+
 
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
