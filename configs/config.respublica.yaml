@@ -139,6 +139,8 @@ results:  # subdirectories in process_dir or landing_dir
     realigned:        realigned
     lists:            lists
     recalibrated:     recalibrated
+    hsmetrics:        qc/hsmetrics
+    alignmetrics:     qc/alignmetrics
     postrecalibrated: postrecalibrated
     pdfs:             pdfs
     gvcfs:            gvcfs
@@ -148,6 +150,8 @@ results:  # subdirectories in process_dir or landing_dir
     vcfs:             vcfs
     screenshots:      screenshots
     analysis:         analysis
+    peddy:            qc/peddy
+    vcfstats:         qc/vcfstats
     GATKDoC:          GATKDoC
     xhmmout:          xhmmOutput
     mapped:           mapped     # mapped to UUIDs
@@ -210,6 +214,10 @@ tools:
         table_annovar.pl
     vcf2avinput:
         convert2annovar.pl
+    peddy:
+        peddy
+    bcftools:
+        bcftools
 
 jars:
     picard:

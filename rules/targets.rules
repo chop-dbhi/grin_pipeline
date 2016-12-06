@@ -60,6 +60,10 @@ rule make_leftaligned:
     input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.recal.la.bam']]
 rule make_recalibrated_tables:
     input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
+rule make_alignmetrics:
+    input: [config['landing_dir'][freeze] + config['results']['alignmetrics'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.alignmetrics']]
+rule make_hsmetrics:
+    input: [config['landing_dir'][freeze] + config['results']['hsmetrics'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.hsmetrics']]
 rule make_post_recalibrated_tables:
     input: [config['process_dir'][freeze] + config['results']['postrecalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
 
@@ -85,6 +89,12 @@ COMPLETETRIOSFAMIDS = sorted(list(set([row['FamilyID']+'_'+row['Subject'] for in
 TRIOVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".trio.phased.vcf" for trio in COMPLETETRIOSFAMIDS]
 rule make_triovcfs:
     input: TRIOVCFS
+PEDDYS = [config['landing_dir'][freeze] + config['results']['peddy'] + "/" + trio + ".html" for trio in COMPLETETRIOSFAMIDS]
+rule peddys:
+    input: PEDDYS
+VCFSTATS = [config['landing_dir'][freeze] + config['results']['vcfstats'] + "/" + trio + ".trio.vcf.stats" for trio in COMPLETETRIOSFAMIDS]
+rule vcfstats:
+    input: VCFSTATS
 COMPLETEFAMILYFAMIDS = set([row['FamilyID'] for index, row in SAMPLE_TABLE.iterrows() if all([row[member] in EXISTINGSAMPLES for member in ['Mother','Father','Subject']])]) # quads are one family
 FAMILYVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.vcf" for trio in COMPLETEFAMILYFAMIDS]
 COMVCFS = [config['landing_dir'][freeze] + config['results']['vcfs'] + "/" + trio + ".family.com.filtered.vcf" for trio in COMPLETEFAMILYFAMIDS]
