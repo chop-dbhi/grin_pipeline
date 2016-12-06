@@ -60,6 +60,8 @@ rule make_leftaligned:
     input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.recal.la.bam']]
 rule make_recalibrated_tables:
     input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
+rule make_alignmetrics:
+    input: [config['landing_dir'][freeze] + config['results']['alignmetrics'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.alignmetrics']]
 rule make_hsmetrics:
     input: [config['landing_dir'][freeze] + config['results']['hsmetrics'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.hsmetrics']]
 rule make_post_recalibrated_tables:

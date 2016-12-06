@@ -140,6 +140,7 @@ results:  # subdirectories in process_dir or landing_dir
     lists:            lists
     recalibrated:     recalibrated
     hsmetrics:        qc/hsmetrics
+    alignmetrics:     qc/alignmetrics
     postrecalibrated: postrecalibrated
     pdfs:             pdfs
     gvcfs:            gvcfs
