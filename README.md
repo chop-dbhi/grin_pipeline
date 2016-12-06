@@ -8,6 +8,7 @@ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 sh Miniconda3-latest-Linux-x86_64.sh
 # type "yes"
 conda create --name grinenv --file requirements.txt python=3.5
+conda create --name geminienv --file python2_requirements.txt
 source activate grinenv
 ```
 

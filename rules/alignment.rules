@@ -286,7 +286,7 @@ rule hsMetrics:
     shell:
         """
         {params.picard} {params.opts} \
-         {params.md} \
+        {params.md} \
         BAIT_INTERVALS={input.bam_probe_intervals} \
         TARGET_INTERVALS={input.bam_target_intervals} \
         INPUT={input.bam} \
@@ -295,6 +295,7 @@ rule hsMetrics:
         QUIET=true  \
         VALIDATION_STRINGENCY=SILENT 2> {log}
         """
+
 
 #https://www.biostars.org/p/154362/
 #https://www.biostars.org/p/89317/
@@ -320,6 +321,7 @@ rule alignmentMetrics:
         QUIET=true  \
         VALIDATION_STRINGENCY=SILENT 2> {log}
         """
+
 
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
