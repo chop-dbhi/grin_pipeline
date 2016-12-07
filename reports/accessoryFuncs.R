@@ -8,11 +8,11 @@ thisnotinthat <- function(x.1,x.2,...){
 # display datatable function
 viewDataTable <- function(dat){
   
-  cols2crop <- grep('family_genotypes|ref|alt', colnames(dat))
+  cols2crop <- grep('family_genotypes|ref|alt', colnames(dat))-1
   cols2hide <- grep('Description|Variants|Perc|^chr$|^pos$|rsid|^ref$|^alt$|^gene$|gene_freq|
                     impact_severity|rvis|depths|gt_quals|family_genotypes|denovo_prob|
                     is_exonic|is_splicing|functiongvs|exac_ac_all',
-                    colnames(dat), invert = TRUE)
+                    colnames(dat), invert = TRUE)-1
   
   DT::datatable(dat,
                 rownames = FALSE,
