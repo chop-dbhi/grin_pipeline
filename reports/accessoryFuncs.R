@@ -15,7 +15,7 @@ viewDataTable <- function(dat){
                     colnames(dat), invert = TRUE)
   
   DT::datatable(dat,
-                rownames = FALSE,
+                # rownames = FALSE,
                 escape = FALSE,
                 extensions = c('Buttons'),
                 selection = "single",
