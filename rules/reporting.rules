@@ -1,18 +1,29 @@
-rule run_multiqc:
+rule fetch_multiqc_yaml:
+    input: "configs/multiqc_config.yaml"
+    output: "multiqc_config.yaml"
+    shell:
+        """
+        cp {input} {output}
+        """
+
+rule make_multiqc:
     input:
         gbams = REBAMS,
         vcfs = VCFSTATS,
-        multiqc = ENV3 + config['tools']['multiqc']
+        multiqc = ENV3 + config['tools']['multiqc'],
+        config = "multiqc_config.yaml"
     output: config['datadirs']['multiqc'] + '/multiqc_report.html'
     params:
         bams = config['process_dir'][freeze] + config['results']['recalibrated'],
         fastqcdir = config['datadirs']['fastqc'],
         vcfstatsdir = config['landing_dir'][freeze] + config['results']['vcfstats'],
         outdir = config['datadirs']['multiqc'],
-        hsmetricsdir = config['landing_dir'][freeze] + config['results']['hsmetrics']
+        hsmetricsdir = config['landing_dir'][freeze] + config['results']['hsmetrics'],
+        #docdir = config['landing_dir'][freeze] + config['results']['GATKDoC'], not supported yet
+        snpeffdir = config['landing_dir'][freeze] + config['results']['snpeffstats']
     shell:
         """
-        {input.multiqc} -f -o {params.outdir} {params.bams} {params.fastqcdir} {params.vcfstatsdir} {params.hsmetricsdir}
+        {input.multiqc} -f -o {params.outdir} {params.bams} {params.fastqcdir} {params.vcfstatsdir} {params.hsmetricsdir} {params.snpeffdir}
         """
 
 # create YAML file used in meta-FastQC report
@@ -137,6 +148,7 @@ rule siteindex:
             #outfile.write("<p>\n")
             
             outfile.write("### Cohort QC\n")
+
             outfile.write("[multiqc report]({{SLINK}}/" + config['datadirs']['multiqc'] + "/multiqc_report.html)\n")
             #outfile.write('<a href="multiqc/multiqc_report.html">multiqc report</a>' + "\n")
 
