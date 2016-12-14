@@ -69,13 +69,6 @@ rule novosortbam:
         {input.sort} -m 14g -t {params.tmpdir} --threads {threads} --removeduplicates --keeptags -i -o {output.sorted} {input.bam} 2> {log}
         """
 
-
-
-
-
-
-
-
 #### NOTE: The combined target list routine is not actually used due to N+1 issues ####
 ## here we create individual realign target lists, one from each bam file
 ## later, the individual lists will be combined into a single list
@@ -322,6 +315,24 @@ rule alignmentMetrics:
         VALIDATION_STRINGENCY=SILENT 2> {log}
         """
 
+#--feature-file {params.targets}
+rule qualimap:
+    input:
+        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
+        qualimap = ENV3 + config['tools']['qualimap']
+    output:
+        config['landing_dir'][freeze] + config['results']['qualimap'] + "/{sample}/genome_results.txt"
+    threads:
+        12
+    params:
+        qm = config['landing_dir'][freeze] + config['results']['qualimap'],
+        num_windows = 100,
+        targets = "annotations/nexterarapidcapture_exome_targetedregions_v1.2.no_chr.MT.bed"
+    shell:
+        """
+        export JAVA_OPTS="-Djava.awt.headless=true"
+        {input.qualimap} --java-mem-size=4G bamqc -nw {params.num_windows} -nt {threads} -bam {input.bam}  --outdir {params.qm}/{wildcards.sample}
+        """
 
 # merge lanes
 # E01188-L2_S26_L005.sorted.bam E01188-L2_S26_L006.sorted.bam > E01188.sorted.merged.bam
