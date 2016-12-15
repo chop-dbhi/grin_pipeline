@@ -87,7 +87,7 @@ rule target_list: # create individual realign target list
         ref = config['ref'][freeze],
         knownsites = config['known'][freeze]
     threads:
-        24
+        16
     shell:
         """
         {input.gatk} {params.opts} \

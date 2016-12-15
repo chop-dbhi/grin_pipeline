@@ -258,7 +258,8 @@ rule annotate_using_vcfanno:
         config['datadirs']['log'] + "/{file}.vcfanno.log"
     output:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.bgz"
-    threads: 8
+    threads:
+        8
     params:
         base_path = config['tools']['gemini']['gemini_anno']
     shell:

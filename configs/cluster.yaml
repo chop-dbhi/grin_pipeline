@@ -228,3 +228,7 @@ run_vep:
   h_vmem: 70G
   mem_free: 56G
   m_mem_free: 49G
+left_align_indels:
+  h_vem: 20G
+  mem_free: 16G
+  m_mem_free: 41G
