@@ -326,7 +326,7 @@ rule qualimap:
         12
     params:
         qm = config['landing_dir'][freeze] + config['results']['qualimap'],
-        num_windows = 100,
+        num_windows = 200,
         targets = "annotations/nexterarapidcapture_exome_targetedregions_v1.2.no_chr.MT.bed"
     shell:
         """

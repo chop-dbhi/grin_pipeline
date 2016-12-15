@@ -62,7 +62,7 @@ rule make_recalibrated_tables:
     input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
 rule make_alignmetrics:
     input: [config['landing_dir'][freeze] + config['results']['alignmetrics'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.alignmetrics']]
-QUALIMAPS = [config['landing_dir'][freeze] + config['results']['qualimap'] + "/" + name + "/genome_results.txt" for name in EXISTINGSAMPLES]
+QUALIMAPS = [config['landing_dir'][freeze] + config['results']['qualimap'] + "/" + name  for name in EXISTINGSAMPLES]
 rule make_qualimap:
     input: [config['landing_dir'][freeze] + config['results']['qualimap'] + "/" + name + "/genome_results.txt" for name in EXISTINGSAMPLES]
 rule make_hsmetrics:
