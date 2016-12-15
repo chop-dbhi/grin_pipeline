@@ -77,3 +77,17 @@ touch -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
 touch -h -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
 touch -d 20150101 tools/GenomeAnalysisTK-3.6.tar.bz2 
 ```
+
+### Setting up a new project
+
+Create a table like this one:
+
+[Sample table pros](https://github.research.chop.edu/BiG/grin/blob/master/metadata/sample_table_pros.txt)
+
+Then create a sample.yaml file based off of this template:
+
+[Sample yaml file template](https://github.research.chop.edu/BiG/grin/blob/master/configs/localconfig.sample.yaml)
+
+(Deanne to write more on this)
+
+

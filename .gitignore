@@ -86,3 +86,4 @@ missingsamples.txt
 metadata/sample_table.txt
 .Rplots
 site/
+multiqc_config.yaml
