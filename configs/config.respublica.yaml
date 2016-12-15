@@ -153,7 +153,6 @@ results:  # subdirectories in process_dir or landing_dir
     analysis:         analysis
     peddy:            qc/peddy
     vcfstats:         qc/vcfstats
-    snpeffstats:      qc/snpeff
     GATKDoC:          GATKDoC
     xhmmout:          xhmmOutput
     mapped:           mapped     # mapped to UUIDs
@@ -200,10 +199,9 @@ tools:
         conf: 
             hg37: configs/vcfanno_GRCh37.conf
             hg38: configs/vcfanno_GRCh38.conf
-    vcf2db: $isilon/bin/vcf2db/vcf2db.py
+    vcf2db: vcf2db.py
     gemini:
-        gemini_tool: $isilon/bin/gemini/tools/bin/gemini
-        gemini_python: $isilon/bin/gemini/tools/bin/gemini_python
+        gemini_tool: gemini
         gemini_anno: $isilon/bin/gemini/data/gemini_data
     vep:
         # $isilon/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
