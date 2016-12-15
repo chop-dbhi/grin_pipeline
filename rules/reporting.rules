@@ -19,11 +19,11 @@ rule make_multiqc:
         vcfstatsdir = config['landing_dir'][freeze] + config['results']['vcfstats'],
         outdir = config['datadirs']['multiqc'],
         hsmetricsdir = config['landing_dir'][freeze] + config['results']['hsmetrics'],
-        #docdir = config['landing_dir'][freeze] + config['results']['GATKDoC'], not supported yet
+        qualimapdirs = QUALIMAPS
         snpeffdir = config['landing_dir'][freeze] + config['results']['snpeffstats']
     shell:
         """
-        {input.multiqc} -f -o {params.outdir} {params.bams} {params.fastqcdir} {params.vcfstatsdir} {params.hsmetricsdir} {params.snpeffdir}
+        {input.multiqc} -f -o {params.outdir} {params.bams} {params.fastqcdir} {params.vcfstatsdir} {params.hsmetricsdir} {params.snpeffdir} {params.qualimapdirs}
         """
 
 # create YAML file used in meta-FastQC report

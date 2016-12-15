@@ -141,6 +141,7 @@ results:  # subdirectories in process_dir or landing_dir
     recalibrated:     recalibrated
     hsmetrics:        qc/hsmetrics
     alignmetrics:     qc/alignmetrics
+    qualimap:         qc/qualimap
     postrecalibrated: postrecalibrated
     pdfs:             pdfs
     gvcfs:            gvcfs
@@ -219,6 +220,8 @@ tools:
         peddy
     bcftools:
         bcftools
+    qualimap:
+        qualimap
 
 jars:
     picard:
