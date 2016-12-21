@@ -70,6 +70,8 @@ include:
     "rules/analysis.rules"
 include:
     "rules/reporting.rules"
+include:
+    "rules/s3buckets.rules"
 
 rule all:
     input: 

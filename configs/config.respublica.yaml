@@ -9,6 +9,15 @@ pedfile_nohead: metadata/samples.nohead.ped
 
 xbrowse: $isilon/bin/xbrowse  # directory, not binary
 vepdir: $isilon/vep
+s3buckets: [{"name": "BCH",
+             "buckets": ["bch-grin-early-childhood-obesity",
+                          "bch-grin-epileptic-encephalopathy",
+                          "bch-grin-extreme-short-stature"]
+            },
+            {"name": "CCHMC",
+             "buckets": ["bmigrin"]
+            }
+           ]
 
 annovardbdir: $isilon/annovar/humandb
 #annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
@@ -161,6 +170,7 @@ results:  # subdirectories in process_dir or landing_dir
     sequence_meta:    sequence_meta
     sample_meta:      sample_meta
     pheno_meta:       pheno_meta
+    s3buckets:        /mnt/isilon/cbmi/variome/zhangs3/s3buckets
 
 tools:
     java:
