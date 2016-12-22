@@ -13,6 +13,7 @@ buckets = config['s3buckets']  # list s3 buckets
 # files = [config['results']['s3buckets'] + '/' + org + '-' + bucket + '.lst' for bucket in org['buckets'] for org in buckets]
 
 PATH = config['results']['s3buckets'] + "/"
+exts = ['csv', 'xlsx', 'json']
 
 def get_file_list():
     files = []
@@ -161,6 +162,17 @@ rule make_bucket_reports:
                             name = re.sub('.* ', '', line.rstrip())
                             if os.path.exists(path + name):
                                 mark = '* '
+                                if re.sub('.*\.', '', name) in exts:
+                                    dir = re.sub('/[^/]+$', '', name)
+                                    subdir = PATH + org + '/' + bucket + '/'
+                                    if not os.path.exists(subdir + name):
+                                        # print(subdir + dir)
+                                        if not os.path.exists(subdir + dir):
+                                            os.makedirs(subdir + dir)
+                                        cmd = 'ln -s ' + path + name + ' ' + subdir + name
+                                        # print(cmd)
+                                        os.system(cmd)
+                                    line = re.sub('([^\s]+)$', '<a href="/slink/zhangs3/grin-s3-buckets/' + org + '/' + bucket + '/' + name + '">'+ name + '</a>', line)
                     fpg.write(mark + line)
             if bucket:
                 fpg.write("</pre>\n")
