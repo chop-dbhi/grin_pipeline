@@ -71,7 +71,6 @@ FILES = get_file_list()
 rule make_file_list:  # download the file list first
     output: FILES
     run:
-        buckets = config['s3buckets']  # list s3 buckets
         set_key()
         s3 = s3client()
         for org in buckets:
@@ -116,7 +115,11 @@ rule make_bucket_reports:
     output: file = config['results']['s3buckets'] + "/index.md"
     run:
         # print(input.files)
-        buckets = {}
+        dirs = {}
+        for org in buckets:
+            dirs[org['name']] = org['datadir'] + '/'
+
+        pages = {}
         orgs = []
         for file in input.files:
             bucket = ''
@@ -127,17 +130,17 @@ rule make_bucket_reports:
                     if bucket:
                         fpg.write("</pre>\n")
                         fpg.close()
-                        buckets[org].append([bucket, page, count])
+                        pages[org].append([bucket, page, count])
                         bucket = ''
                     org = re.sub('^ORG:\s*', '', line.strip()) 
                     if not org in orgs:
                         orgs.append(org)
-                        buckets[org] = []
+                        pages[org] = []
                 elif re.search('^BUCKET:', line):
                     if bucket:
                         fpg.write("</pre>\n")
                         fpg.close()
-                        buckets[org].append([bucket, page, count])
+                        pages[org].append([bucket, page, count])
     
                     bucket = re.sub('^BUCKET:\s*', '', line.strip()) 
                     count = 0
@@ -146,21 +149,30 @@ rule make_bucket_reports:
                     fpg.write('<h2>' + org + "</h2>\n")
                     fpg.write('<h3>' + bucket + "</h3>\n") 
                     fpg.write("<pre>\n")
+                    path = dirs[org] + bucket + '/'
                 else:
                     if re.search('fastq(.gz)?$', line):
                         count += 1
-                    fpg.write(' * ' + line)
+                    mark = '  '
+                    if not re.search('/$', line):        
+                        if org == 'CHOP':
+                            mark = '* '
+                        else:
+                            name = re.sub('.* ', '', line.rstrip())
+                            if os.path.exists(path + name):
+                                mark = '* '
+                    fpg.write(mark + line)
             if bucket:
                 fpg.write("</pre>\n")
                 fpg.close()
-                buckets[org].append([bucket, page, count])
+                pages[org].append([bucket, page, count])
             fin.close()
     
         fout = open(output.file, "w")
         fout.write("## Contents of GRIN Buckets\n") 
         for org in orgs:
             fout.write("\n### " + org + "\n\n") 
-            for bucket in buckets[org]:
+            for bucket in pages[org]:
                 fout.write(' * [' + bucket[0] + ']({{SLINK}}/' + bucket[1] + ')') 
                 fout.write(' (%d fastq files)' % (bucket[2]))
                 fout.write("\n") 
