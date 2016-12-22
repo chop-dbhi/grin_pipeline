@@ -8,6 +8,7 @@ wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 sh Miniconda3-latest-Linux-x86_64.sh
 # type "yes"
 conda create --name grinenv --file requirements.txt python=3.5
+conda create --name geminienv --file python2_requirements.txt
 source activate grinenv
 ```
 
@@ -76,3 +77,17 @@ touch -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
 touch -h -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
 touch -d 20150101 tools/GenomeAnalysisTK-3.6.tar.bz2 
 ```
+
+### Setting up a new project
+
+Create a table like this one:
+
+[Sample table pros](https://github.research.chop.edu/BiG/grin/blob/master/metadata/sample_table_pros.txt)
+
+Then create a sample.yaml file based off of this template:
+
+[Sample yaml file template](https://github.research.chop.edu/BiG/grin/blob/master/configs/localconfig.sample.yaml)
+
+(Deanne to write more on this)
+
+
