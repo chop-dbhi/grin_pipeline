@@ -9,7 +9,11 @@ pedfile_nohead: metadata/samples.nohead.ped
 
 xbrowse: $isilon/bin/xbrowse  # directory, not binary
 vepdir: $isilon/vep
-s3buckets: [{"name": "BCH",
+s3buckets: [
+            {"name": "CHOP",
+             "buckets": ["chopgrin"]
+            },
+            {"name": "BCH",
              "buckets": ["bch-grin-early-childhood-obesity",
                           "bch-grin-epileptic-encephalopathy",
                           "bch-grin-extreme-short-stature"]

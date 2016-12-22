@@ -9,6 +9,17 @@ AWS_SECURITY_TOKEN = ''
 def now():
     now = datetime.datetime.now()
     return "%s-%02d-%02d:%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
+buckets = config['s3buckets']  # list s3 buckets
+# files = [config['results']['s3buckets'] + '/' + org + '-' + bucket + '.lst' for bucket in org['buckets'] for org in buckets]
+
+PATH = config['results']['s3buckets'] + "/"
+
+def get_file_list():
+    files = []
+    for org in buckets:
+        for bucket in org['buckets']:
+            files.append(PATH + org['name'] + '_' + bucket + '.lst')
+    return files
 
 def set_key():
     global AWS_ACCESS_KEY_ID
@@ -55,18 +66,20 @@ def s3client():
                   aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
                   aws_session_token=AWS_SECURITY_TOKEN)
 
-rule get_file_list:  # download the file list first
-    output: file=config['results']['s3buckets'] + "/files.txt"
+FILES = get_file_list()
+
+rule make_file_list:  # download the file list first
+    output: FILES
     run:
+        buckets = config['s3buckets']  # list s3 buckets
         set_key()
         s3 = s3client()
-        buckets = config['s3buckets']  # list s3 buckets
-        fout = open(output.file, "w")
         for org in buckets:
             # print(org['name'])
-            fout.write('ORG: ' + org['name'] + "\n")
             for bucket in org['buckets']:
                 # print(bucket)
+                fout = open(PATH + org['name'] +  '_' + bucket + '.lst', "w")
+                fout.write('ORG: ' + org['name'] + "\n")
                 fout.write('BUCKET: ' + bucket + "\n")
                 res = s3.list_objects(Bucket=bucket,
                           # Delimiter='string',
@@ -95,51 +108,54 @@ rule get_file_list:  # download the file list first
                     fout.write(" %*s " % (size, ent['Size']))
                     # print(ent['Key'])
                     fout.write(ent['Key'] + "\n")
-        fout.close()
+                fout.close()
 
 rule make_bucket_reports:
-    input: file = config['results']['s3buckets'] + "/files.txt"
+    # input: file = config['results']['s3buckets'] + "/files.txt"
+    input: files = FILES
     output: file = config['results']['s3buckets'] + "/index.md"
     run:
-        path = config['results']['s3buckets'] + "/"
-        fin = open(input.file, "r")
-        bucket = ''
-        count = 0
+        # print(input.files)
         buckets = {}
         orgs = []
-        for line in fin.readlines():
-            if re.search('^ORG:', line):
-                if bucket:
-                    fpg.write("</pre>\n")
-                    fpg.close()
-                    buckets[org].append([bucket, page, count])
-                    bucket = ''
-                org = re.sub('^ORG:\s*', '', line.strip()) 
-                orgs.append(org)
-                buckets[org] = []
-            elif re.search('^BUCKET:', line):
-                if bucket:
-                    fpg.write("</pre>\n")
-                    fpg.close()
-                    buckets[org].append([bucket, page, count])
-
-                bucket = re.sub('^BUCKET:\s*', '', line.strip()) 
-                count = 0
-                page = org + '_' + bucket + '.html'
-                fpg = open(path + page, "w")
-                fpg.write('<h2>' + org + "</h2>\n")
-                fpg.write('<h3>' + bucket + "</h3>\n") 
-                fpg.write("<pre>\n")
-            else:
-                if re.search('fastq(.gz)?$', line):
-                    count += 1
-                fpg.write(' * ' + line)
-        if bucket:
-            fpg.write("</pre>\n")
-            fpg.close()
-            buckets[org].append([bucket, page, count])
-        fin.close()
-
+        for file in input.files:
+            bucket = ''
+            count = 0
+            fin = open(file, "r")
+            for line in fin.readlines():
+                if re.search('^ORG:', line):
+                    if bucket:
+                        fpg.write("</pre>\n")
+                        fpg.close()
+                        buckets[org].append([bucket, page, count])
+                        bucket = ''
+                    org = re.sub('^ORG:\s*', '', line.strip()) 
+                    if not org in orgs:
+                        orgs.append(org)
+                        buckets[org] = []
+                elif re.search('^BUCKET:', line):
+                    if bucket:
+                        fpg.write("</pre>\n")
+                        fpg.close()
+                        buckets[org].append([bucket, page, count])
+    
+                    bucket = re.sub('^BUCKET:\s*', '', line.strip()) 
+                    count = 0
+                    page = org + '_' + bucket + '.html'
+                    fpg = open(PATH + page, "w")
+                    fpg.write('<h2>' + org + "</h2>\n")
+                    fpg.write('<h3>' + bucket + "</h3>\n") 
+                    fpg.write("<pre>\n")
+                else:
+                    if re.search('fastq(.gz)?$', line):
+                        count += 1
+                    fpg.write(' * ' + line)
+            if bucket:
+                fpg.write("</pre>\n")
+                fpg.close()
+                buckets[org].append([bucket, page, count])
+            fin.close()
+    
         fout = open(output.file, "w")
         fout.write("## Contents of GRIN Buckets\n") 
         for org in orgs:
@@ -149,4 +165,3 @@ rule make_bucket_reports:
                 fout.write(' (%d fastq files)' % (bucket[2]))
                 fout.write("\n") 
         fout.close()
-
