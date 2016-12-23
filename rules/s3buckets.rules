@@ -13,7 +13,7 @@ buckets = config['s3buckets']  # list s3 buckets
 # files = [config['results']['s3buckets'] + '/' + org + '-' + bucket + '.lst' for bucket in org['buckets'] for org in buckets]
 
 PATH = config['results']['s3buckets'] + "/"
-exts = ['csv', 'xlsx', 'json']
+exts = config['file_exts']
 
 def get_file_list():
     files = []
@@ -166,7 +166,6 @@ rule make_bucket_reports:
                                     dir = re.sub('/[^/]+$', '', name)
                                     subdir = PATH + org + '/' + bucket + '/'
                                     if not os.path.exists(subdir + name):
-                                        # print(subdir + dir)
                                         if not os.path.exists(subdir + dir):
                                             os.makedirs(subdir + dir)
                                         cmd = 'ln -s ' + path + name + ' ' + subdir + name
