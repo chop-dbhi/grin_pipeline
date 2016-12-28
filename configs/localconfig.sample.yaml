@@ -7,8 +7,8 @@ tmpdir: /mnt/lustre/users/zhangs3   # for some tools to create temporary files
 
 freeze: hg38  # must specify the freeze, hg37 or hg38
 
-python3_environment: /home/zhangs3/anaconda3/envs/grinenv
-python2_environment: /home/zhangs3/anaconda3/envs/geminienv
+python3_environment: anaconda3/envs/grinenv     # relative to home directory
+python2_environment: anaconda3/envs/geminienv   # relative to home directory
 load_python3_environment: source activate grinenv
 
 summary_fastqc: /mnt/isilon/cbmi/variome/zhangs3/projects/data/grin/summary_fastqc

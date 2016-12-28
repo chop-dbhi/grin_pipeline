@@ -43,8 +43,10 @@ configfile: "localconfig.yaml"     # copied and customized from configs/localcon
 
 varsub(config)  # substitute $isilon variable
 
-ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'],'bin') + '/'
-ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'],'bin') + '/'
+home = os.path.expanduser('~')
+
+ENV3 = os.path.join(updir(shutil.which("conda"),3),home,config['python3_environment'],'bin') + '/'
+ENV2 = os.path.join(updir(shutil.which("conda"),3),home,config['python2_environment'],'bin') + '/'
 
 #hg37/hg38
 freeze = config['freeze']
