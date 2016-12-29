@@ -17,3 +17,12 @@ class gender:
         rows = self.sampletable.loc[((self.sampletable['Subject'] == member) | (self.sampletable['Mother'] == member) | (self.sampletable['Father'] == member)) & ((self.sampletable['Mother'] != '') & (self.sampletable['Father'] != ''))]
         family = "{0}_{1}".format(rows['FamilyID'].tolist()[0],rows['Subject'].tolist()[0])
         return family
+
+    #trio give as string_proband
+    def getMembersFromTrio(self,trio):
+        family,proband = trio.split("_")
+        rows = self.sampletable.loc[(self.sampletable['FamilyID'] == family) & (self.sampletable['Subject'] == proband)]
+        mom = rows['Mother'].tolist()[0]
+        dad = rows['Father'].tolist()[0]
+        pro = rows['Subject'].tolist()[0]
+        return (pro,mom,dad)
