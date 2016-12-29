@@ -2,31 +2,163 @@ import uuid
 import hashlib
 import boto3
 import datetime
-samples = []
+subjects = []    # hold subject ids from subject_names.txt
+fastqs = []
 all_subjects = {}
 fathers = {}
 mothers = {}
-sample_metadata = {}
+subject_metadata = {}
 seq_mapping = {}
-spl_mapping = {}  # name to uuid
-names = {}
+sub_mapping = {}  # name to uuid
+seq_names = {}  # for sequence_id to uuid mapping
+sub_names = {}  # for subject_id to pcornet_id mapping
 uid2name = {}
 seq_uuids = {}
-spl_uuids = {}   # uuid to name
+sub_uuids = {}   # uuid to name
 all_uuids = {}
 pcornetids = {}
 chksums = {}
 buckets = {}
 seq_map_file = 'sequence_mapping.txt'
 seq_json = 'sequence_mapping.json'
-spl_map_file = 'sample_mapping.txt'
-sample_names = 'sample_names.txt'
+sub_map_file = 'subject_mapping.txt'
+pheno_map_file = 'phenotype_mapping.txt'
+subject_names = 'subject_names.txt'
+phenotype_files = 'phenotype_files.txt'  # listing phenotypics data(csv) files
 subject_meta = 'subject_meta'
 fastq_list = 'fastq_files.txt'
-sample_metafile = 'sample_metadata.csv'  # from Casey's excel file
-indexes = [0, 1, 2, 3, 4, 7, 9, 10, 11, 12, 29] # into sample_metadata.csv
-sample_headers = []  # extracted from sample_metadata.csv
-contact = "zhangs3@email.chop.edu"
+subject_metafile = 'subject_metadata.csv'  # from Casey's excel file
+indexes = [0, 1, 2, 3, 4, 7, 9, 10, 11, 12, 29] # into subject_metadata.csv
+subject_headers = []  # extracted from subject_metadata.csv
+# contact = "zhangs3@email.chop.edu"
+contact = config['contact']
+submitter = 'CHOP'
+subject_metadir = config['results']['subject_meta'] + '/'
+phenotypics = config['results']['phenotypics'] + '/'
+
+# for uploading to s3 bucket
+# AWS_ACCESS_KEY_ID = ''
+# AWS_SECRET_ACCESS_KEY = ''
+# AWS_SECURITY_TOKEN = ''
+
+sizelimit = config['sizelimit']   # to use multipart for uploading
+readsize = config['readsize']   # size of each part to upload
+bucket = config['bucket']   # s3 bucket
+home = os.path.expanduser("~")
+
+def set_key():
+    # global AWS_ACCESS_KEY_ID
+    # global AWS_SECRET_ACCESS_KEY
+    # global AWS_SECURITY_TOKEN
+    envs = {}
+
+    # initiates the required entries first
+    envs['AWS_ACCESS_KEY_ID'] = ''
+    envs['AWS_SECRET_ACCESS_KEY'] = ''
+    envs['AWS_SECURITY_TOKEN'] = ''
+
+    # the user has to make sure the keys are not expired
+    fin = open(home + '/.bash_profile', "r")
+    for line in fin.readlines():
+        if re.search('^export AWS_', line):
+             line = re.sub('^export ', '', line).strip()
+             kv = line.split('=')
+             envs[kv[0]] = kv[1]
+             # os.environ[envs[0]] = envs[1]
+             # print(envs)
+             # print(os.environ)
+    fin.close()
+    # print(envs)
+
+    os.environ['AWS_ACCESS_KEY_ID'] = envs['AWS_ACCESS_KEY_ID']
+    os.environ['AWS_SECRET_ACCESS_KEY'] = envs['AWS_SECRET_ACCESS_KEY']
+    os.environ['AWS_SECURITY_TOKEN'] = envs['AWS_SECURITY_TOKEN']
+
+def s3client():
+    return boto3.client('s3',
+                  aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID'],
+                  aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY'],
+                  aws_session_token = os.environ['AWS_SECURITY_TOKEN']
+     )
+
+def s3start(s3, file):
+    return s3.create_multipart_upload(Bucket=bucket,
+                                      Key=file,
+                                      ServerSideEncryption='AES256',
+                                      RequestPayer='requester'
+                                      )
+
+def upload_files(bucket, path, files):
+    if not re.search('/$', path):
+        path += '/'
+    set_key()
+    s3 = s3client()
+    for file in files:
+        # should/would add a check on the key and update it if needed
+        tgt = path + re.sub('.*\/', '', file)
+        status = s3upload(s3, bucket, file, tgt)
+        if status:
+            print(status)
+            quit()
+
+def s3upload(s3, bucket, src, tgt):
+    st = os.stat(src)  # for real file if symlink, os.lstat(file) for link
+    status = ''
+    # print(st)
+    fin = open(src, "rb")
+    if st.st_size > sizelimit:
+        uploadid = s3start(s3, tgt)['UploadId']
+        try:
+            partnum = 0
+            parts = []
+            data = fin.read(readsize)
+            while data:
+                partnum += 1
+                # print(partnum)
+                res = s3.upload_part(Bucket=bucket,
+                                     Body=data,
+                                     ContentLength=len(data),
+                                     Key=tgt,
+                                     UploadId=uploadid,
+                                     RequestPayer='requester',
+                                     PartNumber=partnum
+                                     )
+                # print(res)
+                parts.append({'ETag':res['ETag'], 'PartNumber': partnum})
+                data = fin.read(readsize)
+
+            res = s3.complete_multipart_upload(Bucket=bucket,
+                                         Key=tgt,
+                                         MultipartUpload={'Parts':parts},#needed
+                                         UploadId=uploadid,
+                                         RequestPayer='requester')
+            print(res)
+        except:
+            res = s3.abort_multipart_upload(Bucket=bucket,
+                                                Key=tgt,
+                                                UploadId=uploadid,
+                                                RequestPayer='requester'
+                                            )
+            # print(src + ":")
+            # print(str(os.sys.exc_info()[1]))
+            status = str(os.sys.exc_info()[1])
+    else:
+        try:
+            res = s3.put_object(Bucket=bucket,
+                                Body=fin,
+                                Key=tgt,
+                                RequestPayer='requester',
+                                ServerSideEncryption='AES256')
+
+            print(res)
+        except:
+            # print(src + ":")
+            # print(str(os.sys.exc_info()[1]))
+            # quit()
+            status = str(os.sys.exc_info()[1])
+    fin.close()
+
+    return status
 
 def now():
     now = datetime.datetime.now()
@@ -40,8 +172,36 @@ def get_md5(file, block_size=2**20):
              md5.update(chunk)
     return md5.hexdigest()
 
+def get_all_uuids():
+    global all_uuids
+
+    if os.path.exists(seq_map_file):
+        fmap = open(seq_map_file, "r")
+        for line in fmap.readlines():
+            (uid, name, chksum, bucket) = line.split()
+
+            uid = re.sub('_R[12]\.fastq.gz$', '', uid)
+            all_uuids[uid] = 1
+        fmap.close()
+
+    if os.path.exists(sub_map_file):
+        fmap = open(sub_map_file, "r")
+        for line in fmap.readlines():
+            (uid, name) = line.split()
+
+            all_uuids[uid] = 1
+        fmap.close()
+
+    if os.path.exists(pheno_map_file):
+        fmap = open(pheno_map_file, "r")
+        for line in fmap.readlines():
+            (pcornetid, category, uuid) = line.split()  # also removing leading and trailing blanks
+
+            all_uuids[uid] = 1
+        fmap.close()
+
 def get_mapped():
-    global names
+    global seq_names
     global seq_mapping
     global seq_uuids
     global all_uuids
@@ -50,11 +210,11 @@ def get_mapped():
     if os.path.exists(seq_map_file):
         fmap = open(seq_map_file, "r")
         for line in fmap.readlines():
-            (uid, name, chksum, bucket) = line.strip().split()
+            (uid, name, chksum, bucket) = line.split()
 
             name = re.sub('\.fastq.gz$', '', name)
             uid = re.sub('\.fastq.gz$', '', uid)
-            names[name] = uid
+            seq_names[name] = uid
             uid2name[uid] = name
             chksums[name] = chksum
             buckets[uid] = bucket
@@ -66,7 +226,7 @@ def get_mapped():
         fmap.close()
 
 def get_fastq_files():
-    fastqs = []
+    global fastqs
     
     if os.path.exists(fastq_list):
         fin = open(fastq_list, "r")
@@ -80,8 +240,6 @@ def get_fastq_files():
         fin.close()
     #else:
         #print(fastq_list + " doesn't exist!")
-
-    return(fastqs)
 
 def new_uuid():
     uid = str(uuid.uuid4())
@@ -111,23 +269,24 @@ def get_uuid(name):
 
 def get_uuids():      # uuids for fastq files
     global seq_uuids
-    global names
+    global seq_names
     global uid2name
     global seq_mapping
+    global fastqs
 
     has_new = False
 
-    for line in get_fastq_files():
-        # <bucket>:<s3_path>/<sample_file_name>
+    for line in fastqs:
+        # <bucket>:<s3_path>/<subject_file_name>
         name = re.sub('.*/', '', line)
         name = re.sub('\.fastq.gz$', '', name)
-        if not name in names:
+        if not name in seq_names:
             has_new = True
             # print(name)
             bucket = re.sub('[^/]+$', '', line)  # include foler/path
             uid = get_uuid(name)   # uid includes _R1 or _R2
             buckets[uid] = bucket  # with a trailing slash (/)
-            names[name] = uid
+            seq_names[name] = uid
             uid2name[uid] = name
             chksums[name] = get_md5('fastq/' + name + '.fastq.gz')
 
@@ -138,11 +297,11 @@ def get_uuids():      # uuids for fastq files
             all_uuids[uid] = 1
      
     if has_new:
-        keys = sorted(list(names.keys()))
+        keys = sorted(list(seq_names.keys()))
         with open(seq_map_file, "w") as fmap:
             for name in keys:
                # print(name)
-               uid = names[name]
+               uid = seq_names[name]
                fmap.write(uid + ".fastq.gz " + name + ".fastq.gz " + chksums[name] + " " + buckets[uid] + "\n")
 
         with open(seq_json, "w") as fmap:
@@ -152,7 +311,7 @@ def get_uuids():      # uuids for fastq files
                 # print(name)
                 if uid:
                     fmap.write(",\n")
-                uid = names[name]
+                uid = seq_names[name]
                 (bucket, path) = buckets[uid].split(':')
                 path = re.sub('/$', '', path)
                 fmap.write("  {\n")
@@ -164,54 +323,61 @@ def get_uuids():      # uuids for fastq files
                 fmap.write('  }')
             fmap.write("\n]\n")
 
-    # return [name + '.fastq.gz' for name in names]
-    # print(names.values())
+    # return [name + '.fastq.gz' for name in seq_names]
+    # print(seq_names.values())
     # print(uid2name)
     return [uuid + '.fastq.gz' for uuid in uid2name]
 
 #def uuid2name(uuid):
-#    return spl_uuids[uuid]
+#    return sub_uuids[uuid]
     
-def get_sample_mapping():
-    global spl_mapping
-    global spl_uuids
+def get_subject_mapping():
+    global sub_mapping
+    global sub_uuids
     global all_uuids
 
-    if os.path.exists(spl_map_file):
-        with open(spl_map_file, "r") as fmap:
+    if os.path.exists(sub_map_file):
+        with open(sub_map_file, "r") as fmap:
             for line in fmap.readlines():
-                (uid, name) = line.strip().split()
-                spl_mapping[name] = uid
-                spl_uuids[uid] = name
+                (uid, name) = line.split()
+                sub_mapping[name] = uid
+                sub_uuids[uid] = name
                 all_uuids[uid] = 1
             
-def get_sample_names():
+def get_subject_names():
     global pcornetids
-    global samples
-    if os.path.exists(sample_names):
-        with open(sample_names, "r") as fin:
+    global subjects
+    if os.path.exists(subject_names):
+        with open(subject_names, "r") as fin:
             for line in fin.readlines():
                 if re.search('^\s*#', line):  # comment lines
                     continue
                 if re.search('^\s*$', line):  # blank lines
                     continue
                 name = re.sub('\s.*', '', line)
-                samples.append(name)
+                subjects.append(name)
                 pcornetid = re.sub('^[^\s]+\s*', '', re.sub('\s*#.*$', '', line.strip()))
                 if len(pcornetid):
                      pcornetids[name] = pcornetid
     #else:
-        # print(sample_names + " doesn't exist")
+        # print(subject_names + " doesn't exist")
  
 
     # print(pcornetids)
-    # return samples
+    # return subjects
 
 def upload_mapfile():
-    tgt = seq_map_file
-    cmd = "aws --profile risaws s3api put-object --bucket chopgrin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, seq_map_file)
-    print(cmd)
+    tgt = 'epilepsy/prospective/' + seq_map_file + '2'
+    # cmd = "aws --profile risaws s3api put-object --bucket chopgrin --request-payer requester --server-side-encryption AES256 --key %s --body %s" % (tgt, seq_map_file)
+    # print(cmd)
     # shell(cmd)
+    set_key()
+    s3 = s3client()
+    status = s3upload(s3, bucket, seq_map_file, tgt)
+    if status:
+        print(status)
+        quit()
+
 
 def getname(uuid):
     return 'fastq/' + uid2name[uuid] + '.fastq.gz'
@@ -221,40 +387,40 @@ def get_meta_files():
     # return [config['results']['sequence_meta'] + re.sub(uploaded, '', re.sub('_R1\..*$', '.json', name)) for name in glob.glob(uploaded + "/*_R1.*.gz")]
     return [config['results']['sequence_meta'] + '/' + re.sub('_R1\..*$', '.json', name) for name in get_uuids() if re.search('_R1\.', name)]
 
-def get_sample_meta_files():
-    return [config['results']['sample_meta'] + '/' + name + '.json' for name in sample_uuids]
-    #files = [config['results']['sample_meta'] + '/' + name + '.json' for name in sample_uuids]
+def get_subject_meta_files():
+    return [config['results']['subject_meta'] + '/' + name + '.json' for name in subject_uuids]
+    #files = [config['results']['subject_meta'] + '/' + name + '.json' for name in subject_uuids]
     #print(files)
     #return files
 
-def get_sample_uuids():
-    global spl_mapping
-    global spl_uuids
-    global samples
+def get_subject_uuids():
+    global sub_mapping
+    global sub_uuids
+    global subjects
     has_new = False
 
-    for sample in samples:
-        if not sample in spl_mapping:
+    for subject in subjects:
+        if not subject in sub_mapping:
             has_new = True
             uid = new_uuid()
-            spl_mapping[sample] = uid
-            spl_uuids[uid] = sample
+            sub_mapping[subject] = uid
+            sub_uuids[uid] = subject
 
     if has_new:
-        keys = sorted(list(spl_mapping.keys()))
-        with open(spl_map_file, "w") as fmap:
+        keys = sorted(list(sub_mapping.keys()))
+        with open(sub_map_file, "w") as fmap:
             for name in keys:
                # print(name)
-               uid = spl_mapping[name]
+               uid = sub_mapping[name]
                fmap.write(uid + " " + name + "\n")
 
-    #return [uuid + '.json' for uuid in spl_uuids.keys()]
-    # print(spl_uuids)
-    # print(spl_mapping)
-    return spl_uuids.keys()
+    #return [uuid + '.json' for uuid in sub_uuids.keys()]
+    # print(sub_uuids)
+    # print(sub_mapping)
+    return sub_uuids.keys()
 
-def get_all_subjects():
-    global samples
+def get_all_subjects():  # read from sample_table
+    global subjects
     global fathers
     global mothers
     global all_subjects
@@ -262,30 +428,30 @@ def get_all_subjects():
     table_file = config['sample_table']
     with open(table_file) as fin:
         for line in fin.readlines():
-            vals = re.split('\s+', line.lstrip())
-            if vals[1] in samples:
+            vals = line.split()  # also removing leading and trailing spaces
+            if vals[1] in subjects:
                 if vals[2]:
                     mothers[vals[2]] = 1
                 if vals[3]:
                     fathers[vals[3]] = 1
                 all_subjects[vals[1]] = [vals[2], vals[3]] # either mother or father may be empty!
 
-def get_sample_metadata():
+def get_subject_metadata():
     """
     based on Casey's excel file and may need be revised
     if data are available for other fields or the file structure's changed,
     for example, to include parents
     """
-    global sample_metadata
-    global sample_headers
+    global subject_metadata
+    global subject_headers
     global indexes
     import csv
-    csvfile = open(sample_metafile)
+    csvfile = open(subject_metafile)
     reader = csv.DictReader(csvfile)
     # print(reader.fieldnames)
 
     for idx in indexes:
-        sample_headers.append(re.sub('Patient', 'Subject', reader.fieldnames[idx]))
+        subject_headers.append(re.sub('Patient', 'Subject', reader.fieldnames[idx]))
     # 0 "InstitutionalName": "CHOP",
     # 1 "PatientEthnicity": "Not Hispanic/Latino",
     # 2 "PatientRace": "White",
@@ -304,29 +470,482 @@ def get_sample_metadata():
     for row in reader:
         if row[reader.fieldnames[6]]:
             name = row[reader.fieldnames[6]]
-            sample_metadata[name] = []
+            subject_metadata[name] = []
             for idx in indexes:
                 key = reader.fieldnames[idx]
-                sample_metadata[name].append(row[key])
+                subject_metadata[name].append(row[key])
     csvfile.close()
 
-def get_sample_file(uuid):
-     return 'samples/'+ spl_uuids[uuid] + '.csv'
+def subject_meta_file(name):
+    return config['results']['subject_meta'] + '/' + sub_mapping[name] + '.json'
 
-def sample_meta_file(name):
-    return config['results']['sample_meta'] + '/' + spl_mapping[name] + '.json'
+def sortid(v):  # for sorting pcornet id
+    (a,b) = v.split('-')
+    return int(a)*1000 + int(b)
 
-# must call first
-get_sample_names()
+def bysubid(subuuid):
+    return sub_uuids[subuuid]
+
+def sortbysub(pcornetid):
+    return sub_names[pcornetid]
+
+# must call first in the given order
+get_subject_names()
 get_mapped()
-get_sample_mapping()
-sample_uuids = get_sample_uuids() # to have spl_mapping and spl_uuids available
+get_subject_mapping()
+subject_uuids = get_subject_uuids() # to have sub_mapping and sub_uuids available
+get_fastq_files()
 
-#rule sample_mapping:  # not working yet
-#    input: sample_names
-#    output: spl_map_file
-#    run:
-#         get_sample_uuids()
+rule upload_phenotype_meta:
+    input: pheno=phenotype_files
+    run:
+        bucket = 'chopgrin'
+        dir = 'phenotype_meta/'
+        fin = open(input.pheno)
+
+        for line in fin.readlines():  # process each phenotypics data file
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            # (file, path) = re.split('\s+', line.strip())
+            (file, path) = line.split()
+            path = re.sub('.*:', '', path)
+            path = re.sub('phenotypics', 'phenotype_meta', path)
+            category = re.sub('.*/', '', file)
+            category = re.sub('\.csv', '', category)
+  
+            files = glob.glob(dir + category + "/*.json") + glob.glob(dir + category + "/*.csv")
+            # print(bucket + ' ' + path)
+            # print(files)
+            upload_files(bucket, path, files)
+
+rule upload_phenotype_data:
+    input: pheno=phenotype_files
+    run:
+        bucket = 'chopgrin'
+        # path = 'epilepsy/prospective/phenotypics/'
+        # files = ['phenotypics/id_mapping.csv', 'phenotypics/id_mapping.json']
+        # upload_files(bucket, path, files)
+        fin = open(input.pheno)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            (file, path) = re.split('\s+', line.strip())
+            category = re.sub('\.csv$', '', file)
+            category = re.sub('.*/', '', category)
+            (bucket, path) = path.split(':')
+            dir = phenotypics + category
+            files = glob.glob(dir + "/*.json") + glob.glob(dir + "/*.csv")
+            # print(bucket + ' ' + path)
+            # print(files)
+            upload_files(bucket, path, files)
+
+rule make_phenotype_meta:
+    input: name=subject_names, map=sub_map_file, pheno=pheno_map_file, files=phenotype_files
+    # output: phenotype_mapping # may already exist, just need be updated
+    run:
+        uuid_mapping = {}
+        sub_uuids = {}
+        fin = open(input.pheno)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            (pcornetid, category, uuid) = re.split('\s+', line.strip())
+            if not category in uuid_mapping:
+                uuid_mapping[category] = {}
+            uuid_mapping[category][pcornetid] = uuid
+        fin.close()
+        
+        fin = open(input.name)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            vals = re.split('\s+', line.strip()) # subject_id pcornet_id
+            if len(vals) > 1:
+                sub_names[vals[1]] = vals[0]
+        fin.close()
+
+        fin = open(input.map)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            (uuid, name)= re.split('\s+', line.strip())
+            sub_uuids[name] = uuid
+        fin.close()
+
+        fin = open(input.files)
+        paths = {}
+        for line in fin.readlines():  # process each phenotypics data file
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            # (file, path) = re.split('\s+', line.strip())
+            (file, path) = line.split()
+            path = re.sub('.*:', '', path)
+            category = re.sub('.*/', '', file)
+            category = re.sub('\.csv', '', category)
+            paths[category] = path
+
+        date = now()
+
+        # Who what where when why!!!
+
+        categories = sorted(uuid_mapping.keys()) # actually sort is not needed
+
+        for category in categories:
+            dir = config['results']['phenotype_meta'] + '/' + category + '/'
+             
+            if not os.path.exists(dir):
+                os.mkdir(dir)
+            fjson = open(dir + category + '_meta.json', "w")
+            fcsv = open(dir + category + '_meta.csv', "w")
+
+            fcsv.write(category + '_uuid,' + category + '_path,subject_uuid,subject_id,pcornet_id,submitter,contact,last_updated')
+
+            fcsv.write("\n")
+
+            fjson.write("[\n")
+            path = paths[category]
+
+            subjectid = ''
+            for pcornetid in sorted(uuid_mapping[category].keys(), key=sortid):
+                if subjectid:    # must be the first in the loop
+                    fjson.write(",\n")
+
+                subjectid = sub_names[pcornetid]
+                subject_uuid = sub_uuids[subjectid]
+                uuid = uuid_mapping[category][pcornetid]
+
+                fj = open(dir + uuid + '.json', "w")
+                fj.write("{\n")
+                fj.write('    "' + category + '_uuid": "' + uuid + '",' + "\n")
+                fj.write('    "' + category + '_path": "http://%s.s3.amazonaws.com/%s%s.json",' % (bucket, path, uuid) + "\n")
+                fj.write('    "subject_uuid": "' + subject_uuid + '",' + "\n")
+                fj.write('    "subject_id": "' + subjectid + '",' + "\n")
+                fj.write('    "pcornet_id": "' + pcornetid + '",' + "\n")
+                fj.write('    "submitter": "' + submitter + '",' + "\n")
+                fj.write('    "contact": "' + contact + '",' + "\n")
+                fj.write('    "last_updated": "' + date + '"')
+                fj.write("\n}\n")
+                fj.close()
+
+                fjson.write("  {\n")
+
+                fjson.write('    "' + category + '_uuid": "' + uuid + '",' + "\n")
+                fjson.write('    "' + category + '_path": "http://%s.s3.amazonaws.com/%s%s.json",' % (bucket, path, uuid) + "\n")
+
+    
+                fjson.write('    "subject_uuid": "' + subject_uuid + '",' + "\n")
+                fjson.write('    "subject_id": "' + subjectid + '",' + "\n")
+                fjson.write('    "pcornet_id": "' + pcornetid + '",' + "\n")
+                fjson.write('    "submitter": "' + submitter + '",' + "\n")
+                fjson.write('    "contact": "' + contact + '",' + "\n")
+                fjson.write('    "last_updated": "' + date + '"')
+                fjson.write("\n  }")
+    
+    
+                fcsv.write(uuid) # value will match the header
+                fcsv.write(',http://%s.s3.amazonaws.com/%s%s.json' % (bucket, path, uuid))
+                fcsv.write(',' + subject_uuid)
+                fcsv.write(',' + subjectid)
+                fcsv.write(',' + pcornetid)
+                fcsv.write(',' + submitter)
+                fcsv.write(',' + contact)
+                fcsv.write(',' + date)
+                fcsv.write("\n")
+    
+            fjson.write("\n]\n")
+            fjson.close()
+            fcsv.close()
+
+# for mapping subject uuids with phenotype uuids in case needed
+rule sub_pheno_mapping:
+    input: name=subject_names, map=sub_map_file, pheno=pheno_map_file, files=phenotype_files
+    # output: phenotype_mapping # may already exist, just need be updated
+    run:
+        uuid_mapping = {}
+        sub_uuids = {}
+        fin = open(input.pheno)
+        categories = {}
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            (pcornetid, category, uuid) = re.split('\s+', line.strip())
+            categories[category] = 1  # just collect unique categories
+            if not pcornetid in uuid_mapping:
+                uuid_mapping[pcornetid] = {}
+            uuid_mapping[pcornetid][category] = uuid
+        fin.close()
+        
+        fin = open(input.name)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            vals = re.split('\s+', line.strip()) # subject_id pcornet_id
+            if len(vals) > 1:
+                sub_names[vals[1]] = vals[0]
+        fin.close()
+
+        fin = open(input.map)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            (uuid, name)= re.split('\s+', line.strip())
+            sub_uuids[name] = uuid
+        fin.close()
+
+        fin = open(input.files)
+        paths = {}
+        for line in fin.readlines():  # process each phenotypics data file
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            # (file, path) = re.split('\s+', line.strip())
+            (file, path) = line.split()
+            path = re.sub('.*:', '', path)
+            category = re.sub('.*/', '', file)
+            category = re.sub('\.csv', '', category)
+            paths[category] = path
+
+        date = now()
+
+        dir = config['results']['subject_mapping'] + '/'
+        # Who what where when why!!!
+        fjson = open(dir + 'subject_phenotype_mapping.json', "w")
+        fcsv = open(dir + 'subject_phenotype_mapping.csv', "w")
+        fcsv.write("subject_uuid,subject_id,pcornet_id,last_updated")
+
+        # important for categories to have a fixed order
+        categories = sorted(categories.keys())
+
+        for category in categories:
+            fcsv.write(',' + category + '_uuid')
+            fcsv.write(',' + category + '_path')
+        fcsv.write("\n")
+
+        fjson.write("[\n")
+        subjectid = ''
+        for pcornetid in sorted(uuid_mapping.keys(), key=sortid):
+            if subjectid:
+                fjson.write(",\n")
+            subjectid = sub_names[pcornetid]
+            subject_uuid = sub_uuids[subjectid]
+
+            fj = open(dir + subject_uuid + '.json', "w")
+
+            fj.write("{\n")
+            fj.write('    "subject_uuid": "' + subject_uuid + '",' + "\n")
+            fj.write('    "subject_id": "' + subjectid + '",' + "\n")
+            fj.write('    "pcornet_id": "' + pcornetid + '",' + "\n")
+            fj.write('    "last_updated": "' + date + '"')
+
+            fjson.write("  {\n")
+            fjson.write('    "subject_uuid": "' + subject_uuid + '",' + "\n")
+            fjson.write('    "subject_id": "' + subjectid + '",' + "\n")
+            fjson.write('    "pcornet_id": "' + pcornetid + '",' + "\n")
+            fjson.write('    "last_updated": "' + date + '"')
+
+            fcsv.write(subject_uuid + ',')
+            fcsv.write(subjectid + ',')
+            fcsv.write(pcornetid + ',')
+            fcsv.write(date)
+
+            for category in categories:
+                uuid = uuid_mapping[pcornetid][category]
+                path = paths[category]
+                fj.write(",\n" + '    "' + category + '_uuid": "' + uuid + '"')
+                fj.write(",\n" + '    "' + category + '_path": "http://%s.s3.amazonaws.com/%s%s.json"' % (bucket, path, uuid))
+
+                fjson.write(",\n" + '    "' + category + '_uuid": "' + uuid + '"')
+                fjson.write(",\n" + '    "' + category + '_path": "http://%s.s3.amazonaws.com/%s%s.json"' % (bucket, path, uuid))
+
+                fcsv.write(',' + uuid) # value will match the header
+                fcsv.write(',http://%s.s3.amazonaws.com/%s%s.json' % (bucket, path, uuid))
+            fjson.write("\n  }")
+            fj.write("\n}\n")
+            fj.close()
+            fcsv.write("\n")
+        fjson.write("\n]\n")
+
+        fcsv.close()
+        fjson.close()
+
+
+rule phenotype_mapping:  # assign uuids
+    input: name=subject_names, map=sub_map_file, pheno=phenotype_files
+    # output: phenotype_mapping # may already exist, just need be updated
+    run:
+        # ideally should set a lock
+        get_all_uuids()  # get all uuids first
+        sub_uuids = {}
+        pheno_uuids = {}
+        if os.path.exists(pheno_map_file):  # get current mapping so far
+            fin = open(pheno_map_file)
+            for line in fin.readlines():
+                if re.search('^\s*#',line):
+                    continue
+                if re.search('^\s*$',line):
+                    continue
+                (pcornetid, category, uuid) = re.split('\s+', line.strip())
+                if not category in pheno_uuids:
+                    pheno_uuids[category] = {}
+                pheno_uuids[category][pcornetid] = uuid
+            fin.close()
+        
+        fin = open(input.name)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            vals = re.split('\s+', line.strip()) # subject_id pcornet_id
+            if len(vals) > 1:
+                sub_names[vals[1]] = vals[0]
+        fin.close()
+
+        fin = open(input.map)
+        for line in fin.readlines():
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            (uuid, name)= re.split('\s+', line.strip())
+            sub_uuids[name] = uuid
+        fin.close()
+
+        date = now()
+
+        has_new = False
+        import csv
+        fin = open(input.pheno)
+        paths = {}
+        for line in fin.readlines():  # process each phenotypics data file
+            if re.search('^\s*#',line):
+                continue
+            if re.search('^\s*$',line):
+                continue
+            # (file, path) = re.split('\s+', line.strip())
+            (file, path) = line.split()
+            path = re.sub('.*:', '', path)
+            csvfile = open(file)
+            reader = csv.DictReader(csvfile)
+            # print(reader.fieldnames)
+
+            category = re.sub('.*/', '', file)
+            category = re.sub('\.csv', '', category)
+            paths[category] = path
+
+            dir = phenotypics + category + '/'
+            if not os.path.exists(dir):
+                os.makedirs(dir) 
+
+            fjson = open(phenotypics + category + '/' + category + '.json', "w")
+            fcsv = open(phenotypics + category + '/' + category + '.csv', "w")
+            fcsv.write(category + '_uuid,subject_uuid,subject_id,' + ','.join(reader.fieldnames) + "\n")
+            idx = 0
+            fjson.write("[\n")
+            for row in reader:
+                pcornetid = row[reader.fieldnames[0]]
+                if not pcornetid in sub_names:
+                     continue
+
+                if not category in pheno_uuids:
+                    pheno_uuids[category] = {}
+                if pcornetid in pheno_uuids[category]:
+                    uuid = pheno_uuids[category][pcornetid]
+                else:
+                    has_new = True
+                    uuid = new_uuid()
+                    pheno_uuids[category][pcornetid] = uuid
+
+                subjectid = sub_names[pcornetid]
+                subject_uuid = sub_uuids[subjectid]
+
+                fcsv.write(uuid + ',' + subject_uuid + ',' + subjectid)
+                for name in reader.fieldnames:
+                    if re.search(',', row[name]):
+                        fcsv.write(',"' + row[name] + '"')
+                    else:
+                        fcsv.write(',' + row[name])
+                fcsv.write("\n")
+
+                with open(dir + uuid + '.json', "w") as w:
+                    w.write("{\n")
+                    w.write('    "' + category + '_uuid": "' + uuid + '",' + "\n")
+                    w.write('    "subject_uuid": "' + subject_uuid + '",' + "\n")
+                    w.write('    "subject_id": "' + subjectid + '"')
+
+                    for name in reader.fieldnames:
+                        w.write(",\n" + '    "' + name + '": "' + row[name] + '"')
+                    w.write("\n}\n")
+
+                if idx:
+                    fjson.write(",\n")
+                idx += 1
+                fjson.write("  {\n")
+                fjson.write('    "' + category + '_uuid": "' + uuid + '",' + "\n")
+                fjson.write('    "subject_uuid": "' + subject_uuid + '",' + "\n")
+                fjson.write('    "subject_id": "' + subjectid + '"')
+
+                for name in reader.fieldnames:
+                    fjson.write(",\n" + '    "' + name + '": "' + row[name] + '"')
+                fjson.write("\n  }")
+
+            csvfile.close()
+            fjson.write("\n]\n")
+            fcsv.close()
+            fjson.close()
+
+        if has_new:
+            fout = open(pheno_map_file, "w")
+            for category in pheno_uuids:
+                for pcornetid in pheno_uuids[category]:
+                    uuid = pheno_uuids[category][pcornetid]
+                    subjectid = sub_names[pcornetid]
+                    subject_uuid = sub_uuids[subjectid]
+                    fout.write(pcornetid + ' ' + category + ' ' + uuid + "\n")
+            fout.close()
+
+rule upload_subject_meta:
+    run:
+        files = glob.glob(subject_metadir + "*.json") + glob.glob(subject_metadir + "*.csv")
+        path = config['buckets']['chopgrin']['prospective']['subject_meta']
+
+        upload_files(bucket, path, files)
+
+rule upload_sequence_meta:
+    run:
+        files = glob.glob(config['results']['sequence_meta'] + "/*.json")
+        path = config['buckets']['chopgrin']['prospective']['sequence_meta']
+
+        upload_files(bucket, path, files)
+
+rule upload_fastq:
+    run:
+        names = {}
+        for name in fastqs:
+            names[re.sub('.*/', '', name)] = 1
+        files = [name for name in glob.glob(config['datadirs']['fastq'] + "/*.fastq.gz") if re.sub('.*[:/]', '', name) in names]
+        path = config['buckets']['chopgrin']['prospective']['fastq']
+
+        upload_files(bucket, path, files)
 
 rule mapping:
     # input: fastq = "fastq/{name}.fastq.gz", filelist = fastq_list
@@ -348,47 +967,36 @@ rule uploading:  # should also upload metadata
         # name = names[wildcards.uuid] + '.fastq.gz'
         tgt = path + wildcards.uuid + '.fastq.gz' # path should have a trailing slash (/)
         src = 'fastq/' + uid2name[wildcards.uuid] + '.fastq.gz'
+        set_key()
+        s3 = s3client()
+        status = s3upload(s3, bucket, src,tgt)
+        if status:
+             print(status)
+             quit()
 
-        # will upload the files outside the pipeline for the time being
-        # cmd = "saml -z 0 go"
-        # requires a default entry in ~/.aws/credentials
-        # s3 = boto3.client('s3')
-        # data = open(src, "rb")
-        # res = s3.put_object(Bucket=bucket,
-        #                     Body=data,
-        #                     Key=tgt,
-        #                     RequestPayer='requester',
-        #                     ServerSideEncryption='AES256')
-        # data.close()
-
-        cmd = "ln -s ../%s %s" % (src, output)  # so we know what to upload
-        print(cmd)
-        shell(cmd)
+        if not os.path.exist(ouput):
+            cmd = "ln -s ../%s %s" % (src, output)  # so we know what to upload
+            print(cmd)
+            shell(cmd)
 
 #files = get_meta_files()
 #print(files)
 #quit()
 
 rule make_subject_meta:
-    input: subject_meta + '.json', subject_meta + '.csv'
+    input: subject_metadir + subject_meta + '.json', subject_metadir + subject_meta + '.csv'
 
 rule make_seq_meta:
      input: get_meta_files()
 
-rule make_sample_meta:
-     input: get_sample_meta_files()
-     #output: spl_map_file
-     #run:
-          # the output must be created here?
-
 rule sequence_meta:
-    #input: pair1 = config['results']['uploaded'] + "/{uuid}_R1.fastq.gz", pair2 = config['results']['uploaded'] + "/{uuid}_R2.fastq.gz", sample = lambda wildcards: sample_meta_file(seq_uuids[wildcards.uuid])
-    input: pair1 = config['results']['mapped'] + "/{uuid}_R1.fastq.gz", pair2 = config['results']['uploaded'] + "/{uuid}_R2.fastq.gz", sample = lambda wildcards: sample_meta_file(seq_uuids[wildcards.uuid])
+    #input: pair1 = config['results']['uploaded'] + "/{uuid}_R1.fastq.gz", pair2 = config['results']['uploaded'] + "/{uuid}_R2.fastq.gz", subject = lambda wildcards: subject_meta_file(seq_uuids[wildcards.uuid])
+    input: pair1 = config['results']['mapped'] + "/{uuid}_R1.fastq.gz", pair2 = config['results']['uploaded'] + "/{uuid}_R2.fastq.gz", subject = lambda wildcards: subject_meta_file(seq_uuids[wildcards.uuid])
     output: out = config['results']['sequence_meta'] + "/{uuid}.json"
     run:
         # print('output: ' + output.out)
         # uid = new_uuid()
-        uid = spl_mapping[seq_uuids[wildcards.uuid]]
+        uid = sub_mapping[seq_uuids[wildcards.uuid]]
         uuid  = wildcards.uuid
         name1 = uid2name[uuid+'_R1']
         name2 = uid2name[uuid+'_R2']
@@ -398,15 +1006,15 @@ rule sequence_meta:
         chksum2 = chksums[name2]
         fout = open(output.out, "w")
         fout.write('''{
-  "uuid": "%s",
+  "sequence_uuid": "%s",
   "submission_type": "sequence", 
   "submission_status": "active",
-  "submitter_id": "CHOP",
+  "submitter_id": "%s",
   "contact": "%s",
   "last_updated": "%s",
   "data_type": "fastq",
-  "sample_id": "%s",
-  "sample_uuid": "%s",
+  "subject_id": "%s",
+  "subject_uuid": "%s",
   "reads": [{
     "path": "http://%s.s3.amazonaws.com/%s%s_R1.fastq.gz", 
     "md5sum": "%s", 
@@ -429,7 +1037,7 @@ rule sequence_meta:
   "technique": "WES",
   "comments": "second run"
 }
-''' % (uuid, contact, now(), name, uid, bucket, path, uuid, chksum1, name1, bucket, path, uuid, chksum2, name2)
+''' % (uuid, submitter, contact, now(), name, uid, bucket, path, uuid, chksum1, name1, bucket, path, uuid, chksum2, name2)
 )
         fout.close()
 
@@ -440,140 +1048,150 @@ rule sequence_meta:
         # print(cmd)
         # shell(cmd)
 
-rule sample_meta:
-    #input: sample = lambda wildcards: uuid2name(wildcards.uuid)
-    # input: spl_map_file
-    input: sample_names   # supplied
-    output: config['results']['sample_meta'] + "/{uuid}.json"
-    run:
-        fout = open(config['results']['sample_meta'] + '/' + wildcards.uuid + '.json', "w")
-        if spl_uuids[wildcards.uuid] in pcornetids:
-             pcornetid = '"' + pcornetids[spl_uuids[wildcards.uuid]] + '"'
-        else:
-             pcornetid = 'null'
-             
-        fout.write('''{
-  "submitter_id": "CHOP",
-  "sample": "%s",
-  "pcornet_id": %s
-}''' % (spl_uuids[wildcards.uuid], pcornetid))
-        fout.close()
-#  "sample_type_id": null, 
-#  "time_between_excision_and_freezing": null, 
-#  "oct_embedded": null, 
-#  "tumor_code_id": null, 
-#  "submitter_id": null, 
-#  "intermediate_dimension": null, 
-#  "is_ffpe": null, 
-#  "pathology_report_uuid": null, 
-#  "tumor_descriptor": null, 
-#  "sample_type": null, 
-#  "project_id": null, 
-#  "current_weight": null, 
-#  "composition": null, 
-#  "time_between_clamping_and_freezing": null, 
-#  "shortest_dimension": null, 
-#  "tumor_code": null, 
-#  "tissue_type": null, 
-#  "days_to_sample_procurement": null, 
-#  "cases": {
-#    "submitter_id": null
-#  }, 
-#  "freezing_method": null, 
-#  "type": "sample", 
-#  "preservation_method": null, 
-#  "days_to_collection": null, 
-#  "initial_weight": null, 
-#  "longest_dimension": null
-
 rule subject_meta:
-    input: spl_map_file, sample_metafile
-    output: json=subject_meta + '.json', csv=subject_meta + '.csv'
+    input: sub_map_file, subject_metafile
+    output: json=subject_metadir + subject_meta + '.json', csv=subject_metadir + subject_meta + '.csv'
     run:
-        # print(spl_mapping)
-        # print("=========")
-        # print(spl_uuids)
-        # print(pcornetids)
+        get_subject_metadata()  # read subject data from csv file
 
-        get_sample_metadata()
-
-        get_all_subjects()
+        get_all_subjects()   # read data from metadata/sample_table.txt
         # print(all_subjects)
 
         date = now()
- 
-        fjson = open(output.json, "w")
-        fcsv = open(output.csv, "w")
+
+        fjsont = open(output.json, "w")  # in additon to individual files now
+        fcsvt = open(output.csv, "w")
 
         # may need an explicit list of probands to import
-        subjects = sorted(list(all_subjects.keys()))
         headers = ['SubjectUUID','FatherUUID','MotherUUID','SubjectId','FatherId','MotherId','PcornetId']
         rng1 = range(1, len(headers))
-        rng2 = range(len(sample_headers))
+        rng2 = range(len(subject_headers))
 
-        fcsv.write(headers[0])
+        fcsvt.write(headers[0])
         for idx in rng1:
-            fcsv.write(',' + headers[idx])
-        fcsv.write(',SubjectType')
+            fcsvt.write(',' + headers[idx])
+        fcsvt.write(',SubjectType')
         for idx in rng2:
-            fcsv.write(',' + sample_headers[idx])
-        fcsv.write('Contact,LastUpdated')
-        fcsv.write("\n")
-        fjson.write("[\n")
-        uuid = ''
-        for subject in subjects:
-            if uuid:
-                fjson.write(",\n")
-            uuid = spl_mapping[subject]
-            mother = all_subjects[subject][0]
-            father = all_subjects[subject][1]
+            fcsvt.write(',' + subject_headers[idx])
+        fcsvt.write('Contact,LastUpdated')
+        fcsvt.write("\n")
+        fjsont.write("[\n")
+
+        vals = ''
+        for uuid in sorted(subject_uuids, key=bysubid):
+            subject = sub_uuids[uuid]
+
+            if not subject in subjects:
+                continue
+
+            if vals:
+                fjsont.write(",\n")
+
+            if subject in all_subjects:
+                mother = all_subjects[subject][0]
+                father = all_subjects[subject][1]
+            else:
+                mother = ''
+                father = ''
+
             if mother:
-                muuid = spl_mapping[mother]
-                mspl_id = spl_uuids[muuid]
+                muuid = sub_mapping[mother]
+                msub_id = sub_uuids[muuid]
             else:
                 muuid = ''
-                mspl_id = ''
+                msub_id = ''
+
             if father:
-                fuuid = spl_mapping[father]
-                fspl_id = spl_uuids[fuuid]
+                fuuid = sub_mapping[father]
+                fsub_id = sub_uuids[fuuid]
             else:
                 fuuid = ''
-                fspl_id = ''
-            vals = [uuid,fuuid,muuid,subject,fspl_id,mspl_id,pcornetids[subject]]
-            fcsv.write(uuid)
-            fjson.write("  {\n")
+                fsub_id = ''
+
+            if subject in pcornetids:
+                pcornetid = pcornetids[subject]
+            else:
+                pcornetid = ''
+
+            vals = [uuid,fuuid,muuid,subject,fsub_id,msub_id,pcornetid]
+            fjson = open(subject_metadir + uuid + '.json', "w")
+            # fcsv = open(subject_metadir + uuid + '.csv', "w")
+
+            # fcsv.write(headers[0])
+
+            # for idx in rng1:
+            #    fcsv.write(',' + headers[idx])
+            # fcsv.write(',SubjectType')
+            # for idx in rng2:
+            #     fcsv.write(',' + subject_headers[idx])
+            # fcsv.write('Contact,LastUpdated')
+            # fcsv.write("\n")
+    
+            # fcsv.write(uuid)
+            fcsvt.write(uuid)
+            fjson.write("{\n")
+            fjsont.write("  {\n")
             fjson.write('    "' + headers[0] + '": "' + vals[0] +'",' + "\n")
+            fjsont.write('    "' + headers[0] + '": "' + vals[0] +'",' + "\n")
             for idx in rng1:
-                fcsv.write(',' + vals[idx])
+                # fcsv.write(',' + vals[idx])
+                fcsvt.write(',' + vals[idx])
                 fjson.write('    "' + headers[idx] + '": "' + vals[idx] +'",' + "\n")
+                fjsont.write('    "' + headers[idx] + '": "' + vals[idx] +'",' + "\n")
 
             # attempt to handle both proband and parents, may need be revised
-            if mother and father:  # have both mother and father
-                fcsv.write(',proband') 
+            if mother and father:  # have both mother and father. should consider cases of single parent?
+                # fcsv.write(',proband') 
+                fcsvt.write(',proband') 
                 fjson.write('    "SubjectType": "proband",' + "\n")
+                fjsont.write('    "SubjectType": "proband",' + "\n")
             elif subject in mothers:
-                fcsv.write(',mother') 
-                fjson.write('    "SubjectType": "mother",' + "\n")
+                # fcsv.write(',mother') 
+                fcsvt.write(',mother') 
+                fjson.write('    "SubjectType": "mother",' + "\n")  # right now no consideration of childs
+                fjsont.write('    "SubjectType": "mother",' + "\n")  # right now no consideration of childs
             elif subject in fathers:
-                fcsv.write(',father') 
-                fjson.write('    "SubjectType": "father",' + "\n")
+                # fcsv.write(',father') 
+                fcsvt.write(',father') 
+                fjson.write('    "SubjectType": "father",' + "\n")  # right now no consideration of childs
+                fjsont.write('    "SubjectType": "father",' + "\n")  # right now no consideration of childs
             else:
-                fcsv.write(',unknown') 
+                # fcsv.write(',unknown') 
+                fcsvt.write(',unknown') 
                 fjson.write('    "SubjectType": "unknown",' + "\n")
+                fjsont.write('    "SubjectType": "unknown",' + "\n")
 
-            for idx in rng2:
-                if re.search(',', sample_metadata[subject][idx]):
-                    fcsv.write(',"' + sample_metadata[subject][idx]+'"')
-                else:
-                    fcsv.write(',' + sample_metadata[subject][idx])
-                fjson.write('    "' + sample_headers[idx] + '": "' + sample_metadata[subject][idx] + '",' + "\n")
+            if subject in subject_metadata:
+                for idx in rng2:
+                    if re.search(',', subject_metadata[subject][idx]):
+                        # fcsv.write(',"' + subject_metadata[subject][idx]+'"')
+                        fcsvt.write(',"' + subject_metadata[subject][idx]+'"')
+                    else:
+                        # fcsv.write(',' + subject_metadata[subject][idx])
+                        fcsvt.write(',' + subject_metadata[subject][idx])
+                    fjson.write('    "' + subject_headers[idx] + '": "' + subject_metadata[subject][idx] + '",' + "\n")
+                    fjsont.write('    "' + subject_headers[idx] + '": "' + subject_metadata[subject][idx] + '",' + "\n")
+            else:
+                for idx in rng2:
+                    # fcsv.write(',')
+                    fcsvt.write(',')
+                    fjson.write('    "' + subject_headers[idx] + '": ""' + "\n")
+                    fjsont.write('    "' + subject_headers[idx] + '": ""' + "\n")
 
-            fcsv.write(',' + contact)
-            fcsv.write(',' + date)
-            fcsv.write("\n")
+            # fcsv.write(',' + contact)
+            fcsvt.write(',' + contact)
+            # fcsv.write(',' + date)
+            fcsvt.write(',' + date)
+            # fcsv.write("\n")
+            fcsvt.write("\n")
             fjson.write('    "Contact": "' + contact + '",' + "\n")
+            fjsont.write('    "Contact": "' + contact + '",' + "\n")
             fjson.write('    "LastUpdated": "' + date + '"' + "\n")
-            fjson.write("  }")
-        fjson.write("\n]\n")
-        fcsv.close()
-        fjson.close()
+            fjsont.write('    "LastUpdated": "' + date + '"' + "\n")
+            fjson.write("}\n")
+            fjsont.write("  }")
+            fjson.close()
+            # fcsv.close()
+        fjsont.write("\n]\n")
+        fcsvt.close()
+        fjsont.close()
