@@ -114,7 +114,8 @@ rule trio_vcfs:
         gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,wildcards.subject)[1],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         db = config['dbsnp'][freeze]
-    threads: 8
+    threads:
+        8
     run:
         assert len(input.gvcfs)==3, "{0} is not length 3".format(input.gvcfs)
         check_gvcfs_bgz(input.gvcfs) 
@@ -164,7 +165,8 @@ rule family_vcfs:
         gvcfslist = lambda wildcards: gvcf_samples_in_family(wildcards.family,'family')[1],
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         db = config['dbsnp'][freeze]
-    threads: 8
+    threads:
+        8
     run:
         check_gvcfs_bgz(input.gvcfs) 
         shell("""
