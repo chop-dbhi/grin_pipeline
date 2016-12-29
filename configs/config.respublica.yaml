@@ -7,6 +7,9 @@ sample_table: metadata/sample_table_full.txt
 pedfile: metadata/samples.ped
 pedfile_nohead: metadata/samples.nohead.ped
 
+grinenv: anaconda3/envs/grinenv       # should be relative to home directory
+geminienv: anaconda3/envs/geminienv   # should be relative to home directory
+
 xbrowse: $isilon/bin/xbrowse  # directory, not binary
 vepdir: $isilon/vep
 
