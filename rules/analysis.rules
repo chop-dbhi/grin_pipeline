@@ -3,14 +3,13 @@ gendertools = gender(SAMPLE_TABLE)
 rule gemini_db:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.bgz",
-        gemini_python = config['tools']['gemini']['gemini_python'],
-        vcf2db = config['tools']['vcf2db'],
+        vcf2db = ENV2 + config['tools']['vcf2db'],
         pedfile = config['pedfile_nohead']
     output:
         gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db"
     shell:
         """
-        {input.gemini_python} {input.vcf2db} --legacy-compression {input.vcf} {input.pedfile} {output.gemini_db}
+        {input.vcf2db} --legacy-compression {input.vcf} {input.pedfile} {output.gemini_db}
         """
 
 # get inheritance models

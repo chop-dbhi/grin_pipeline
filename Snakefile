@@ -6,6 +6,7 @@ import yaml
 import subprocess
 import configparser
 import shutil
+import boto3
 from snakemake.utils import R
 from functools import cmp_to_key
 from util.varsub import varsub
@@ -42,8 +43,8 @@ configfile: "localconfig.yaml"     # copied and customized from configs/localcon
 
 varsub(config)  # substitute $isilon variable
 
-ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'],'bin') + '/'
-ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'],'bin') + '/'
+ENV3 = os.path.join(updir(shutil.which("conda"),3), config['grinenv'],'bin') + '/'
+ENV2 = os.path.join(updir(shutil.which("conda"),3), config['geminienv'],'bin') + '/'
 
 #hg37/hg38
 freeze = config['freeze']
