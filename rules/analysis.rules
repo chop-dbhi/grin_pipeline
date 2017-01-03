@@ -16,7 +16,7 @@ rule gemini_db:
 rule get_models:
     input:
         gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db",
-        gemini_tool = ENV2 + config['tools']['gemini']['gemini_tool']
+        gemini_tool = config['tools']['gemini']['gemini_tool'] 
     output:
         gemini_out = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.{triage,all|exec}.txt"
     run:
@@ -26,7 +26,7 @@ rule get_models:
         proband,mom,dad = gendertools.getMembersFromTrio(family)
 
         if wildcards.triage == 'exec' and wildcards.model == 'denovo':
-            shell("{input.gemini_tool} query --gt-filter \"(gt_types."+mom+" == HOM_REF) and (gt_types."+dad+" == HOM_REF)\" -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
+            shell("{input.gemini_tool} query --gt-filter \"(gt_types."+mom+" == HOM_REF) and (gt_types."+dad+" == HOM_REF) and (gt_types."+proband+" == HET)\" -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
         elif triage == 'all':
             if modelname == "comp_hets":
                 shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
