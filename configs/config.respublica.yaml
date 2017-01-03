@@ -163,6 +163,7 @@ results:  # subdirectories in process_dir or landing_dir
     analysis:         analysis
     peddy:            qc/peddy
     vcfstats:         qc/vcfstats
+    snpeffstats:      qc/snpeffstats
     GATKDoC:          GATKDoC
     xhmmout:          xhmmOutput
     mapped:           mapped     # mapped to UUIDs
