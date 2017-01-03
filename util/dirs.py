@@ -8,5 +8,4 @@ def updir(d, n):
   return ret_val
 
 def makedir(adir):
-    if not os.path.exists(adir):
-        shell("mkdir -p " + adir)
+  os.makedirs(adir,exist_ok=True)
