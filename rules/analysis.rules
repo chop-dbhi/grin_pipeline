@@ -26,7 +26,8 @@ rule get_models:
         proband,mom,dad = gendertools.getMembersFromTrio(family)
 
         if wildcards.triage == 'exec' and wildcards.model == 'denovo':
-            shell("{input.gemini_tool} query --gt-filter \"(gt_types."+mom+" == HOM_REF) and (gt_types."+dad+" == HOM_REF) and (gt_types."+proband+" == HET)\" -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
+            shell("""
+                {gem} query -q "select * from variants" --gt-filter "(gt_types.{mom} == HOM_REF) and (gt_types.{dad} == HOM_REF) and (gt_types.{proband} == HET) and (gt_depths.{mom} >= 15) and (gt_depths.{dad} >= 15) and (gt_depths.{proband} >= 15) and chrom NOT LIKE '%GL%'" {db} > {out}""".format(gem=input.gemini_tool,mom=mom,dad=dad,proband=proband,db=input.gemini_db,out=output.gemini_out))
         elif triage == 'all':
             if modelname == "comp_hets":
                 shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
