@@ -12,6 +12,9 @@ dbnsfp
 https://www.googledrive.com/host/0B7Ms5xMSFMYlQlE3NnZLbXVweWc
 https://www.googledrive.com/host/0B7Ms5xMSFMYlZ1F2ckQ4Y0V4bXM
 
+#rvis for gemini
+cut -f1,4,5 GenicIntolerance_v3_12Mar16.txt | sed -e 's/^GENE/#GENE/' > rvis.simplified.txt
+python ../util/rvis-genes.py Homo_sapiens.GRCh37.75.gtf.gz rvis.simplified.txt > rvis.hg37.bed
 
 rvis
 rvistable<-read.table("GenicIntolerance_v3_12Mar16.txt",header=TRUE)
