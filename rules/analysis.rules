@@ -18,28 +18,27 @@ rule get_models:
         gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db",
         gemini_tool = ENV2 + config['tools']['gemini']['gemini_tool']
     output:
-        gemini_out = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.{triage,all|exec}.txt"
+        gemini_out = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked|execdnm)}.txt"
     run:
-        model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
-        modelname = model_lut[wildcards.model]
+
         family = re.sub('\..*','',wildcards.file) # isolate the fam_pro
         proband,mom,dad = gendertools.getMembersFromTrio(family)
 
-        if wildcards.triage == 'exec' and wildcards.model == 'denovo':
+        if wildcards.model == 'execdnm':
             query="""
-{gem} query -q "select * from variants, gene_summary where 1 and chrom NOT LIKE '%GL%' and (exac_an_all < 0.1 or exac_an_all is null)" \
+{gem} query -q "select * from variants where 1 and chrom NOT LIKE '%GL%' and (exac_an_all < 0.1 or exac_an_all is null) and (rvis_pct < 90)" \
 --gt-filter "(gt_types.{mom} == HOM_REF) and (gt_types.{dad} == HOM_REF) \
 and (gt_types.{proband} == HET) and (gt_depths).(*).(>=15).(all) and (gt_quals).(*).(>=80).(all)" \
 --header {db} > {out}""".format(gem=input.gemini_tool,mom=mom,dad=dad,proband=proband,db=input.gemini_db,out=output.gemini_out)
             print(query)
             shell(query)
-        elif triage == 'all':
+        else:
+            model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
+            modelname = model_lut[wildcards.model]
             if modelname == "comp_hets":
                 shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
             else:
                 shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
-        else:
-            sys.exit("unknown triage/model combo")
 
 #get intervals for bamouts
 rule get_gatk_bamout_intervals:
