@@ -163,11 +163,12 @@ rule make_bucket_reports:
                             if os.path.exists(path + name):
                                 mark = '* '
                                 if re.sub('.*\.', '', name) in exts:
-                                    dir = re.sub('/[^/]+$', '', name)
                                     subdir = PATH + org + '/' + bucket + '/'
                                     if not os.path.exists(subdir + name):
-                                        if not os.path.exists(subdir + dir):
-                                            os.makedirs(subdir + dir)
+                                        if re.search('/',  name):
+                                            dir = re.sub('/[^/]+$', '', name)
+                                            if not os.path.exists(subdir + dir):
+                                                os.makedirs(subdir + dir)
                                         cmd = 'ln -s ' + path + name + ' ' + subdir + name
                                         # print(cmd)
                                         os.system(cmd)

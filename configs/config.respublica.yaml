@@ -7,6 +7,9 @@ sample_table: metadata/sample_table_full.txt
 pedfile: metadata/samples.ped
 pedfile_nohead: metadata/samples.nohead.ped
 
+grinenv: grinenv
+geminienv: geminienv
+
 xbrowse: $isilon/bin/xbrowse  # directory, not binary
 vepdir: $isilon/vep
 

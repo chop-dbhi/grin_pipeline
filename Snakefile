@@ -35,6 +35,8 @@ rule vepvcfs     # run vep
 rule xbrowse     # get files for xbrowse
 """
 
+os.environ['PERL5LIB'] = os.path.expanduser('~') + '/perl5/lib/perl5' # for vep
+
 shell.prefix("source ~/.bash_profile;") 
 
 configfile: "configs/baseconfig.yaml"
@@ -42,8 +44,8 @@ configfile: "localconfig.yaml"     # copied and customized from configs/localcon
 
 varsub(config)  # substitute $isilon variable
 
-ENV3 = os.path.join(updir(shutil.which("conda"),3),config['python3_environment'],'bin') + '/'
-ENV2 = os.path.join(updir(shutil.which("conda"),3),config['python2_environment'],'bin') + '/'
+ENV3 = os.path.join(updir(shutil.which("conda"),3),config['grinenv'],'bin') + '/'
+ENV2 = os.path.join(updir(shutil.which("conda"),3),config['geminienv'],'bin') + '/'
 
 #hg37/hg38
 freeze = config['freeze']
