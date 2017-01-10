@@ -69,6 +69,8 @@ def s3client():
 
 FILES = get_file_list()
 
+HTMLS = [re.sub('lst$', 'html', name) for name in FILES]
+
 rule make_file_list:  # download the file list first
     output: FILES
     run:
@@ -156,23 +158,22 @@ rule make_bucket_reports:
                         count += 1
                     mark = '  '
                     if not re.search('/$', line):        
-                        if org == 'CHOP':
+                        name = re.sub('.* ', '', line.rstrip())
+                        if os.path.exists(path + name):
                             mark = '* '
-                        else:
-                            name = re.sub('.* ', '', line.rstrip())
-                            if os.path.exists(path + name):
-                                mark = '* '
-                                if re.sub('.*\.', '', name) in exts:
-                                    subdir = PATH + org + '/' + bucket + '/'
-                                    if not os.path.exists(subdir + name):
-                                        if re.search('/',  name):
-                                            dir = re.sub('/[^/]+$', '', name)
-                                            if not os.path.exists(subdir + dir):
-                                                os.makedirs(subdir + dir)
-                                        cmd = 'ln -s ' + path + name + ' ' + subdir + name
-                                        # print(cmd)
-                                        os.system(cmd)
-                                    line = re.sub('([^\s]+)$', '<a href="/slink/zhangs3/grin-s3-buckets/' + org + '/' + bucket + '/' + name + '">'+ name + '</a>', line)
+                            if re.sub('.*\.', '', name) in exts:
+                                subdir = PATH + org + '/' + bucket + '/'
+                                if not os.path.exists(subdir + name):
+                                    if re.search('/',  name):
+                                        dir = re.sub('/[^/]+$', '', name)
+                                        if not os.path.exists(subdir + dir):
+                                            os.makedirs(subdir + dir)
+                                    cmd = 'ln -s ' + path + name + ' ' + subdir + name
+                                    # print(cmd)
+                                    os.system(cmd)
+                                line = re.sub('([^\s]+)$', '<a href="/slink/zhangs3/grin-s3-buckets/' + org + '/' + bucket + '/' + name + '">'+ name + '</a>', line)
+                        elif org == 'CHOP':
+                            mark = '* '
                     fpg.write(mark + line)
             if bucket:
                 fpg.write("</pre>\n")

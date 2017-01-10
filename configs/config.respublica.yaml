@@ -16,7 +16,7 @@ vepdir: $isilon/vep
 file_exts: ['csv', 'xlsx', 'json']  # file type to create links for downloading
 s3buckets: [
             {"name": "CHOP",
-             "datadir": "/mnt/isilon/grin/chop",
+             "datadir": "/mnt/isilon/grin/s3_chop",
              "buckets": ["chopgrin"]
             },
             {"name": "BCH",
