@@ -1,3 +1,11 @@
+function mean(vals)
+    local sum=0
+    for i=1,#vals do
+    	sum = sum + vals[i]
+	end
+	return sum / #vals
+end
+
 function ratio(vals)
     vals = vals[1] -- get 2 values per element. ref and alt counts.
     if vals[2] == 0 then return "0.0" end
