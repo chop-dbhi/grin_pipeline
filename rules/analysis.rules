@@ -23,7 +23,9 @@ rule get_models:
 
         family = re.sub('\..*','',wildcards.file) # isolate the fam_pro
         proband,mom,dad = gendertools.getMembersFromTrio(family)
-
+	proband = proband.replace("-", "_")
+	mom = mom.replace("-","_")
+	dad = dad.replace("-","_")
         if wildcards.model == 'execdnm':
             query="""
 {gem} query -q "select * from variants where 1 and chrom NOT LIKE '%GL%' and (exac_an_all < 0.1 or exac_an_all is null) and (rvis_pct < 90) \

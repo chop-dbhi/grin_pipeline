@@ -57,12 +57,13 @@ var.df<-execdnm.df
 ```
 
 ```{r var_filtered_variants, warning=FALSE, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
-varcount <- length(unique(var.df$variant_id))
-if(length(var.df) == 1 && var.df == 0)
+
+if((length(var.df) == 1 && var.df == 0) || nrow(var.df) == 0 )
 {
   varcount <- 0
   showChunk <- FALSE
 } else {
+  varcount <- length(unique(var.df$variant_id))
   showChunk <- TRUE
 }
 ```
@@ -75,9 +76,11 @@ gr1 <- with(var.df, GRanges(chrom, IRanges(start = start, end = end)))
 gr2 <- with(denovogear, GRanges(chr, IRanges(start = pos, end = pos)))
 
 type1 <- findOverlaps(query = gr1, subject = gr2, type = 'any')
+if(length(type1)>0){
 var.df$denovo_prob <- NA
 var.df[queryHits(type1),'denovo_prob'] <- denovogear[subjectHits(type1),'pp_dnm']
 var.df <- var.df[order(var.df$denovo_prob, decreasing = TRUE),]
+}
 ```
 
 ```{r var_format, warnings=FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
