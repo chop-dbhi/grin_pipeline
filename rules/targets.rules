@@ -128,7 +128,7 @@ rule make_uuid_mapping:
 TRIOGEMS = [config['landing_dir'][freeze] + config['results']['gemini'] + "/" + trio + ".gemini.db" for trio in COMPLETEFAMILYFAMIDS]
 
 #M male F female
-reports_by_sex = {'F':['denovo','arhomo','cmpdhet'],'M':['denovo','arhomo','cmpdhet','xlinked']}
+reports_by_sex = {'F':['exec','denovo','arhomo','cmpdhet'],'M':['exec','denovo','arhomo','cmpdhet','xlinked']}
 gendertools = gender(SAMPLE_TABLE)
 
 GEMINIS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.anno." + model + ".txt" for trio in COMPLETETRIOSFAMIDS for model in reports_by_sex[gendertools.trioGender(trio)] ]
