@@ -13,7 +13,9 @@ geminienv: geminienv
 xbrowse: $isilon/bin/xbrowse  # directory, not binary
 vepdir: $isilon/vep
 
-file_exts: ['csv', 'xlsx', 'json']  # file type to create links for downloading
+file_exts: ['csv', 'xlsx', 'json', 'txt']  # file type to create links for downloading
+s3: ['vcf', 'vcf.idx', 'bam']  # file type to create s3 links
+
 s3buckets: [
             {"name": "CHOP",
              "datadir": "/mnt/isilon/grin/s3_chop",

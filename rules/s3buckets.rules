@@ -14,6 +14,7 @@ buckets = config['s3buckets']  # list s3 buckets
 
 PATH = config['results']['s3buckets'] + "/"
 exts = config['file_exts']
+s3 = config['s3']        # extensions of files to link to s3
 
 def get_file_list():
     files = []
@@ -159,7 +160,14 @@ rule make_bucket_reports:
                     mark = '  '
                     if not re.search('/$', line):        
                         name = re.sub('.* ', '', line.rstrip())
-                        if os.path.exists(path + name):
+                        found = 0
+                        for ext in s3:
+                            if re.search('\.' + ext + '$', name):
+                                found = 1
+                                break
+                        if found:
+                            line = re.sub('([^\s]+)$', '<a href="s3://' + bucket + '/' + name + '">'+ name + '</a>', line)
+                        elif os.path.exists(path + name):
                             mark = '* '
                             if re.sub('.*\.', '', name) in exts:
                                 subdir = PATH + org + '/' + bucket + '/'
@@ -171,7 +179,8 @@ rule make_bucket_reports:
                                     cmd = 'ln -s ' + path + name + ' ' + subdir + name
                                     # print(cmd)
                                     os.system(cmd)
-                                line = re.sub('([^\s]+)$', '<a href="/slink/zhangs3/grin-s3-buckets/' + org + '/' + bucket + '/' + name + '">'+ name + '</a>', line)
+                                # the file must be in a folder where the sub folers <org/bucket> exist
+                                line = re.sub('([^\s]+)$', '<a href="' + org + '/' + bucket + '/' + name + '">'+ name + '</a>', line)
                         elif org == 'CHOP':
                             mark = '* '
                     fpg.write(mark + line)
