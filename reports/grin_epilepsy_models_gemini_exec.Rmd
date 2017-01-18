@@ -54,6 +54,7 @@ Genotype Requirements:
 
 ```{r dnm, warnings=FALSE, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
 var.df<-execdnm.df
+model<-"denovo"
 ```
 
 ```{r var_filtered_variants, warning=FALSE, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
@@ -81,6 +82,7 @@ var.df <- var.df[order(var.df$denovo_prob, decreasing = TRUE),]
 ```
 
 ```{r var_format, warnings=FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
+
 var.df$variant_id <- paste("<a href=\"", paste(paste("../screenshots", paste(familyname, model, var.df$variant_id, 'png', sep="."), sep="/")), "\">", var.df$variant_id, "</a>", sep="")
 var.df$orig_chrom <- var.df$chrom
 var.df$chrom <- sub('^chr','',var.df$chrom)
@@ -124,6 +126,7 @@ if(varcount)
 
 ```{r ar, warnings=FALSE, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
 var.df<-execar.df
+model<-"arhomo"
 if(length(var.df) == 1 && var.df == 0)
 {
   varcount <- 0
@@ -167,6 +170,7 @@ if(varcount)
 
 ```{r ch, warnings=FALSE, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
 var.df<-execch.df
+model<-"cmpdhet"
 if(length(var.df) == 1 && var.df == 0)
 {
   varcount <- 0

@@ -129,6 +129,7 @@ TRIOGEMS = [config['landing_dir'][freeze] + config['results']['gemini'] + "/" + 
 
 #M male F female
 reports_by_sex = {'F':['exec','denovo','arhomo','cmpdhet'],'M':['exec','denovo','arhomo','cmpdhet','xlinked']}
+bamouts_by_sex = {'F':['denovo','arhomo','cmpdhet'],'M':['denovo','arhomo','cmpdhet','xlinked']}
 gendertools = gender(SAMPLE_TABLE)
 
 GEMINIS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.anno." + model + ".txt" for trio in COMPLETETRIOSFAMIDS for model in reports_by_sex[gendertools.trioGender(trio)] ]
@@ -139,12 +140,12 @@ BOINTERVALS = [config['landing_dir'][freeze] + config['results']['analysis'] + "
 rule make_intervals:
     input: BOINTERVALS
 
-BAMOUTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in EXISTINGSAMPLES for model in reports_by_sex[gendertools.trioGender(gendertools.getFamilyFromMember(name))] ]
+BAMOUTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in EXISTINGSAMPLES for model in bamouts_by_sex[gendertools.trioGender(gendertools.getFamilyFromMember(name))] ]
 rule make_bamouts:
     input: BAMOUTS
 #GRCh37/analysis/EG0011M.denovo.bamout.bam
 
-SNAPSHOTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.anno."+ model + ".ss" for trio in COMPLETETRIOSFAMIDS for model in reports_by_sex[gendertools.trioGender(trio)] ]
+SNAPSHOTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.anno."+ model + ".ss" for trio in COMPLETETRIOSFAMIDS for model in bamouts_by_sex[gendertools.trioGender(trio)] ]
 rule make_snapshots:
     input: SNAPSHOTS
 
