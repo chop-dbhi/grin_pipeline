@@ -123,7 +123,7 @@ vepgenomes:
 
 # subdirectories relative to projdir
 datadirs:
-    multiqc:          multiqc
+    # multiqc:          multiqc  # moved to landing_dir/freeze
     oldbams:          oldbams
     fastq:            fastq
     samples:          samples
@@ -152,6 +152,7 @@ results:  # subdirectories in process_dir or landing_dir
     hsmetrics:        qc/hsmetrics
     alignmetrics:     qc/alignmetrics
     qualimap:         qc/qualimap
+    multiqc:          multiqc
     postrecalibrated: postrecalibrated
     pdfs:             pdfs
     gvcfs:            gvcfs

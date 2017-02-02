@@ -87,7 +87,7 @@ rule get_gatk_bamout_intervals:
 rule get_bamout:
     input:
         list = lambda wildcards: config['landing_dir'][freeze] + config['results']['analysis'] + "/" + gendertools.getFamilyFromMember(wildcards.sample)+".trio.com.filtered.ad.de.nm.snpeff.anno."+wildcards.model+".intervals",
-        bam = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
+        bam = config['landing_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
         bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
         gatk = ENV3 + config['jars']['gatk']['path']
     log:
@@ -161,37 +161,41 @@ rule getScreenshots:
         bamoutlist = lambda wildcards: bamouts_in_family(wildcards.family,wildcards.subject,wildcards.model)[1],
         freeze = config['freeze']
     run:
-        R("""
-            library(SRAdb)
-            library(stringr)
-            familyname <- '{params.familyname}'
-            dirpath <- '{params.dirpath}'
-            projdir <- '{params.projdir}'
-            bamouts <- {params.bamoutlist}
-            model <- '{wildcards.model}'
-        
-            geminiout <- tryCatch(expr = read.delim('{input.geminiout}', stringsAsFactors = F), error = function(e) 0)
-            #startIGV(memory = "hm", devel=FALSE)
-            sock <- IGVsocket()
-            IGVclear(sock)
-            freezelookup<-c("hg37"="b37","hg38"="hg38")
-            IGVgenome(sock, genome=freezelookup["{params.freeze}"])
-            IGVload(sock, paste(projdir,bamouts,sep="/"))
-            igvsnapshot<-function(df){{
-                midpoint<-round((as.numeric(df[['start']])+as.numeric(df[['end']]))/2)
-                startpos<-midpoint-74
-                endpos<-midpoint+75
-                goto<-str_replace_all(paste(df[['chrom']],':',startpos,'-',endpos,sep=""),' ','')
-                IGVgoto(sock, goto)
-                fname<-str_replace_all(paste(familyname,model,df[['variant_id']],'png',sep="."),' ','')
-                IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
-            }}
-            apply(geminiout,1,igvsnapshot)
-            IGVclear(sock)
-            close.socket(sock)
-        """)
         import os
-        with open(output.screenshots, 'a'):
+        if os.stat(input.geminiout).st_size > 0:
+            R("""
+                library(SRAdb)
+                library(stringr)
+                familyname <- '{params.familyname}'
+                dirpath <- '{params.dirpath}'
+                projdir <- '{params.projdir}'
+                bamouts <- {params.bamoutlist}
+                model <- '{wildcards.model}'
+        
+                geminiout <- tryCatch(expr = read.delim('{input.geminiout}', stringsAsFactors = F), error = function(e) 0)
+                #startIGV(memory = "hm", devel=FALSE)
+                sock <- IGVsocket()
+                IGVclear(sock)
+                freezelookup<-c("hg37"="b37","hg38"="hg38")
+                IGVgenome(sock, genome=freezelookup["{params.freeze}"])
+                IGVload(sock, paste(projdir,bamouts,sep="/"))
+                igvsnapshot<-function(df){{
+                    midpoint<-round((as.numeric(df[['start']])+as.numeric(df[['end']]))/2)
+                    startpos<-midpoint-74
+                    endpos<-midpoint+75
+                    goto<-str_replace_all(paste(df[['chrom']],':',startpos,'-',endpos,sep=""),' ','')
+                    IGVgoto(sock, goto)
+                    fname<-str_replace_all(paste(familyname,model,df[['variant_id']],'png',sep="."),' ','')
+                    IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
+                }}
+                apply(geminiout,1,igvsnapshot)
+                IGVclear(sock)
+                close.socket(sock)
+            """)
+        else:  # create a file to indicate it's skipped
+            open(output.screenshots + '.skipped', 'a').close()
+            
+        with open(output.screenshots, 'a'): # still has to create the output
             os.utime(output.screenshots, None)
 
 # split gemini reports

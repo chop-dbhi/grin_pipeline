@@ -12,18 +12,21 @@ rule make_multiqc:
         vcfs = VCFSTATS,
         multiqc = ENV3 + config['tools']['multiqc'],
         config = "multiqc_config.yaml"
-    output: config['datadirs']['multiqc'] + '/multiqc_report.html'
+    output: config['landing_dir'][freeze] + config['results']['multiqc'] + '/multiqc_report.html'
     params:
         bams = config['process_dir'][freeze] + config['results']['recalibrated'],
         fastqcdir = config['datadirs']['fastqc'],
         vcfstatsdir = config['landing_dir'][freeze] + config['results']['vcfstats'],
-        outdir = config['datadirs']['multiqc'],
+        outdir = config['landing_dir'][freeze] + config['results']['multiqc'],
         hsmetricsdir = config['landing_dir'][freeze] + config['results']['hsmetrics'],
         qualimapdirs = QUALIMAPS,
         snpeffdir = config['landing_dir'][freeze] + config['results']['snpeffstats']
     shell:
+        #hsmetricsdir never exisited and updated multiqc would quit instead skipping if a given directory's missing.
+        # probably the arguments to mutiqc should be dynamically created
+        #{input.multiqc} -f -o {params.outdir} {params.bams} {params.fastqcdir} {params.vcfstatsdir} {params.hsmetricsdir} {params.snpeffdir} {params.qualimapdirs}
         """
-        {input.multiqc} -f -o {params.outdir} {params.bams} {params.fastqcdir} {params.vcfstatsdir} {params.hsmetricsdir} {params.snpeffdir} {params.qualimapdirs}
+        {input.multiqc} -f -o {params.outdir} {params.bams} {params.fastqcdir} {params.vcfstatsdir} {params.hsmetricsdir} {params.qualimapdirs}
         """
 
 # create YAML file used in meta-FastQC report
