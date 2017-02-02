@@ -9,6 +9,7 @@ rule fetch_multiqc_yaml:
 rule make_multiqc:
     input:
         gbams = REBAMS,
+        hsmets = HSMETS,
         vcfs = VCFSTATS,
         multiqc = ENV3 + config['tools']['multiqc'],
         config = "multiqc_config.yaml"
