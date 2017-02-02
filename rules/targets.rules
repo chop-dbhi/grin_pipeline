@@ -140,6 +140,7 @@ BOINTERVALS = [config['landing_dir'][freeze] + config['results']['analysis'] + "
 rule make_intervals:
     input: BOINTERVALS
 
+#reports_by_sex would generate something for which no rules to make
 #BAMOUTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in EXISTINGSAMPLES for model in reports_by_sex[gendertools.trioGender(gendertools.getFamilyFromMember(name))] ]
 BAMOUTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in EXISTINGSAMPLES for model in bamouts_by_sex[gendertools.trioGender(gendertools.getFamilyFromMember(name))] ]
 rule make_bamouts:
