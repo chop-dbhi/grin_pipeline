@@ -88,7 +88,7 @@ rule get_bamout:
     input:
         list = lambda wildcards: config['landing_dir'][freeze] + config['results']['analysis'] + "/" + gendertools.getFamilyFromMember(wildcards.sample)+".trio.com.filtered.ad.de.nm.snpeff.anno."+wildcards.model+".intervals",
         bam = config['landing_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
-        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
+        bai = config['landing_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
         gatk = ENV3 + config['jars']['gatk']['path']
     log:
         config['datadirs']['log'] + "/{sample}.bamout.log"
