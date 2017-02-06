@@ -87,7 +87,7 @@ var.df <- var.df[order(var.df$denovo_prob, decreasing = TRUE),]
 ```{r var_format, warnings=FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
 
 var.df$variant_id <- paste("<a href=\"", paste(paste("../screenshots", paste(familyname, model, var.df$variant_id, 'png', sep="."), sep="/")), "\">", var.df$variant_id, "</a>", sep="")
-var.df$orig_chrom <- var.df$chrom
+
 var.df$chrom <- sub('^chr','',var.df$chrom)
 var.df$start <- ifelse(var.df$end-var.df$start==1, var.df$end, paste0(var.df$start,'-',var.df$end))
 colnames(var.df)[grep('^chrom$|start|vcf_id', colnames(var.df))] <- c('chr','pos','rsid')
