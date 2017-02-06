@@ -154,7 +154,7 @@ add_readgroup:
   m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 bam_to_gvcf: 
-  h_vmem: 70G
+  h_vmem: 64G
   mem_free: 56G
   m_mem_free: 49G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
@@ -225,6 +225,10 @@ variantAnalysisSetupModel:
   mem_free: 16G
   m_mem_free: 14G
 run_vep: 
-  h_vmem: 70G
+  h_vmem: 64G
   mem_free: 56G
   m_mem_free: 49G
+left_align_indels:
+  h_vem: 20G
+  mem_free: 16G
+  m_mem_free: 41G

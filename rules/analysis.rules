@@ -1,37 +1,76 @@
+gendertools = gender(SAMPLE_TABLE)
+
 rule gemini_db:
     input:
         vcf = config['landing_dir'][freeze] + config['results']['vcfs'] + "/{file}.ad.de.nm.snpeff.anno.vcf.bgz",
-        gemini_python = config['tools']['gemini']['gemini_python'],
-        vcf2db = config['tools']['vcf2db'],
+        vcf2db = ENV2 + config['tools']['vcf2db'],
         pedfile = config['pedfile_nohead']
     output:
         gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db"
     shell:
         """
-        {input.gemini_python} {input.vcf2db} --legacy-compression {input.vcf} {input.pedfile} {output.gemini_db}
+        {input.vcf2db} --legacy-compression {input.vcf} {input.pedfile} {output.gemini_db}
         """
 
 # get inheritance models
 rule get_models:
     input:
         gemini_db = config['landing_dir'][freeze] + config['results']['gemini'] + "/{file}.ad.de.nm.snpeff.anno.db",
-        gemini_tool = config['tools']['gemini']['gemini_tool'] 
+        gemini_tool = ENV2 + config['tools']['gemini']['gemini_tool']
     output:
-        gemini_out = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.txt"
+        gemini_out = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked|execdnm|execar|execch)}.txt"
     run:
-        model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
-        modelname = model_lut[wildcards.model]
-        if modelname == "comp_hets":
-            shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
+
+        family = re.sub('\..*','',wildcards.file) # isolate the fam_pro
+        proband,mom,dad = gendertools.getMembersFromTrio(family)
+	proband = proband.replace("-", "_")
+	mom = mom.replace("-","_")
+	dad = dad.replace("-","_")
+        if wildcards.model == 'execdnm':
+            query="""
+{gem} query -q "select * from variants where 1 and chrom NOT LIKE '%GL%' and (exac_an_all < 0.1 or exac_an_all is null) and (rvis_pct < 90) \
+and (impact != 'intron_variant' and impact != '3_prime_UTR_variant' and impact != '5_prime_UTR_variant' )" \
+--gt-filter "(gt_types.{mom} == HOM_REF) and (gt_types.{dad} == HOM_REF) \
+and (gt_types.{proband} == HET) and (gt_depths).(*).(>=15).(all) and (gt_quals).(*).(>=80).(all)" \
+--header {db} > {out}
+""".format(gem=input.gemini_tool,mom=mom,dad=dad,proband=proband,db=input.gemini_db,out=output.gemini_out)
+            print(query)
+            shell(query)
+        elif wildcards.model == 'execar':
+            query="""
+{input.gemini_tool} autosomal_recessive -d 15 --min-gq 80 \
+--filter "chrom NOT LIKE '%GL%' and (exac_af_all = null or \
+exac_af_all<0.01) and (rvis_pct<90 or rvis_pct='NA' or rvis_pct='None') \
+and (impact!='synonymous_variant' and impact!='5_prime_UTR_variant' and \
+impact!='3_prime_UTR_variant' and impact!='intron_variant')" \
+{input.gemini_db} > {output.gemini_out}
+"""
+            print(query)
+            shell(query)
+        elif wildcards.model == 'execch':
+            query="""
+{input.gemini_tool} comp_hets -d 15 --min-gq 80 \
+--filter "chrom NOT LIKE '%GL%' and (exac_af_all = null or exac_af_all<0.01) \
+and (rvis_pct<90 or rvis_pct='NA' or rvis_pct='None') and (impact!='synonymous_variant' \
+and impact!='5_prime_UTR_variant' and impact!='3_prime_UTR_variant')" --max-priority 1 \
+{input.gemini_db} > {output.gemini_out}
+"""
+            print(query)
+            shell(query)
         else:
-            shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
+            model_lut = {"denovo":"de_novo","arhomo":"autosomal_recessive","cmpdhet":"comp_hets","xlinked":"x_linked_recessive"}
+            modelname = model_lut[wildcards.model]
+            if modelname == "comp_hets":
+                shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
+            else:
+                shell("{input.gemini_tool} {modelname} -d 15 --min-gq 20 --filter \"impact_severity != 'LOW' AND chrom NOT LIKE '%GL%'\" {input.gemini_db} > {output.gemini_out}")
 
 #get intervals for bamouts
 rule get_gatk_bamout_intervals:
     input:
         gemini = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model}.txt"
     output:
-        intervals = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.intervals"
+        intervals = config['landing_dir'][freeze] + config['results']['analysis'] + "/{file}.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked|execdnm|execar|execch)}.intervals"
     shell:
         """
         awk 'NR>1 {{print $2 ":" $3 "-" $4}}' {input} > {output}
@@ -42,7 +81,7 @@ rule get_gatk_bamout_intervals:
 #     family = rows['FamilyID']+"_"+rows['Subject']
 #     return family
 
-gendertools = gender(SAMPLE_TABLE)
+
 
 #        #java -jar GenomeAnalysisTK.jar -T HaplotypeCaller -R human_b37_20.fasta -I recalibrated.bam -o hc_variants.vcf -bamout bamout.bam        
 rule get_bamout:
@@ -165,7 +204,7 @@ rule variantAnalysisModels:
         rvis = "annotations/rvis.RData",
         rfuncs = "reports/accessoryFuncs.R"
     output:
-        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model}.html",
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.{model,(denovo|arhomo|cmpdhet|xlinked)}.html",
     params:
         projdir = config['projdir'],
         dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
@@ -191,3 +230,40 @@ rule variantAnalysisModels:
         rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}", params = list(title = title))
         """)
 
+rule executiveReport:
+    input:
+        execdnm = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.execdnm.txt",
+        execar = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.execar.txt",
+        execch = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.execch.txt",
+        denovogear = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.vcf.dnm_auto.txt",
+        source = "reports/grin_epilepsy_models_gemini_exec.Rmd",
+        rvis = "annotations/rvis.RData",
+        rfuncs = "reports/accessoryFuncs.R"
+    output:
+        html = config['landing_dir'][freeze] + config['results']['analysis'] + "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.exec.html",
+    params:
+        projdir = config['projdir'],
+        dirpath = config['landing_dir'][freeze] + config['results']['analysis'],
+        sspath = config['landing_dir'][freeze] + config['results']['screenshots'],
+        familyname = "{family}_{subject}",
+        model = "executive",
+        outfile = "/{family}_{subject}.trio.com.filtered.ad.de.nm.snpeff.anno.exec.html",
+    run:
+        R("""
+        library(rmarkdown)
+        library(tools)
+        # source accessory functions
+        source('{input.rfuncs}')
+        rvis <- get(load('{input.rvis}'))
+        projdir <- '{params.projdir}'
+        dirpath <- '{params.dirpath}'
+        familyname <- '{params.familyname}'
+        model <- '{params.model}'
+        title <- paste0(toTitleCase(as.character(familyname)), ' | ', toTitleCase(as.character(model)),' | ', as.character("GRIN Epilepsy Trio Analysis"))
+        # returns 0 if file is empty
+        execdnm.df <- tryCatch(expr = read.delim('{input.execdnm}', stringsAsFactors = F), error = function(e) 0)
+        execar.df <- tryCatch(expr = read.delim('{input.execar}', stringsAsFactors = F), error = function(e) 0)
+        execch.df <- tryCatch(expr = read.delim('{input.execch}', stringsAsFactors = F), error = function(e) 0)
+        denovogear <- tryCatch(expr = read.table('{input.denovogear}', header = T, stringsAsFactors = F), error = function(e) 0)
+        rmarkdown::render(input = "{input.source}", output_file = "{params.outfile}", output_dir = "{params.dirpath}", params = list(title = title))
+        """)

@@ -7,8 +7,8 @@ sample_table: metadata/sample_table_full.txt
 pedfile: metadata/samples.ped
 pedfile_nohead: metadata/samples.nohead.ped
 
-grinenv: grinenv
-geminienv: geminienv
+grinenv: grinenv       # python3 environment
+geminienv: geminienv   # python2 environment
 
 xbrowse: $isilon/bin/xbrowse  # directory, not binary
 vepdir: $isilon/vep
@@ -40,6 +40,13 @@ annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv
 operations: "g,r,f,f,f,f,f,f,f,f,f,f" # g: gene-based
                                         # r: region-based
                                         # f: filter-based
+
+bucket: chopgrin  # default s3 bucket
+contact: zhangs3@email.chop.edu  # overwrite this in your local yaml if needed
+
+# for s3 multipart uploading
+sizelimit: 4900000000  # to use multipart for uploading
+readsize: 50000000     # size of each part to upload
 
 annovaropts:
     hg37:
@@ -176,15 +183,24 @@ results:  # subdirectories in process_dir or landing_dir
     analysis:         analysis
     peddy:            qc/peddy
     vcfstats:         qc/vcfstats
-    snpeffstats:      qc/snpeff
+    snpeffstats:      qc/snpeffstats
     GATKDoC:          GATKDoC
     xhmmout:          xhmmOutput
     mapped:           mapped     # mapped to UUIDs
     uploaded:         uploaded   # uploaed to S3 buckets
-    sequence_meta:    sequence_meta
-    sample_meta:      sample_meta
-    pheno_meta:       pheno_meta
-    s3buckets:        /mnt/isilon/cbmi/variome/zhangs3/s3buckets
+    sequence_meta:    sequence_meta   # directory of meta files
+    subject_meta:     subject_meta    # directory of meta files
+    subject_mapping:  subject_mapping # directory of mapping files
+    phenotype_meta:   phenotype_meta  # directory of meta files
+    phenotypics:      phenotypics
+
+buckets:
+    chopgrin:
+        prospective:
+            fastq: epilepsy/prospective/fastq
+            sample_meta: epilepsy/prospective/sample_meta
+            sequence_meta: epilepsy/prospective/sequence_meta
+            subject_meta: epilepsy/prospective/subject_meta
 
 tools:
     java:
@@ -224,10 +240,9 @@ tools:
         conf: 
             hg37: configs/vcfanno_GRCh37.conf
             hg38: configs/vcfanno_GRCh38.conf
-    vcf2db: $isilon/bin/vcf2db/vcf2db.py
+    vcf2db: vcf2db.py
     gemini:
-        gemini_tool: $isilon/bin/gemini/tools/bin/gemini
-        gemini_python: $isilon/bin/gemini/tools/bin/gemini_python
+        gemini_tool: gemini
         gemini_anno: $isilon/bin/gemini/data/gemini_data
     vep:
         # $isilon/bin/ensembl-tools-release-84/scripts/variant_effect_predictor/variant_effect_predictor.pl
