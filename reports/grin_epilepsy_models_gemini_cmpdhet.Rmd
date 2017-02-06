@@ -77,7 +77,6 @@ var.df$variant_id <- paste("<a href=\"", paste(paste("../screenshots", paste(fam
 ```
 
 ```{r var_rvis, warnings=FALSE, eval=showChunk, echo=FALSE, message=FALSE, cache=FALSE, fig.path='{{SLINK}}/'}
-var.df$orig_chrom <- var.df$chrom
 var.df$chrom <- sub('^chr','',var.df$chrom)
 var.df <- merge(var.df, rvis, by.x = "gene", by.y = "GENE", all.x = T, sort = F)
 ```
