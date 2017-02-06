@@ -106,9 +106,9 @@ novosortbam:
   m_mem_free: 2G
   reference: http://www.novocraft.com/documentation/novosort-2/
 target_list: 
-  h_vmem: 3G
-  mem_free: 2G
-  m_mem_free: 2G
+  h_vmem: 16G
+  mem_free: 8G
+  m_mem_free: 8G
   #h_vmem: 55G
   #mem_free: 44G
   #m_mem_free: 40G

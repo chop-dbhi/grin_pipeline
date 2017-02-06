@@ -2,7 +2,7 @@
 rule bam_to_gvcf:
     input:
         bam = config['landing_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
-        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
+        bai = config['landing_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
         doc = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_statistics",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:

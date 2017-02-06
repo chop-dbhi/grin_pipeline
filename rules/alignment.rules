@@ -354,7 +354,7 @@ rule merge_lanes:
 rule depth_of_coverage:
     input:
         bam = config['landing_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bam",
-        bai = config['process_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
+        bai = config['landing_dir'][freeze] + config['results']['recalibrated'] + "/{sample}.recal.la.bai",
         gatk = ENV3 + config['jars']['gatk']['path']
     output:
         sample_summary = config['landing_dir'][freeze] + config['results']['GATKDoC'] + "/{sample}.DoC.sample_summary",
