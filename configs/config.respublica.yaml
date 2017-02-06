@@ -193,9 +193,9 @@ tools:
         veryhigh:
             '-Xmx64g -Xms32g'
         high:
-            '-Xmx48g -Xms24g'
+            '-Xmx96g -Xms48g'
         med:
-            '-Xmx32g -Xms16g'
+            '-Xmx48g -Xms24g'
         low:
             '-Xmx16g -Xms8g'
     seq2qc:
