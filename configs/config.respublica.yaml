@@ -13,6 +13,26 @@ geminienv: geminienv   # python2 environment
 xbrowse: $isilon/bin/xbrowse  # directory, not binary
 vepdir: $isilon/vep
 
+file_exts: ['csv', 'xlsx', 'json', 'txt']  # file type to create links for downloading
+s3: ['vcf', 'vcf.idx', 'bam']  # file type to create s3 links
+
+s3buckets: [
+            {"name": "CHOP",
+             "datadir": "/mnt/isilon/grin/s3_chop",
+             "buckets": ["chopgrin"]
+            },
+            {"name": "BCH",
+             "datadir": "/mnt/isilon/grin/bch",
+             "buckets": ["bch-grin-early-childhood-obesity",
+                         "bch-grin-epileptic-encephalopathy",
+                         "bch-grin-extreme-short-stature"]
+            },
+            {"name": "CCHMC",
+             "datadir": "/mnt/isilon/grin/cchmc",
+             "buckets": ["bmigrin"]
+            }
+           ]
+
 annovardbdir: $isilon/annovar/humandb
 #annovardbs: ['refGene','cytoBand','genomicSuperDups','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a']
 annovardbs: ['refGene','cytoBand','esp6500siv2_all','esp6500siv2_ea','esp6500siv2_aa','exac03','kaviar_20150923','exac03nontcga','exac03nonpsych','hrcr1','ALL.sites.2014_10','dbnsfp30a'] # removed 'genomicSuperDups',
