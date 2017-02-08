@@ -129,9 +129,9 @@ generate_recalibration_table:
   m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 recalibrate_bam: 
-  h_vmem: 7G
-  mem_free: 5G
-  m_mem_free: 4G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 post_recalibrated_table: 
   h_vmem: 55G
@@ -229,6 +229,6 @@ run_vep:
   mem_free: 56G
   m_mem_free: 49G
 left_align_indels:
-  h_vem: 20G
-  mem_free: 16G
-  m_mem_free: 41G
+  h_vmem: 30G
+  mem_free: 15G
+  m_mem_free: 7G

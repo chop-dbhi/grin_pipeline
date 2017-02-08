@@ -177,7 +177,7 @@ rule recalibrate_bam:
         opts = config['tools']['opts']['med'] + ' ' + config['javatmpdir'],
         ref = config['ref'][freeze]
     threads:
-        8
+        2
     shell:
         """
         {input.gatk} {params.opts} \
@@ -226,8 +226,8 @@ rule left_align_indels:
         ref = config['ref'][freeze]
     log:
         config['datadirs']['log'] + "/{sample}.left_align.log"
-    threads:
-        1
+    #threads:
+    #    1
     shell:
         """
         {input.gatk} {params.opts} \
