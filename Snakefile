@@ -36,6 +36,8 @@ rule vepvcfs     # run vep
 rule xbrowse     # get files for xbrowse
 """
 
+os.environ['PERL5LIB'] = os.path.expanduser('~') + '/perl5/lib/perl5' # for vep
+
 shell.prefix("source ~/.bash_profile;") 
 
 configfile: "configs/baseconfig.yaml"
@@ -71,6 +73,8 @@ include:
     "rules/analysis.rules"
 include:
     "rules/reporting.rules"
+include:
+    "rules/s3buckets.rules"
 
 rule all:
     input: 

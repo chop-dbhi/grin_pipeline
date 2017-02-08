@@ -1,0 +1,201 @@
+import hashlib
+import boto3
+import datetime
+
+AWS_ACCESS_KEY_ID = ''
+AWS_SECRET_ACCESS_KEY = ''
+AWS_SECURITY_TOKEN = ''
+
+def now():
+    now = datetime.datetime.now()
+    return "%s-%02d-%02d:%02d:%02d:%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
+buckets = config['s3buckets']  # list s3 buckets
+# files = [config['results']['s3buckets'] + '/' + org + '-' + bucket + '.lst' for bucket in org['buckets'] for org in buckets]
+
+PATH = config['results']['s3buckets'] + "/"
+exts = config['file_exts']
+s3 = config['s3']        # extensions of files to link to s3
+
+def get_file_list():
+    files = []
+    for org in buckets:
+        for bucket in org['buckets']:
+            files.append(PATH + org['name'] + '_' + bucket + '.lst')
+    return files
+
+def set_key():
+    global AWS_ACCESS_KEY_ID
+    global AWS_SECRET_ACCESS_KEY
+    global AWS_SECURITY_TOKEN
+    account = 'risaws'
+
+    home = os.path.expanduser('~')
+    envs = {}
+    envs['aws_access_key_id'] = ''
+    envs['aws_secret_access_key'] = ''
+    envs['aws_session_token'] = ''
+
+    found = 0
+    fin = open(home+'/.aws/credentials', "r")
+    for line in fin.readlines():
+        # print(line, end="")
+        if re.search('^\s*#', line):
+            continue
+        if re.search('^\s*$', line):
+            continue
+
+        if re.search('\[.+\]', line):
+            if found:
+                break
+            if re.search('\[' + account + '\]', line):
+               found = 1
+        elif found:
+             (key, val) = re.split('\s*=\s*', line.strip(), 1)
+             envs[key] = val
+             # os.environ[envs[0]] = envs[1]
+             # print(envs)
+             # print(os.environ)
+    fin.close()
+    # print(envs)
+
+    AWS_ACCESS_KEY_ID = envs['aws_access_key_id']
+    AWS_SECRET_ACCESS_KEY = envs['aws_secret_access_key']
+    AWS_SECURITY_TOKEN = envs['aws_session_token']
+
+def s3client():
+    return boto3.client('s3',
+                  aws_access_key_id=AWS_ACCESS_KEY_ID,
+                  aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+                  aws_session_token=AWS_SECURITY_TOKEN)
+
+FILES = get_file_list()
+
+HTMLS = [re.sub('lst$', 'html', name) for name in FILES]
+
+rule make_file_list:  # download the file list first
+    output: FILES
+    run:
+        set_key()
+        s3 = s3client()
+        for org in buckets:
+            # print(org['name'])
+            for bucket in org['buckets']:
+                # print(bucket)
+                fout = open(PATH + org['name'] +  '_' + bucket + '.lst', "w")
+                fout.write('ORG: ' + org['name'] + "\n")
+                fout.write('BUCKET: ' + bucket + "\n")
+                res = s3.list_objects(Bucket=bucket,
+                          # Delimiter='string',
+                          # EncodingType='url',
+                          # Marker='string',
+                          # MaxKeys=123,
+                          # Prefix=prefix,
+                          RequestPayer='requester')
+                size = 0
+                for ent in res['Contents']:
+                    if size < int(ent['Size']):
+                        size = int(ent['Size'])
+                size = len(str(size))
+                for ent in res['Contents']:
+                    time = "%d-%02d-%02d %02d:%02d:%02d" % (
+                             ent['LastModified'].year,
+                             ent['LastModified'].month,
+                             ent['LastModified'].day,
+                             ent['LastModified'].hour,
+                             ent['LastModified'].minute,
+                             ent['LastModified'].second)
+                    # ent['LastModified'], end=" ")
+                    # print(time, end=" ")
+                    fout.write(time + ' ')
+                    # print("%*s" % (size, ent['Size']), end=" ")
+                    fout.write(" %*s " % (size, ent['Size']))
+                    # print(ent['Key'])
+                    fout.write(ent['Key'] + "\n")
+                fout.close()
+
+rule make_bucket_reports:
+    # input: file = config['results']['s3buckets'] + "/files.txt"
+    input: files = FILES
+    output: file = config['results']['s3buckets'] + "/index.md"
+    run:
+        # print(input.files)
+        dirs = {}
+        for org in buckets:
+            dirs[org['name']] = org['datadir'] + '/'
+
+        pages = {}
+        orgs = []
+        for file in input.files:
+            bucket = ''
+            count = 0
+            fin = open(file, "r")
+            for line in fin.readlines():
+                if re.search('^ORG:', line):
+                    if bucket:
+                        fpg.write("</pre>\n")
+                        fpg.close()
+                        pages[org].append([bucket, page, count])
+                        bucket = ''
+                    org = re.sub('^ORG:\s*', '', line.strip()) 
+                    if not org in orgs:
+                        orgs.append(org)
+                        pages[org] = []
+                elif re.search('^BUCKET:', line):
+                    if bucket:
+                        fpg.write("</pre>\n")
+                        fpg.close()
+                        pages[org].append([bucket, page, count])
+    
+                    bucket = re.sub('^BUCKET:\s*', '', line.strip()) 
+                    count = 0
+                    page = org + '_' + bucket + '.html'
+                    fpg = open(PATH + page, "w")
+                    fpg.write('<h2>' + org + "</h2>\n")
+                    fpg.write('<h3>' + bucket + "</h3>\n") 
+                    fpg.write("<pre>\n")
+                    path = dirs[org] + bucket + '/'
+                else:
+                    if re.search('fastq(.gz)?$', line):
+                        count += 1
+                    mark = '  '
+                    if not re.search('/$', line):        
+                        name = re.sub('.* ', '', line.rstrip())
+                        found = 0
+                        for ext in s3:
+                            if re.search('\.' + ext + '$', name):
+                                found = 1
+                                break
+                        if found:
+                            line = re.sub('([^\s]+)$', '<a href="s3://' + bucket + '/' + name + '">'+ name + '</a>', line)
+                        elif os.path.exists(path + name):
+                            mark = '* '
+                            if re.sub('.*\.', '', name) in exts:
+                                subdir = PATH + org + '/' + bucket + '/'
+                                if not os.path.exists(subdir + name):
+                                    if re.search('/',  name):
+                                        dir = re.sub('/[^/]+$', '', name)
+                                        if not os.path.exists(subdir + dir):
+                                            os.makedirs(subdir + dir)
+                                    cmd = 'ln -s ' + path + name + ' ' + subdir + name
+                                    # print(cmd)
+                                    os.system(cmd)
+                                # the file must be in a folder where the sub folers <org/bucket> exist
+                                line = re.sub('([^\s]+)$', '<a href="' + org + '/' + bucket + '/' + name + '">'+ name + '</a>', line)
+                        elif org == 'CHOP':
+                            mark = '* '
+                    fpg.write(mark + line)
+            if bucket:
+                fpg.write("</pre>\n")
+                fpg.close()
+                pages[org].append([bucket, page, count])
+            fin.close()
+    
+        fout = open(output.file, "w")
+        fout.write("## Contents of GRIN Buckets\n") 
+        for org in orgs:
+            fout.write("\n### " + org + "\n\n") 
+            for bucket in pages[org]:
+                fout.write(' * [' + bucket[0] + ']({{SLINK}}/' + bucket[1] + ')') 
+                fout.write(' (%d fastq files)' % (bucket[2]))
+                fout.write("\n") 
+        fout.close()
