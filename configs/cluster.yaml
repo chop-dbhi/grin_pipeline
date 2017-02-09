@@ -232,3 +232,15 @@ left_align_indels:
   h_vmem: 30G
   mem_free: 15G
   m_mem_free: 7G
+alignmentMetrics:
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
+hsMetrics:
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
+get_bamout:
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
