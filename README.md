@@ -30,13 +30,17 @@ Set a TMPDIR in your `~/.bash_profile`:
 export TMPDIR=/mnt/lustre/users/YOURUSERNAME/scratch
 ```
 
-Develop an appropriate config:
+Symlink an appropriate config:
 ```
 ln -s configs/config.respublica.yaml configs/config.yaml
+```
+
+Create a localconfig using [this template](configs/localconfig.sample.yaml)
+```
 cp configs/localconfig.sample.yaml localconfig.yaml
 ```
 
-Choose a sample_table.txt
+Symlink a sample table like [this one](metadata/sample_table_pros.txt) or make a new one using [this template](metadata/sample_table_pros.txt)
 ```
 cd metadata
 ln -s sample_table_full.txt sample_table.txt
@@ -78,16 +82,5 @@ touch -h -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
 touch -d 20150101 tools/GenomeAnalysisTK-3.6.tar.bz2 
 ```
 
-### Setting up a new project
-
-Create a table like this one:
-
-[Sample table pros](https://github.research.chop.edu/BiG/grin/blob/master/metadata/sample_table_pros.txt)
-
-Then create a sample.yaml file based off of this template:
-
-[Sample yaml file template](https://github.research.chop.edu/BiG/grin/blob/master/configs/localconfig.sample.yaml)
-
-(Deanne to write more on this)
 
 
