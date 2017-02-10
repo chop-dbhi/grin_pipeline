@@ -1,6 +1,8 @@
 # grin
 GRIN Epilepsy Study
 
+Developed for an epilepsy pilot study for the [Genomics Research and Innovation Network](http://grinnetwork.org/), this repo is a [Snakemake](https://bitbucket.org/snakemake) trio-centric WES pipeline with [Gemini](https://github.com/arq5x/gemini) inheritance models and knitr/RMarkdown reports with heavy use of [DT](https://rstudio.github.io/DT/). Due to the reliance on Conda requirements spec, this pipeline is quite portable, and a [CFNCluster](https://aws.amazon.com/hpc/cfncluster/)-ready version is ready in minutes.
+
 ### Snakemake setup
 Do this once:
 ```
@@ -75,6 +77,7 @@ To update your conda environment with a new requirements file:
 ```
 conda install --name grinenv --file  requirements.txt
 ```
+
 You might find this will trigger Snakemake to want to remake downstream files, because executables are listed as input (this ensures they actually exist). To remedy this you can postdate any offending executables if you are confident their updates do not affect results.
 ```
 touch -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
