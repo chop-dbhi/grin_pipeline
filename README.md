@@ -6,11 +6,11 @@ Developed for an epilepsy pilot study for the [Genomics Research and Innovation 
 ### Snakemake setup
 Do this once:
 ```
-wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
-sh Miniconda3-latest-Linux-x86_64.sh
-# type "yes"
-conda create --name grinenv --file requirements.txt python=3.5
-conda create --name geminienv --file python2_requirements.txt
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+bash miniconda.sh -b -p $HOME/miniconda
+export PATH="$HOME/miniconda/bin:$PATH"
+conda create --name grinenv --file python3_requirements.txt python=3.5
+conda create --name geminienv --file python2_requirements.txt python=2.7
 source activate grinenv
 ```
 
@@ -70,12 +70,12 @@ It's best to run in dev with --notemp since intermediates can take a long time t
 
 To update the requirements file (after installing some new package):
 ```
-conda list --explicit > requirements.txt
+conda list --explicit > python3_requirements.txt
 ```
 
 To update your conda environment with a new requirements file:
 ```
-conda install --name grinenv --file  requirements.txt
+conda install --name grinenv --file  python3_requirements.txt
 ```
 
 You might find this will trigger Snakemake to want to remake downstream files, because executables are listed as input (this ensures they actually exist). To remedy this you can postdate any offending executables if you are confident their updates do not affect results.
@@ -84,6 +84,3 @@ touch -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
 touch -h -d 20160101 /home/leipzigj/miniconda3/envs/grinenv/bin/*
 touch -d 20150101 tools/GenomeAnalysisTK-3.6.tar.bz2 
 ```
-
-
-
