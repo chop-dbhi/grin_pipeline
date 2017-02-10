@@ -40,7 +40,7 @@ Create a localconfig using [this template](configs/localconfig.sample.yaml)
 cp configs/localconfig.sample.yaml localconfig.yaml
 ```
 
-Symlink a sample table like [this one](metadata/sample_table_pros.txt) or make a new one using [this template](metadata/sample_table_pros.txt)
+Symlink a sample table like [this one](metadata/sample_table_pros.txt) or make a new one
 ```
 cd metadata
 ln -s sample_table_full.txt sample_table.txt
