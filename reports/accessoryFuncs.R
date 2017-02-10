@@ -8,6 +8,9 @@ thisnotinthat <- function(x.1,x.2,...){
 # display datatable function
 viewDataTable <- function(dat){
   
+  cols2keep <- grep('^transcript_id$|^set$|^family_count$|^db$|^ds$', colnames(dat), invert = T, value = T)
+  dat <- dat[,colnames(dat) %in% cols2keep]
+
   cols2crop <- grep('family_genotypes|ref|alt', colnames(dat))-1
   cols2hide <- grep('Description|Variants|Perc|^chr$|^pos$|rsid|^ref$|^alt$|^gene$|gene_freq|
                     impact_severity|rvis|depths|gt_quals|family_genotypes|denovo_prob|

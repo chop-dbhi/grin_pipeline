@@ -179,14 +179,19 @@ rule getScreenshots:
                 freezelookup<-c("hg37"="b37","hg38"="hg38")
                 IGVgenome(sock, genome=freezelookup["{params.freeze}"])
                 IGVload(sock, paste(projdir,bamouts,sep="/"))
-                igvsnapshot<-function(df){{
-                    midpoint<-round((as.numeric(df[['start']])+as.numeric(df[['end']]))/2)
-                    startpos<-midpoint-74
-                    endpos<-midpoint+75
-                    goto<-str_replace_all(paste(df[['chrom']],':',startpos,'-',endpos,sep=""),' ','')
-                    IGVgoto(sock, goto)
+                igvsnapshot<-function(df)
+                {{
                     fname<-str_replace_all(paste(familyname,model,df[['variant_id']],'png',sep="."),' ','')
-                    IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
+                    fpath<-paste(dirpath, fname, sep='/')
+                    if(!file.exists(fpath) | file.info(fpath)$size == 0)
+                    {{
+                        midpoint<-round((as.numeric(df[['start']])+as.numeric(df[['end']]))/2)
+                        startpos<-midpoint-74
+                        endpos<-midpoint+75
+                        goto<-str_replace_all(paste(df[['chrom']],':',startpos,'-',endpos,sep=""),' ','')
+                        IGVgoto(sock, goto)
+                        IGVsnapshot(sock, dirname=paste(projdir,dirpath,sep="/"),fname=fname)
+                    }}
                 }}
                 apply(geminiout,1,igvsnapshot)
                 IGVclear(sock)
