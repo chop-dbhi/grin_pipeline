@@ -106,12 +106,9 @@ novosortbam:
   m_mem_free: 2G
   reference: http://www.novocraft.com/documentation/novosort-2/
 target_list: 
-  h_vmem: 3G
-  mem_free: 2G
-  m_mem_free: 2G
-  #h_vmem: 55G
-  #mem_free: 44G
-  #m_mem_free: 40G
+  h_vmem: 16G
+  mem_free: 13G
+  m_mem_free: 12G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 extractreads: 
   h_vmem: 55G
@@ -129,9 +126,9 @@ generate_recalibration_table:
   m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 recalibrate_bam: 
-  h_vmem: 7G
-  mem_free: 5G
-  m_mem_free: 4G
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
   reference: https://www.broadinstitute.org/gatk/guide/article?id=1975
 post_recalibrated_table: 
   h_vmem: 55G
@@ -229,6 +226,18 @@ run_vep:
   mem_free: 56G
   m_mem_free: 49G
 left_align_indels:
-  h_vem: 20G
-  mem_free: 16G
-  m_mem_free: 41G
+  h_vmem: 30G
+  mem_free: 15G
+  m_mem_free: 7G
+alignmentMetrics:
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
+hsMetrics:
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
+get_bamout:
+  h_vmem: 55G
+  mem_free: 44G
+  m_mem_free: 38G
