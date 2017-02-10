@@ -179,7 +179,8 @@ rule getScreenshots:
             IGVload(sock, paste(projdir,bamouts,sep="/"))
             igvsnapshot<-function(df){{
                 fname<-str_replace_all(paste(familyname,model,df[['variant_id']],'png',sep="."),' ','')
-                if(!file.exists(fname) | file.info(fname)$size == 0)
+                fpath<-paste(dirpath, fname, sep='/')
+                if(!file.exists(fpath) | file.info(fpath)$size == 0)
                 {
                     midpoint<-round((as.numeric(df[['start']])+as.numeric(df[['end']]))/2)
                     startpos<-midpoint-74
