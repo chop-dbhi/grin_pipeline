@@ -31,7 +31,8 @@ rule extract:
 ##############################
 SBAMS = [config['process_dir'][freeze] + config['results']['bams'] + "/" + name + ".sorted.bam" for name in SAMPLELANES] #used by mergelanes
 GBAMS = [config['process_dir'][freeze] + config['results']['picard'] + "/" + name + ".group.bam" for name in EXISTINGSAMPLES]  #used by multiqc
-REBAMS = [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".recal.la.bam" for name in EXISTINGSAMPLES]
+REBAMS = [config['landing_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".recal.la.bam" for name in EXISTINGSAMPLES]
+HSMETS = [config['landing_dir'][freeze] + config['results']['hsmetrics'] + "/" + name + ".hsmetrics" for name in EXISTINGSAMPLES]
 INDELS = config['process_dir'][freeze] + config['results']['realigned'] + "/indels.list" #used by combinelists
 LISTS = [config['process_dir'][freeze] + config['results']['lists'] + "/" + name + ".list" for name in EXISTINGSAMPLES] #used by combine
 
@@ -57,7 +58,7 @@ rule make_target_lists:
 rule make_recalibrated:
     input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.recal.bam']]
 rule make_leftaligned:
-    input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.recal.la.bam']]
+    input: [config['landing_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ext for name in EXISTINGSAMPLES for ext in ['.recal.la.bam']]
 rule make_recalibrated_tables:
     input: [config['process_dir'][freeze] + config['results']['recalibrated'] + "/" + name + ".table" for name in EXISTINGSAMPLES]
 rule make_alignmetrics:
@@ -140,11 +141,16 @@ BOINTERVALS = [config['landing_dir'][freeze] + config['results']['analysis'] + "
 rule make_intervals:
     input: BOINTERVALS
 
+#reports_by_sex would generate something for which no rules to make
+#BAMOUTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in EXISTINGSAMPLES for model in reports_by_sex[gendertools.trioGender(gendertools.getFamilyFromMember(name))] ]
 BAMOUTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + name + "." + model + ".bamout.bam" for name in EXISTINGSAMPLES for model in bamouts_by_sex[gendertools.trioGender(gendertools.getFamilyFromMember(name))] ]
 rule make_bamouts:
     input: BAMOUTS
 #GRCh37/analysis/EG0011M.denovo.bamout.bam
 
+#SNAPSHOTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.anno."+ model + ".ss" for trio in COMPLETETRIOSFAMIDS for model in reports_by_sex[gendertools.trioGender(trio)] ]
+#we don't know yet if trio.com.filtered.ad.de.nm.snpeff.anno.*.txt will be empty
+#so can't check it here to decide whether or not to run snapshot for the trio
 SNAPSHOTS = [config['landing_dir'][freeze] + config['results']['analysis'] + "/" + trio + ".trio.com.filtered.ad.de.nm.snpeff.anno."+ model + ".ss" for trio in COMPLETETRIOSFAMIDS for model in bamouts_by_sex[gendertools.trioGender(trio)] ]
 rule make_snapshots:
     input: SNAPSHOTS

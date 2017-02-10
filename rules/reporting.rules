@@ -9,15 +9,16 @@ rule fetch_multiqc_yaml:
 rule make_multiqc:
     input:
         gbams = REBAMS,
+        hsmets = HSMETS,
         vcfs = VCFSTATS,
         multiqc = ENV3 + config['tools']['multiqc'],
         config = "multiqc_config.yaml"
-    output: config['datadirs']['multiqc'] + '/multiqc_report.html'
+    output: config['landing_dir'][freeze] + config['results']['multiqc'] + '/multiqc_report.html'
     params:
         bams = config['process_dir'][freeze] + config['results']['recalibrated'],
         fastqcdir = config['datadirs']['fastqc'],
         vcfstatsdir = config['landing_dir'][freeze] + config['results']['vcfstats'],
-        outdir = config['datadirs']['multiqc'],
+        outdir = config['landing_dir'][freeze] + config['results']['multiqc'],
         hsmetricsdir = config['landing_dir'][freeze] + config['results']['hsmetrics'],
         qualimapdirs = QUALIMAPS,
         snpeffdir = config['landing_dir'][freeze] + config['results']['snpeffstats']
@@ -113,7 +114,8 @@ rule siteindex:
     output:
         config['datadirs']['website'] + "/index.md"
     params:
-        analysisdir = config['landing_dir'][freeze] + config['results']['analysis']
+        analysisdir = config['landing_dir'][freeze] + config['results']['analysis'],
+        multiqcdir = config['landing_dir'][freeze] + config['results']['multiqc']
     run:
         with open(output[0], 'w') as outfile:
             outfile.write("""

@@ -143,7 +143,7 @@ vepgenomes:
 
 # subdirectories relative to projdir
 datadirs:
-    multiqc:          multiqc
+    # multiqc:          multiqc  # moved to landing_dir/freeze
     oldbams:          oldbams
     fastq:            fastq
     samples:          samples
@@ -172,6 +172,7 @@ results:  # subdirectories in process_dir or landing_dir
     hsmetrics:        qc/hsmetrics
     alignmetrics:     qc/alignmetrics
     qualimap:         qc/qualimap
+    multiqc:          multiqc
     postrecalibrated: postrecalibrated
     pdfs:             pdfs
     gvcfs:            gvcfs
@@ -193,6 +194,7 @@ results:  # subdirectories in process_dir or landing_dir
     subject_mapping:  subject_mapping # directory of mapping files
     phenotype_meta:   phenotype_meta  # directory of meta files
     phenotypics:      phenotypics
+    s3buckets:        /mnt/isilon/cbmi/variome/zhangs3/s3buckets
 
 buckets:
     chopgrin:
@@ -212,9 +214,9 @@ tools:
         veryhigh:
             '-Xmx64g -Xms32g'
         high:
-            '-Xmx48g -Xms24g'
+            '-Xmx96g -Xms48g'
         med:
-            '-Xmx32g -Xms16g'
+            '-Xmx48g -Xms24g'
         low:
             '-Xmx16g -Xms8g'
     seq2qc:
